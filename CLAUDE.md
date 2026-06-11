@@ -1,6 +1,7 @@
 # CLAUDE.md — Personal Health Tracker (Android)
 
 > קובץ זיכרון פרויקט עבור Claude Code. נקרא אוטומטית בכל session.
+> כללי עבודה גלובליים (git, בדיקות, איכות קוד): [`C:/Users/Dudu/.gemini/GEMINI.md`](C:/Users/Dudu/.gemini/GEMINI.md)
 > מקור האמת המלא: `HLD-health-tracker.md` ו-`blueprint-phase-*.md`. קרא אותם לפני עבודה.
 
 ## פרטי פרויקט
