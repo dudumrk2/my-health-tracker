@@ -18,6 +18,7 @@ import com.myhealthtracker.app.sync.HealthSyncWorker
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -75,20 +76,25 @@ class DashboardViewModel(
             return
         }
 
+        val dateStr = LocalDate.now(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_LOCAL_DATE)
+
         viewModelScope.launch {
             _uiState.value = DashboardUiState.Loading
-            
-            profileRepository.getUserProfile(uid).collect { profileResult ->
+
+            combine(
+                profileRepository.getUserProfile(uid),
+                healthRepository.getDailyHealthData(uid, dateStr)
+            ) { profileResult, healthResult ->
                 val hasProfile = profileResult.isSuccess && profileResult.getOrNull() != null
-                
-                val dateStr = LocalDate.now(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_LOCAL_DATE)
-                healthRepository.getDailyHealthData(uid, dateStr).collect { healthResult ->
-                    if (healthResult.isSuccess) {
-                        _uiState.value = DashboardUiState.Success(healthResult.getOrNull(), hasProfile)
-                    } else {
-                        _uiState.value = DashboardUiState.Error(healthResult.exceptionOrNull()?.message ?: "Failed to fetch health data")
-                    }
+                if (healthResult.isSuccess) {
+                    DashboardUiState.Success(healthResult.getOrNull(), hasProfile)
+                } else {
+                    DashboardUiState.Error(
+                        healthResult.exceptionOrNull()?.message ?: "Failed to fetch health data"
+                    )
                 }
+            }.collect { state ->
+                _uiState.value = state
             }
         }
     }

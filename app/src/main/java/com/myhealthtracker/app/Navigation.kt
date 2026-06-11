@@ -55,6 +55,7 @@ fun MainNavigation() {
             },
             onLogout = {
               authViewModel.signOut()
+              backStack.clear()
               backStack.add(Auth)
             },
             modifier = Modifier.safeDrawingPadding().padding(16.dp)

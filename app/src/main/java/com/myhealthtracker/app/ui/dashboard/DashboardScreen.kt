@@ -16,6 +16,8 @@ import java.time.format.DateTimeFormatter
 import java.time.Instant
 import java.time.ZoneId
 
+private const val DAILY_STEP_GOAL = 10_000L
+
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
@@ -148,15 +150,14 @@ fun DashboardContent(
     ) {
         item {
             val steps = data?.steps ?: 0L
-            val target = 10000L
-            val progress = (steps.toFloat() / target).coerceIn(0f, 1f)
+            val progress = (steps.toFloat() / DAILY_STEP_GOAL).coerceIn(0f, 1f)
 
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Today's Steps", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "$steps / $target steps",
+                        text = "$steps / $DAILY_STEP_GOAL steps",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold
                     )
