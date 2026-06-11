@@ -75,3 +75,14 @@ users/{uid}
 - Build: `./gradlew assembleDebug`
 - טסטים: `./gradlew test` (unit) + `./gradlew connectedAndroidTest` (instrumented)
 - Firestore/Auth בטסטים: Firebase Local Emulator Suite
+
+## Changelog
+
+קובץ `docs/CHANGELOG.md` מתעד החלטות ארכיטקטורה ופעולות משמעותיות לאורך הפרויקט.
+
+**חובה לעדכן אותו כשאתה:**
+- מסיים פייז (השלמה, תיקוני PR)
+- מקבל החלטת עיצוב לא-מובנת-מאליה (למה X ולא Y)
+- מוחק קוד / ממירה גישה
+
+**פורמט ערך:** שורה אחת לתיאור + שורה אחת לסיבה. ללא פסקאות. תאריך בפורמט `yyyy-MM-dd`.
