@@ -13,8 +13,10 @@ import com.myhealthtracker.app.ui.auth.AuthScreen
 import com.myhealthtracker.app.ui.auth.AuthViewModel
 import com.myhealthtracker.app.ui.profile.ProfileScreen
 import com.myhealthtracker.app.ui.profile.ProfileViewModel
-import com.myhealthtracker.app.ui.dashboard.DashboardScreen
-import com.myhealthtracker.app.ui.dashboard.DashboardViewModel
+import com.myhealthtracker.app.ui.main.MainScreen
+import com.myhealthtracker.app.ui.workout.AddWorkoutScreen
+import com.myhealthtracker.app.ui.meal.AddMealScreen
+import com.myhealthtracker.app.ui.body.AddBodyMeasurementScreen
 
 @Composable
 fun MainNavigation() {
@@ -22,7 +24,6 @@ fun MainNavigation() {
 
   val authViewModel: AuthViewModel = viewModel()
   val profileViewModel: ProfileViewModel = viewModel()
-  val dashboardViewModel: DashboardViewModel = viewModel()
 
   NavDisplay(
     backStack = backStack,
@@ -48,19 +49,31 @@ fun MainNavigation() {
           )
         }
         entry<Dashboard> {
-          DashboardScreen(
-            viewModel = dashboardViewModel,
-            onNavigateToProfile = {
-              backStack.add(Profile)
-            },
+          MainScreen(
+            backStack = backStack,
             onLogout = {
               authViewModel.signOut()
               backStack.clear()
               backStack.add(Auth)
-            },
-            modifier = Modifier.safeDrawingPadding().padding(16.dp)
+            }
+          )
+        }
+        entry<AddWorkout> {
+          AddWorkoutScreen(
+            onDismiss = { backStack.removeLastOrNull() }
+          )
+        }
+        entry<AddMeal> {
+          AddMealScreen(
+            onDismiss = { backStack.removeLastOrNull() }
+          )
+        }
+        entry<AddBodyMeasurement> {
+          AddBodyMeasurementScreen(
+            onDismiss = { backStack.removeLastOrNull() }
           )
         }
       },
   )
 }
+

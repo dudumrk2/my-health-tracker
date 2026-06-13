@@ -1,7 +1,6 @@
 # CLAUDE.md — Personal Health Tracker (Android)
 
 > קובץ זיכרון פרויקט עבור Claude Code. נקרא אוטומטית בכל session.
-> כללי עבודה גלובליים (git, בדיקות, איכות קוד): [`C:/Users/Dudu/.gemini/GEMINI.md`](C:/Users/Dudu/.gemini/GEMINI.md)
 > מקור האמת המלא: `HLD-health-tracker.md` ו-`blueprint-phase-*.md`. קרא אותם לפני עבודה.
 
 ## פרטי פרויקט
@@ -36,11 +35,18 @@
 
 ```
 users/{uid}
-├── profile           : { birthYear, weightKg, heightCm, createdAt, updatedAt }
-├── healthDaily/{date}: { date, steps, sleepMinutes, sleepSessions[], workouts[], syncedAt, source }
+├── profile           : { birthYear, gender, weightKg, heightCm, createdAt, updatedAt }
+├── healthDaily/{date}: { date, steps, sleepMinutes, sleepSessions[{start,end,stages?}], workouts[{type,durationMin,startTime,source}], syncedAt, source }
 ├── meals/{mealId}    : { date, loggedAt, inputType, description, items[], totals, aiModel }
-└── summaries/{date}  : { date, generatedAt, highlights[], improvements[], narrative, disclaimer, inputsSnapshot }
+├── water/{date}      : { date, cups, updatedAt }
+├── bodyMeasurements/{date} : { date, weightKg?, waistCm?, hipCm?, notes?, loggedAt }  (מעקב עצמי ידני, לא מוזן ל-AI)
+└── insights/{date}   : { date, today{general,nutrition,activity,sleep}, tomorrow{nutrition,activity,sleep}, disclaimer, trigger, generatedAt }
 ```
+- `sleepSessions[].stages`: אופציונלי — `[{ stage: "awake"|"light"|"deep"|"rem", start, end }]`, תלוי במקור הסנכרון.
+- `workout.source`: `"health_connect"` | `"manual"`. `healthDaily.source`: `"health_connect"` | `"mixed"`.
+- `gender`: `"male"` | `"female"` | `"other"` — מועבר ל-Gemini כהקשר בניתוח ארוחות ובתובנות.
+- `bodyMeasurements`: מעקב עצמי בלבד. **אינו** נכלל ב-prompt-ים ל-Gemini (Contracts A/B) בשלב זה.
+- `insights`: קריאת AI מאוחדת אחת (`generateInsights`), פלט מפוצל. trigger ערב כותב today+tomorrow; 15:00/ידני מעדכנים today בלבד.
 - `{date}` בפורמט `yyyy-MM-dd`. מסמכים ממופתחי-תאריך → כתיבה idempotent (עדכון, לא הכפלה).
 - הגיל מחושב מ-`birthYear`, לא נשמר ישירות.
 
@@ -76,14 +82,3 @@ users/{uid}
 - Build: `./gradlew assembleDebug`
 - טסטים: `./gradlew test` (unit) + `./gradlew connectedAndroidTest` (instrumented)
 - Firestore/Auth בטסטים: Firebase Local Emulator Suite
-
-## Changelog
-
-קובץ `docs/CHANGELOG.md` מתעד החלטות ארכיטקטורה ופעולות משמעותיות לאורך הפרויקט.
-
-**חובה לעדכן אותו כשאתה:**
-- מסיים פייז (השלמה, תיקוני PR)
-- מקבל החלטת עיצוב לא-מובנת-מאליה (למה X ולא Y)
-- מוחק קוד / ממירה גישה
-
-**פורמט ערך:** שורה אחת לתיאור + שורה אחת לסיבה. ללא פסקאות. תאריך בפורמט `yyyy-MM-dd`.
