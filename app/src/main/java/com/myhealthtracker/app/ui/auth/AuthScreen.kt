@@ -1,11 +1,13 @@
 package com.myhealthtracker.app.ui.auth
 
 import android.app.Activity
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -27,8 +29,10 @@ fun AuthScreen(
     val uiState by viewModel.uiState.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState()
 
-    if (currentUser != null) {
-        onAuthSuccess()
+    LaunchedEffect(currentUser) {
+        if (currentUser != null) {
+            onAuthSuccess()
+        }
     }
 
     val launcher = rememberLauncherForActivityResult(
@@ -43,7 +47,7 @@ fun AuthScreen(
                     viewModel.handleGoogleSignIn(idToken)
                 }
             } catch (e: ApiException) {
-                // Log/handle error
+                viewModel.handleSignInError(e.message ?: "Google Sign-in failed (code ${e.statusCode})")
             }
         }
     }
@@ -75,7 +79,12 @@ fun AuthScreen(
             Button(
                 onClick = {
                     val clientIdResId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
-                    val clientId = if (clientIdResId != 0) context.getString(clientIdResId) else ""
+                    if (clientIdResId == 0) {
+                        Log.e("AuthScreen", "default_web_client_id not found — google-services.json may be missing")
+                        viewModel.handleSignInError("App is not configured for Google Sign-in")
+                        return@Button
+                    }
+                    val clientId = context.getString(clientIdResId)
                     val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                         .requestIdToken(clientId)
                         .requestEmail()

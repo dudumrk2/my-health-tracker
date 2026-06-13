@@ -19,7 +19,8 @@ data class SleepSessionInfo(
 data class ExerciseSessionInfo(
     val type: String,
     val durationMin: Int,
-    val startTime: Timestamp
+    val startTime: Timestamp,
+    val source: String = "health_connect"
 )
 
 data class DailyHealthData(
@@ -55,7 +56,7 @@ class HealthRepository(
                         steps = data.steps ?: 0L,
                         sleepMinutes = data.sleepMinutes ?: 0,
                         sleepSessions = data.sleepSessions?.map { SleepSessionInfo(it.start ?: Timestamp.now(), it.end ?: Timestamp.now()) } ?: emptyList(),
-                        workouts = data.workouts?.map { ExerciseSessionInfo(it.type ?: "Exercise", it.durationMin ?: 0, it.startTime ?: Timestamp.now()) } ?: emptyList(),
+                        workouts = data.workouts?.map { ExerciseSessionInfo(it.type ?: "Exercise", it.durationMin ?: 0, it.startTime ?: Timestamp.now(), it.source ?: "health_connect") } ?: emptyList(),
                         syncedAt = data.syncedAt,
                         source = data.source ?: "health_connect"
                     )
@@ -84,14 +85,22 @@ class HealthRepository(
 
         val sleepMinutes = aggregateSleepMinutes(sleepSessions)
 
+        val hasHC = workouts.any { it.source == "health_connect" }
+        val hasManual = workouts.any { it.source == "manual" }
+        val docSource = when {
+            hasHC && hasManual -> "mixed"
+            hasManual -> "manual"
+            else -> "health_connect"
+        }
+
         val data = mapOf(
             "date" to date,
             "steps" to steps,
             "sleepMinutes" to sleepMinutes,
             "sleepSessions" to sleepSessions.map { mapOf("start" to it.start, "end" to it.end) },
-            "workouts" to workouts.map { mapOf("type" to it.type, "durationMin" to it.durationMin, "startTime" to it.startTime) },
+            "workouts" to workouts.map { mapOf("type" to it.type, "durationMin" to it.durationMin, "startTime" to it.startTime, "source" to it.source) },
             "syncedAt" to Timestamp.now(),
-            "source" to "health_connect"
+            "source" to docSource
         )
 
         docRef.set(data, SetOptions.merge())
@@ -149,11 +158,57 @@ class HealthRepository(
             ExerciseSessionInfo(
                 type = mapExerciseType(it.exerciseType),
                 durationMin = if (durationMin > 0) durationMin else 0,
-                startTime = Timestamp(it.startTime.epochSecond, it.startTime.nano)
+                startTime = Timestamp(it.startTime.epochSecond, it.startTime.nano),
+                source = "health_connect"
             )
         }
 
         return MappedHealthData(sleepSessions, workouts)
+    }
+
+    fun saveManualWorkout(
+        uid: String,
+        date: String,
+        type: String,
+        durationMin: Int,
+        startTime: Timestamp
+    ): Flow<Result<Unit>> = callbackFlow {
+        val docRef = firestore.collection("users")
+            .document(uid)
+            .collection("healthDaily")
+            .document(date)
+
+        docRef.get()
+            .addOnSuccessListener { snapshot ->
+                val dto = if (snapshot.exists()) snapshot.toObject(DailyHealthDataDto::class.java) else null
+                val existingWorkouts = dto?.workouts?.map {
+                    ExerciseSessionInfo(it.type ?: "Exercise", it.durationMin ?: 0, it.startTime ?: Timestamp.now(), it.source ?: "health_connect")
+                } ?: emptyList()
+
+                val newWorkout = ExerciseSessionInfo(type, durationMin, startTime, source = "manual")
+                val updatedWorkouts = existingWorkouts + newWorkout
+
+                val hasHC = updatedWorkouts.any { it.source == "health_connect" }
+                val hasManual = updatedWorkouts.any { it.source == "manual" }
+                val docSource = when {
+                    hasHC && hasManual -> "mixed"
+                    hasManual -> "manual"
+                    else -> "health_connect"
+                }
+
+                val workoutsData = updatedWorkouts.map {
+                    mapOf("type" to it.type, "durationMin" to it.durationMin, "startTime" to it.startTime, "source" to it.source)
+                }
+
+                docRef.set(
+                    mapOf("workouts" to workoutsData, "source" to docSource, "syncedAt" to Timestamp.now()),
+                    SetOptions.merge()
+                )
+                    .addOnSuccessListener { trySend(Result.success(Unit)); close() }
+                    .addOnFailureListener { e -> trySend(Result.failure(e)); close() }
+            }
+            .addOnFailureListener { e -> trySend(Result.failure(e)); close() }
+        awaitClose()
     }
 
     private fun mapExerciseType(type: Int): String {
@@ -190,4 +245,5 @@ class ExerciseSessionInfoDto {
     var type: String? = null
     var durationMin: Int? = null
     var startTime: Timestamp? = null
+    var source: String? = null
 }
