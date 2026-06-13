@@ -76,6 +76,7 @@ dependencies {
   implementation(libs.firebase.functions)
   implementation(libs.firebase.appcheck.playintegrity)
   debugImplementation(libs.firebase.appcheck.debug)
+  implementation(libs.kotlinx.coroutines.play.services)
 
   // Health Connect SDK
   implementation(libs.androidx.health.connect)
