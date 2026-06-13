@@ -103,4 +103,21 @@ class AddMealViewModelTest {
         assertEquals(140, repo.saved.first().totals.calories)
         assertTrue(vm.isSaved.value)
     }
+
+    @Test
+    fun `successful image analysis moves to result with items`() = runTest(dispatcher) {
+        val analyzer = FakeAnalyzer(
+            result = MealAnalysisResult(
+                items = listOf(MealItem("Apple", "1", 95, 0, 25, 0)),
+                totals = MealTotals(95, 0, 25, 0),
+                lowConfidence = false
+            )
+        )
+        val vm = AddMealViewModel(FakeMealRepo(), analyzer)
+        vm.analyzeImage("dummy_base64_data")
+        advanceUntilIdle()
+        assertEquals(AddMealStep.ResultState, vm.step.value)
+        assertEquals(1, vm.recognizedItems.value.size)
+        assertEquals("Apple", vm.recognizedItems.value.first().name)
+    }
 }

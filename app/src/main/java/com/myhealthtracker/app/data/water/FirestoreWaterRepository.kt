@@ -17,16 +17,24 @@ class FirestoreWaterRepository(
     private val _waterLog = MutableStateFlow<Map<String, Int>>(emptyMap())
     override val waterLog: StateFlow<Map<String, Int>> = _waterLog.asStateFlow()
 
+    private var listenerRegistration: com.google.firebase.firestore.ListenerRegistration? = null
+
     init {
         auth.addAuthStateListener { fa ->
             val uid = fa.currentUser?.uid
-            if (uid != null) attachListener(uid) else _waterLog.value = emptyMap()
+            if (uid != null) {
+                attachListener(uid)
+            } else {
+                listenerRegistration?.remove()
+                listenerRegistration = null
+                _waterLog.value = emptyMap()
+            }
         }
-        auth.currentUser?.uid?.let { attachListener(it) }
     }
 
     private fun attachListener(uid: String) {
-        firestore.collection("users").document(uid).collection("water")
+        listenerRegistration?.remove()
+        listenerRegistration = firestore.collection("users").document(uid).collection("water")
             .addSnapshotListener { snap, _ ->
                 if (snap == null) return@addSnapshotListener
                 _waterLog.value = snap.documents.associate { doc ->

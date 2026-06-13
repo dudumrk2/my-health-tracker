@@ -48,25 +48,30 @@ fun AddMealScreen(
     val lowConfidence by viewModel.lowConfidence.collectAsState()
 
     val context = androidx.compose.ui.platform.LocalContext.current
+    var pendingCameraFile by remember { mutableStateOf<java.io.File?>(null) }
     var pendingCameraUri by remember { mutableStateOf<android.net.Uri?>(null) }
 
     val galleryLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri != null) {
-            val base64 = com.myhealthtracker.app.util.ImageEncoder.uriToBase64Jpeg(context, uri)
-            if (base64 != null) viewModel.analyzeImage(base64)
+            viewModel.analyzeImageUri(context, uri)
         }
     }
 
     val cameraLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.TakePicture()
     ) { success ->
+        val file = pendingCameraFile
         val uri = pendingCameraUri
-        if (success && uri != null) {
-            val base64 = com.myhealthtracker.app.util.ImageEncoder.uriToBase64Jpeg(context, uri)
-            if (base64 != null) viewModel.analyzeImage(base64)
-            runCatching { context.contentResolver.delete(uri, null, null) }
+        try {
+            if (success && uri != null) {
+                viewModel.analyzeImageUri(context.applicationContext, uri)
+            }
+        } finally {
+            file?.delete()
+            pendingCameraFile = null
+            pendingCameraUri = null
         }
     }
 
@@ -112,7 +117,11 @@ fun AddMealScreen(
                         )
                     },
                     onCameraClick = {
-                        val uri = createCameraImageUri(context)
+                        val file = createCameraImageFile(context)
+                        val uri = androidx.core.content.FileProvider.getUriForFile(
+                            context, "${context.packageName}.fileprovider", file
+                        )
+                        pendingCameraFile = file
                         pendingCameraUri = uri
                         cameraLauncher.launch(uri)
                     },
@@ -637,10 +646,7 @@ fun AddMealScreenPreviewResult() {
     }
 }
 
-private fun createCameraImageUri(context: android.content.Context): android.net.Uri {
+private fun createCameraImageFile(context: android.content.Context): java.io.File {
     val dir = java.io.File(context.cacheDir, "meal_images").apply { mkdirs() }
-    val file = java.io.File.createTempFile("meal_", ".jpg", dir)
-    return androidx.core.content.FileProvider.getUriForFile(
-        context, "${context.packageName}.fileprovider", file
-    )
+    return java.io.File.createTempFile("meal_", ".jpg", dir)
 }

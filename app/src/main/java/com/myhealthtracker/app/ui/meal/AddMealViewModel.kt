@@ -1,5 +1,7 @@
 package com.myhealthtracker.app.ui.meal
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.myhealthtracker.app.data.meal.MealAnalysisException
@@ -8,10 +10,12 @@ import com.myhealthtracker.app.data.meal.MealRepository
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
 import com.myhealthtracker.app.di.AppContainer
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -80,6 +84,31 @@ class AddMealViewModel(
 
     fun analyzeImage(imageBase64: String) {
         runAnalysis(inputType = "image", text = null, imageBase64 = imageBase64)
+    }
+
+    fun analyzeImageUri(context: Context, uri: Uri) {
+        viewModelScope.launch {
+            _errorMessage.value = null
+            _step.value = AddMealStep.Loading
+            val base64 = withContext(Dispatchers.IO) {
+                com.myhealthtracker.app.util.ImageEncoder.uriToBase64Jpeg(context, uri)
+            }
+            if (base64 == null) {
+                _errorMessage.value = "שגיאה בעיבוד התמונה"
+                _step.value = AddMealStep.InputSelection
+                return@launch
+            }
+            try {
+                val result = analyzer.analyze("image", null, base64, today())
+                lastInputType = "image"
+                _recognizedItems.value = result.items
+                _lowConfidence.value = result.lowConfidence
+                _step.value = AddMealStep.ResultState
+            } catch (e: MealAnalysisException) {
+                _errorMessage.value = e.message
+                _step.value = AddMealStep.InputSelection
+            }
+        }
     }
 
     private fun runAnalysis(inputType: String, text: String?, imageBase64: String?) {

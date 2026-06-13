@@ -52,6 +52,14 @@ async function runGemini(req: AnalyzeMealRequest, profile: ProfileContext | null
   return result.response.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }
 
+export function mapErrorToHttpsError(e: any): HttpsError {
+  const code = e?.code;
+  if (code === 429) {
+    return new HttpsError("resource-exhausted", "AI service is busy. Please try again shortly.");
+  }
+  return new HttpsError("internal", "Could not analyze the meal. You can enter it manually.");
+}
+
 export const analyzeMeal = onCall(
   { enforceAppCheck: true, timeoutSeconds: 60, region: LOCATION },
   async (request: CallableRequest): Promise<MealResult> => {
@@ -83,14 +91,14 @@ export const analyzeMeal = onCall(
       const code = (e as { code?: number }).code;
       if (code === 429) {
         logger.error("analyzeMeal quota", { requestId, uid, durationMs: Date.now() - started });
-        throw new HttpsError("resource-exhausted", "AI service is busy. Please try again shortly.");
+      } else {
+        logger.error("analyzeMeal failed", {
+          requestId, uid, durationMs: Date.now() - started,
+          kind: e instanceof ParseError ? "parse" : "vertex",
+          message: (e as Error).message, // safe: our message, not raw image/keys
+        });
       }
-      logger.error("analyzeMeal failed", {
-        requestId, uid, durationMs: Date.now() - started,
-        kind: e instanceof ParseError ? "parse" : "vertex",
-        message: (e as Error).message, // safe: our message, not raw image/keys
-      });
-      throw new HttpsError("internal", "Could not analyze the meal. You can enter it manually.");
+      throw mapErrorToHttpsError(e);
     }
   }
 );

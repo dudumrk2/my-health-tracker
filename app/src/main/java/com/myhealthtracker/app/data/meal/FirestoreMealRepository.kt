@@ -19,16 +19,24 @@ class FirestoreMealRepository(
     private val _meals = MutableStateFlow<List<MealEntry>>(emptyList())
     override val meals: StateFlow<List<MealEntry>> = _meals.asStateFlow()
 
+    private var listenerRegistration: com.google.firebase.firestore.ListenerRegistration? = null
+
     init {
         auth.addAuthStateListener { fa ->
             val uid = fa.currentUser?.uid
-            if (uid != null) attachListener(uid) else _meals.value = emptyList()
+            if (uid != null) {
+                attachListener(uid)
+            } else {
+                listenerRegistration?.remove()
+                listenerRegistration = null
+                _meals.value = emptyList()
+            }
         }
-        auth.currentUser?.uid?.let { attachListener(it) }
     }
 
     private fun attachListener(uid: String) {
-        firestore.collection("users").document(uid).collection("meals")
+        listenerRegistration?.remove()
+        listenerRegistration = firestore.collection("users").document(uid).collection("meals")
             .addSnapshotListener { snap, _ ->
                 if (snap == null) return@addSnapshotListener
                 _meals.value = snap.documents.mapNotNull { doc -> doc.toMealEntry() }
