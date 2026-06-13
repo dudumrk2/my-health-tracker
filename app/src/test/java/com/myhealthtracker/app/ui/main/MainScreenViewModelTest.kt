@@ -15,9 +15,7 @@ class MainScreenViewModelTest {
     @Test
     fun uiState_initiallyIdle() = runTest {
         val application  = mockk<Application>(relaxed = true)
-        val firebaseAuth = mockk<FirebaseAuth>(relaxed = true)
-        val authManager  = AuthManager(firebaseAuth)
-        val viewModel    = AuthViewModel(application, authManager)
+        val viewModel    = AuthViewModel(application)
         assertEquals(AuthUiState.Idle, viewModel.uiState.first())
     }
 }

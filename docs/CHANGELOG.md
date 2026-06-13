@@ -4,8 +4,36 @@
 
 ---
 
+## Phase 2 — Meal Logging + AI Analysis
+
+- Added `analyzeMeal` Cloud Function (TypeScript, 2nd gen): App Check + Auth gated, Vertex AI
+  (Gemini) analysis of meal text/photo, structured JSON output, server-side totals, timeout +
+  retry, uniform error envelope. **Analysis-only** — does not persist (diverges from the original
+  HLD contract, which had the function write the meal; the client now writes after the user edits).
+- Android: real `analyzeMeal` callable wiring (`MealAnalyzer`), camera/gallery capture with
+  downscale→base64 (images never stored), edit-before-save, Firestore-backed meal + water repos
+  (water kept in ml), App Check, and a lightweight `AppContainer` service locator.
+- Added `firestore.rules` (per-user access) and the `functions/` project with Jest tests.
+
+---
+
 ## Current State
-Phase 1 complete. Phase 1.5 patch complete (gender validation + manual workout logging). Phase 2 in progress (meal logging + AI analysis).
+Phase 1 and 1.5 complete (all code review and architecture decoupling fixes applied in the UI branch). Phase 2 UI-first design screens implemented.
+
+---
+
+## UI Screen & Architecture Review Fixes · 2026-06-13
+
+### Implemented
+- Decoupled domain models (`Meal`, `BodyMeasurement`) from `FakeRepository` into a shared `com.myhealthtracker.app.data.model` package.
+- Declared interface abstractions for all repositories to remove direct ViewModel coupling to the `FakeRepository` singleton.
+- Restored reactivity in `FakeRepository` by deriving profile and health data flows from backing `StateFlow`s using `map`, fixing live UI updates on profile save / workout add.
+- Replaced all Firebase `Timestamp` references in domain models, repositories, fakes, and test suites with standard JDK `java.time.Instant`.
+- Fixed gender localization by storing language-agnostic English keys (`"male"`, `"female"`, `"other"`) in the data layer and translating to/from Hebrew via an extracted `genderToHebrew()` helper in `ProfileRepository.kt`.
+- Added accessibility content description semantics to bottom navigation bar emoji icons.
+- Documented the hybrid double-write inside `AddWorkoutViewModel` with clarifying code comments.
+- Removed redundant `@OptIn` annotations in `ActivityScreen`.
+- Refactored `ProfileAndHealthUnitTest`, `UiValidationTests`, and `RepositoryAndHealthConnectTest` to match new interface signatures and English gender keys.
 
 ---
 

@@ -2,10 +2,9 @@ package com.myhealthtracker.app
 
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.SleepSessionRecord
-import com.google.firebase.Timestamp
-import com.myhealthtracker.app.data.health.HealthRepository
+import com.myhealthtracker.app.data.health.FirestoreHealthRepository
 import com.myhealthtracker.app.data.health.SleepSessionInfo
-import com.myhealthtracker.app.data.profile.ProfileRepository
+import com.myhealthtracker.app.data.profile.FirestoreProfileRepository
 import com.myhealthtracker.app.data.profile.UserProfile
 import io.mockk.every
 import io.mockk.mockk
@@ -15,8 +14,8 @@ import java.time.Instant
 
 class ProfileAndHealthUnitTest {
 
-    private val profileRepository = ProfileRepository(mockk(relaxed = true))
-    private val healthRepository = HealthRepository(mockk(relaxed = true))
+    private val profileRepository = FirestoreProfileRepository(mockk(relaxed = true))
+    private val healthRepository = FirestoreHealthRepository(mockk(relaxed = true))
 
     // ── Age ──────────────────────────────────────────────────────────────────
 
@@ -32,12 +31,12 @@ class ProfileAndHealthUnitTest {
 
     @Test
     fun testProfileValidation() {
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "Male")).isSuccess)
-        assertTrue(profileRepository.validateProfile(UserProfile(1899, 70.0, 175.0, gender = "Male")).isFailure)
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 25.0, 175.0, gender = "Male")).isFailure)
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 350.0, 175.0, gender = "Male")).isFailure)
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 90.0, gender = "Male")).isFailure)
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 260.0, gender = "Male")).isFailure)
+        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "male")).isSuccess)
+        assertTrue(profileRepository.validateProfile(UserProfile(1899, 70.0, 175.0, gender = "male")).isFailure)
+        assertTrue(profileRepository.validateProfile(UserProfile(1995, 25.0, 175.0, gender = "male")).isFailure)
+        assertTrue(profileRepository.validateProfile(UserProfile(1995, 350.0, 175.0, gender = "male")).isFailure)
+        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 90.0, gender = "male")).isFailure)
+        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 260.0, gender = "male")).isFailure)
     }
 
     @Test
@@ -47,9 +46,11 @@ class ProfileAndHealthUnitTest {
         val error = profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "")).exceptionOrNull()
         assertEquals("Gender is required", error?.message)
         // Valid gender values succeed
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "Male")).isSuccess)
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "Female")).isSuccess)
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "Other")).isSuccess)
+        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "male")).isSuccess)
+        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "female")).isSuccess)
+        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "other")).isSuccess)
+        // Invalid gender value fails
+        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "invalid_gender")).isFailure)
     }
 
     // ── Sleep aggregation ────────────────────────────────────────────────────
@@ -58,16 +59,16 @@ class ProfileAndHealthUnitTest {
     fun testSleepDurationAggregation() {
         assertEquals(0, healthRepository.aggregateSleepMinutes(emptyList()))
 
-        val start1 = Timestamp(Instant.parse("2026-06-11T00:00:00Z").epochSecond, 0)
-        val end1   = Timestamp(Instant.parse("2026-06-11T08:00:00Z").epochSecond, 0)
+        val start1 = Instant.parse("2026-06-11T00:00:00Z")
+        val end1   = Instant.parse("2026-06-11T08:00:00Z")
         assertEquals(480, healthRepository.aggregateSleepMinutes(listOf(SleepSessionInfo(start1, end1))))
 
-        val start2 = Timestamp(Instant.parse("2026-06-11T12:00:00Z").epochSecond, 0)
-        val end2   = Timestamp(Instant.parse("2026-06-11T16:00:00Z").epochSecond, 0)
+        val start2 = Instant.parse("2026-06-11T12:00:00Z")
+        val end2   = Instant.parse("2026-06-11T16:00:00Z")
         assertEquals(720, healthRepository.aggregateSleepMinutes(listOf(SleepSessionInfo(start1, end1), SleepSessionInfo(start2, end2))))
 
-        val startOverlap = Timestamp(Instant.parse("2026-06-11T06:00:00Z").epochSecond, 0)
-        val endOverlap   = Timestamp(Instant.parse("2026-06-11T10:00:00Z").epochSecond, 0)
+        val startOverlap = Instant.parse("2026-06-11T06:00:00Z")
+        val endOverlap   = Instant.parse("2026-06-11T10:00:00Z")
         assertEquals(600, healthRepository.aggregateSleepMinutes(listOf(SleepSessionInfo(start1, end1), SleepSessionInfo(startOverlap, endOverlap))))
     }
 
@@ -76,7 +77,7 @@ class ProfileAndHealthUnitTest {
     @Test
     fun testManualWorkout_hasSourceManual() {
         val todayStr = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
-        val timestamp = com.google.firebase.Timestamp.now()
+        val timestamp = Instant.now()
         com.myhealthtracker.app.data.FakeRepository.addWorkout(todayStr, "ריצה", 30, timestamp)
         val data = com.myhealthtracker.app.data.FakeRepository.getDailyHealthData(todayStr)
         val saved = data.workouts.lastOrNull { it.type == "ריצה" && it.source == "manual" }
@@ -87,14 +88,14 @@ class ProfileAndHealthUnitTest {
     @Test
     fun testMixedSource_whenHealthConnectAndManualWorkoutsExist() {
         val date = "2099-01-01"
-        val hcTimestamp = com.google.firebase.Timestamp.now()
-        val manualTimestamp = com.google.firebase.Timestamp.now()
+        val hcTimestamp = Instant.now()
+        val manualTimestamp = Instant.now()
         // Seed an HC workout via saveDailyHealthData
         com.myhealthtracker.app.data.FakeRepository.saveDailyHealthData(
             date, 5000L, 420, emptyList(),
-            listOf(healthRepository.mapHealthConnectData(0L, emptyList(), emptyList()).let {
+            listOf(
                 com.myhealthtracker.app.data.health.ExerciseSessionInfo("Walking", 20, hcTimestamp, "health_connect")
-            })
+            )
         )
         // Add a manual workout on the same day
         com.myhealthtracker.app.data.FakeRepository.addWorkout(date, "Yoga", 30, manualTimestamp)
@@ -107,7 +108,7 @@ class ProfileAndHealthUnitTest {
     @Test
     fun testManualWorkout_idempotentDayDocument() {
         val date = "2099-01-02"
-        val ts = com.google.firebase.Timestamp.now()
+        val ts = Instant.now()
         com.myhealthtracker.app.data.FakeRepository.addWorkout(date, "Cycling", 45, ts)
         com.myhealthtracker.app.data.FakeRepository.addWorkout(date, "Cycling", 45, ts)
         val data = com.myhealthtracker.app.data.FakeRepository.getDailyHealthData(date)
@@ -136,8 +137,8 @@ class ProfileAndHealthUnitTest {
         val result = healthRepository.mapHealthConnectData(0L, listOf(sleepRecord), emptyList())
 
         assertEquals(1, result.sleepSessions.size)
-        assertEquals(startInstant.epochSecond, result.sleepSessions[0].start.seconds)
-        assertEquals(endInstant.epochSecond,   result.sleepSessions[0].end.seconds)
+        assertEquals(startInstant.epochSecond, result.sleepSessions[0].start.epochSecond)
+        assertEquals(endInstant.epochSecond,   result.sleepSessions[0].end.epochSecond)
     }
 
     @Test
@@ -166,6 +167,6 @@ class ProfileAndHealthUnitTest {
         assertEquals("Running",  result.workouts[1].type)
         assertEquals("Exercise", result.workouts[2].type)
         assertEquals(30, result.workouts[0].durationMin)
-        assertEquals(start.epochSecond, result.workouts[0].startTime.seconds)
+        assertEquals(start.epochSecond, result.workouts[0].startTime.epochSecond)
     }
 }
