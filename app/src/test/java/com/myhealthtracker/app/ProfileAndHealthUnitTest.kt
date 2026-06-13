@@ -32,12 +32,24 @@ class ProfileAndHealthUnitTest {
 
     @Test
     fun testProfileValidation() {
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0)).isSuccess)
-        assertTrue(profileRepository.validateProfile(UserProfile(1899, 70.0, 175.0)).isFailure)
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 25.0, 175.0)).isFailure)
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 350.0, 175.0)).isFailure)
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 90.0)).isFailure)
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 260.0)).isFailure)
+        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "Male")).isSuccess)
+        assertTrue(profileRepository.validateProfile(UserProfile(1899, 70.0, 175.0, gender = "Male")).isFailure)
+        assertTrue(profileRepository.validateProfile(UserProfile(1995, 25.0, 175.0, gender = "Male")).isFailure)
+        assertTrue(profileRepository.validateProfile(UserProfile(1995, 350.0, 175.0, gender = "Male")).isFailure)
+        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 90.0, gender = "Male")).isFailure)
+        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 260.0, gender = "Male")).isFailure)
+    }
+
+    @Test
+    fun testProfileValidation_gender() {
+        // Empty gender fails
+        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "")).isFailure)
+        val error = profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "")).exceptionOrNull()
+        assertEquals("Gender is required", error?.message)
+        // Valid gender values succeed
+        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "Male")).isSuccess)
+        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "Female")).isSuccess)
+        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "Other")).isSuccess)
     }
 
     // ── Sleep aggregation ────────────────────────────────────────────────────
@@ -57,6 +69,50 @@ class ProfileAndHealthUnitTest {
         val startOverlap = Timestamp(Instant.parse("2026-06-11T06:00:00Z").epochSecond, 0)
         val endOverlap   = Timestamp(Instant.parse("2026-06-11T10:00:00Z").epochSecond, 0)
         assertEquals(600, healthRepository.aggregateSleepMinutes(listOf(SleepSessionInfo(start1, end1), SleepSessionInfo(startOverlap, endOverlap))))
+    }
+
+    // ── Manual workout source field ──────────────────────────────────────────
+
+    @Test
+    fun testManualWorkout_hasSourceManual() {
+        val todayStr = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+        val timestamp = com.google.firebase.Timestamp.now()
+        com.myhealthtracker.app.data.FakeRepository.addWorkout(todayStr, "ריצה", 30, timestamp)
+        val data = com.myhealthtracker.app.data.FakeRepository.getDailyHealthData(todayStr)
+        val saved = data.workouts.lastOrNull { it.type == "ריצה" && it.source == "manual" }
+        assertNotNull(saved)
+        assertEquals(30, saved!!.durationMin)
+    }
+
+    @Test
+    fun testMixedSource_whenHealthConnectAndManualWorkoutsExist() {
+        val date = "2099-01-01"
+        val hcTimestamp = com.google.firebase.Timestamp.now()
+        val manualTimestamp = com.google.firebase.Timestamp.now()
+        // Seed an HC workout via saveDailyHealthData
+        com.myhealthtracker.app.data.FakeRepository.saveDailyHealthData(
+            date, 5000L, 420, emptyList(),
+            listOf(healthRepository.mapHealthConnectData(0L, emptyList(), emptyList()).let {
+                com.myhealthtracker.app.data.health.ExerciseSessionInfo("Walking", 20, hcTimestamp, "health_connect")
+            })
+        )
+        // Add a manual workout on the same day
+        com.myhealthtracker.app.data.FakeRepository.addWorkout(date, "Yoga", 30, manualTimestamp)
+        val data = com.myhealthtracker.app.data.FakeRepository.getDailyHealthData(date)
+        assertEquals("mixed", data.source)
+        assertTrue(data.workouts.any { it.source == "health_connect" })
+        assertTrue(data.workouts.any { it.source == "manual" })
+    }
+
+    @Test
+    fun testManualWorkout_idempotentDayDocument() {
+        val date = "2099-01-02"
+        val ts = com.google.firebase.Timestamp.now()
+        com.myhealthtracker.app.data.FakeRepository.addWorkout(date, "Cycling", 45, ts)
+        com.myhealthtracker.app.data.FakeRepository.addWorkout(date, "Cycling", 45, ts)
+        val data = com.myhealthtracker.app.data.FakeRepository.getDailyHealthData(date)
+        // Both saves append (expected for manual entry); document source stays "manual"
+        assertEquals("manual", data.source)
     }
 
     // ── mapHealthConnectData ─────────────────────────────────────────────────

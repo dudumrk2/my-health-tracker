@@ -5,7 +5,25 @@
 ---
 
 ## Current State
-Phase 1 complete (merged to `feat/foundation-and-health`, PR open). Phase 2 not started.
+Phase 1 complete. Phase 1.5 patch complete (gender validation + manual workout logging). Phase 2 in progress (meal logging + AI analysis).
+
+---
+
+## Phase 1.5 — Gender Validation + Manual Workout Logging · 2026-06-13
+
+### Implemented
+- Gender required field validation in `ProfileRepository.validateProfile()` — returns `Result.failure("Gender is required")`.
+- `source` field on `ExerciseSessionInfo`: `"health_connect"` | `"manual"`. Document-level `source` becomes `"mixed"` when both exist.
+- `HealthRepository.saveManualWorkout()` — appends manual workout to Firestore `healthDaily/{date}` using `SetOptions.merge()`.
+- `AddWorkoutViewModel` dual-writes: `FakeRepository` (immediate UI) + Firestore when user is authenticated.
+- `ActivityScreen` badge now uses `workout.source == "manual"` instead of a type-string hack.
+- `FakeRepository` singleton — in-memory mock used by all ViewModels; `addWorkout()` sets `source = "manual"`.
+- Full UI screens implemented in parallel task: Activity, Body, Food/Meal, Main shell with 3-tab nav.
+- 25 unit tests passing (`ProfileAndHealthUnitTest` + `UiValidationTests`).
+
+### Key Decisions
+- **`FakeRepository` dual-write pattern** — all ViewModels read/write `FakeRepository` for instant UI; Firestore writes happen in the background guarded by try/catch so unit tests work without Firebase initialization.
+- **Gender validated in `ProfileRepository`, not just `ProfileViewModel`** — ensures validation is enforced at the data layer regardless of which ViewModel calls save.
 
 ---
 

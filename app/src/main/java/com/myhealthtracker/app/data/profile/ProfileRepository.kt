@@ -11,6 +11,7 @@ data class UserProfile(
     val birthYear: Int = 0,
     val weightKg: Double = 0.0,
     val heightCm: Double = 0.0,
+    val gender: String = "",
     val createdAt: Timestamp? = null,
     val updatedAt: Timestamp? = null
 )
@@ -31,6 +32,7 @@ class ProfileRepository(private val firestore: FirebaseFirestore = FirebaseFires
                         birthYear = (profileMap["birthYear"] as? Long)?.toInt() ?: 0,
                         weightKg = (profileMap["weightKg"] as? Double) ?: ((profileMap["weightKg"] as? Long)?.toDouble() ?: 0.0),
                         heightCm = (profileMap["heightCm"] as? Double) ?: ((profileMap["heightCm"] as? Long)?.toDouble() ?: 0.0),
+                        gender = (profileMap["gender"] as? String) ?: "",
                         createdAt = profileMap["createdAt"] as? Timestamp,
                         updatedAt = profileMap["updatedAt"] as? Timestamp
                     )
@@ -66,6 +68,7 @@ class ProfileRepository(private val firestore: FirebaseFirestore = FirebaseFires
                         "birthYear" to profile.birthYear,
                         "weightKg" to profile.weightKg,
                         "heightCm" to profile.heightCm,
+                        "gender" to profile.gender,
                         "createdAt" to finalCreatedAt,
                         "updatedAt" to Timestamp.now()
                     )
@@ -92,6 +95,9 @@ class ProfileRepository(private val firestore: FirebaseFirestore = FirebaseFires
         val currentYear = Calendar.getInstance().get(Calendar.YEAR)
         if (profile.birthYear < 1900 || profile.birthYear > currentYear) {
             return Result.failure(IllegalArgumentException("Birth year must be between 1900 and $currentYear"))
+        }
+        if (profile.gender.isEmpty()) {
+            return Result.failure(IllegalArgumentException("Gender is required"))
         }
         if (profile.weightKg < 30.0 || profile.weightKg > 300.0) {
             return Result.failure(IllegalArgumentException("Weight must be between 30.0 kg and 300.0 kg"))
