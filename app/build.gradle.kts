@@ -73,6 +73,9 @@ dependencies {
   implementation(libs.firebase.auth)
   implementation(libs.firebase.firestore)
   implementation(libs.play.services.auth)
+  implementation(libs.firebase.functions)
+  implementation(libs.firebase.appcheck.playintegrity)
+  debugImplementation(libs.firebase.appcheck.debug)
 
   // Health Connect SDK
   implementation(libs.androidx.health.connect)
