@@ -22,3 +22,13 @@ extracted-files/
 
 # Firebase configuration secrets
 app/google-services.json
+
+# Firebase CLI / emulator logs
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+functions/lib/
+functions/node_modules/
+
+# Local Gradle daemon config
+gradle/gradle-daemon-jvm.properties

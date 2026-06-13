@@ -11,6 +11,9 @@ import { callWithRetry, withTimeout } from "./vertexClient";
 if (getApps().length === 0) initializeApp();
 
 const LOCATION = process.env.VERTEX_LOCATION || "us-central1";
+// Function deploy region is independent of the Vertex location; keep it aligned
+// with the client's default callable region (us-central1) unless overridden.
+const FUNCTION_REGION = process.env.FUNCTION_REGION || "us-central1";
 const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const VERTEX_TIMEOUT_MS = 15000;
 
@@ -61,7 +64,7 @@ export function mapErrorToHttpsError(e: any): HttpsError {
 }
 
 export const analyzeMeal = onCall(
-  { enforceAppCheck: true, timeoutSeconds: 60, region: LOCATION },
+  { enforceAppCheck: true, timeoutSeconds: 60, region: FUNCTION_REGION },
   async (request: CallableRequest): Promise<MealResult> => {
     const requestId = Math.random().toString(36).slice(2, 10);
     const started = Date.now();

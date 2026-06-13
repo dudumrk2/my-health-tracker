@@ -5,9 +5,10 @@ import com.google.firebase.functions.FirebaseFunctionsException
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
 import kotlinx.coroutines.tasks.await
+import kotlin.math.roundToInt
 
 private fun anyToInt(v: Any?): Int = when (v) {
-    is Number -> v.toInt()
+    is Number -> v.toDouble().roundToInt() // round to match server-side Math.round
     else -> 0
 }
 
@@ -52,7 +53,6 @@ class FunctionsMealAnalyzer(
         }
         try {
             val response = functions.getHttpsCallable("analyzeMeal").call(payload).await()
-            @Suppress("UNCHECKED_CAST")
             val raw = response.data as? Map<*, *>
                 ?: throw MealAnalysisException("Unexpected response.")
             return mapAnalyzeResponse(raw)
