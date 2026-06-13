@@ -11,6 +11,7 @@
     <uses-permission android:name="android.permission.health.READ_EXERCISE" />
 
     <application
+        android:name=".MyHealthApp"
         android:allowBackup="true"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
