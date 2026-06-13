@@ -6,7 +6,7 @@ import com.myhealthtracker.app.data.meal.MealRepository
 import com.myhealthtracker.app.data.water.WaterRepository
 import com.myhealthtracker.app.data.model.MealEntry
 import com.myhealthtracker.app.data.model.MealTotals
-import com.myhealthtracker.app.data.FakeRepository
+import com.myhealthtracker.app.di.AppContainer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,8 +28,8 @@ data class FoodState(
 )
 
 class FoodViewModel(
-    private val mealRepository: MealRepository = FakeRepository,
-    private val waterRepository: WaterRepository = FakeRepository
+    private val mealRepository: MealRepository = AppContainer.mealRepository,
+    private val waterRepository: WaterRepository = AppContainer.waterRepository
 ) : ViewModel() {
 
     private val _selectedDate = MutableStateFlow(LocalDate.now())
