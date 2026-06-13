@@ -4,6 +4,19 @@
 
 ---
 
+## Phase 2 — Meal Logging + AI Analysis
+
+- Added `analyzeMeal` Cloud Function (TypeScript, 2nd gen): App Check + Auth gated, Vertex AI
+  (Gemini) analysis of meal text/photo, structured JSON output, server-side totals, timeout +
+  retry, uniform error envelope. **Analysis-only** — does not persist (diverges from the original
+  HLD contract, which had the function write the meal; the client now writes after the user edits).
+- Android: real `analyzeMeal` callable wiring (`MealAnalyzer`), camera/gallery capture with
+  downscale→base64 (images never stored), edit-before-save, Firestore-backed meal + water repos
+  (water kept in ml), App Check, and a lightweight `AppContainer` service locator.
+- Added `firestore.rules` (per-user access) and the `functions/` project with Jest tests.
+
+---
+
 ## Current State
 Phase 1 and 1.5 complete (all code review and architecture decoupling fixes applied in the UI branch). Phase 2 UI-first design screens implemented.
 

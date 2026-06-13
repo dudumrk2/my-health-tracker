@@ -38,7 +38,7 @@ users/{uid}
 ├── profile           : { birthYear, gender, weightKg, heightCm, createdAt, updatedAt }
 ├── healthDaily/{date}: { date, steps, sleepMinutes, sleepSessions[{start,end,stages?}], workouts[{type,durationMin,startTime,source}], syncedAt, source }
 ├── meals/{mealId}    : { date, loggedAt, inputType, description, items[], totals, aiModel }
-├── water/{date}      : { date, cups, updatedAt }
+├── water/{date}      : { date, amountMl, updatedAt }   (כמות מצטברת במ"ל, idempotent — הגדלה ב-FieldValue.increment)
 ├── bodyMeasurements/{date} : { date, weightKg?, waistCm?, hipCm?, notes?, loggedAt }  (מעקב עצמי ידני, לא מוזן ל-AI)
 └── insights/{date}   : { date, today{general,nutrition,activity,sleep}, tomorrow{nutrition,activity,sleep}, disclaimer, trigger, generatedAt }
 ```
