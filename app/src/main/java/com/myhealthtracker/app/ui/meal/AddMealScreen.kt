@@ -45,6 +45,30 @@ fun AddMealScreen(
     
     val errorMessage by viewModel.errorMessage.collectAsState()
     val isSaved by viewModel.isSaved.collectAsState()
+    val lowConfidence by viewModel.lowConfidence.collectAsState()
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var pendingCameraUri by remember { mutableStateOf<android.net.Uri?>(null) }
+
+    val galleryLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            val base64 = com.myhealthtracker.app.util.ImageEncoder.uriToBase64Jpeg(context, uri)
+            if (base64 != null) viewModel.analyzeImage(base64)
+        }
+    }
+
+    val cameraLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.TakePicture()
+    ) { success ->
+        val uri = pendingCameraUri
+        if (success && uri != null) {
+            val base64 = com.myhealthtracker.app.util.ImageEncoder.uriToBase64Jpeg(context, uri)
+            if (base64 != null) viewModel.analyzeImage(base64)
+            runCatching { context.contentResolver.delete(uri, null, null) }
+        }
+    }
 
     LaunchedEffect(isSaved) {
         if (isSaved) {
@@ -79,10 +103,18 @@ fun AddMealScreen(
                     mealDescription = mealDescription,
                     errorMessage = errorMessage,
                     onDescriptionChange = { viewModel.onDescriptionChange(it) },
-                    onAnalyzeTextClick = { viewModel.analyzeMeal(isImage = false) },
-                    onImageClick = {
-                        viewModel.onDescriptionChange("ארוחה מצולמת (סלט ירקות עשיר)")
-                        viewModel.analyzeMeal(isImage = true)
+                    onAnalyzeTextClick = { viewModel.analyzeText() },
+                    onPickImageClick = {
+                        galleryLauncher.launch(
+                            androidx.activity.result.PickVisualMediaRequest(
+                                androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
+                            )
+                        )
+                    },
+                    onCameraClick = {
+                        val uri = createCameraImageUri(context)
+                        pendingCameraUri = uri
+                        cameraLauncher.launch(uri)
                     },
                     onManualClick = { viewModel.switchToManualFallback() },
                     modifier = contentModifier
@@ -94,6 +126,7 @@ fun AddMealScreen(
             AddMealStep.ResultState -> {
                 ResultStateContent(
                     recognizedItems = recognizedItems,
+                    lowConfidence = lowConfidence,
                     errorMessage = errorMessage,
                     onItemUpdate = { index, item -> viewModel.updateItem(index, item) },
                     onSaveClick = { viewModel.saveMeal() },
@@ -130,7 +163,8 @@ private fun InputSelectionContent(
     errorMessage: String?,
     onDescriptionChange: (String) -> Unit,
     onAnalyzeTextClick: () -> Unit,
-    onImageClick: () -> Unit,
+    onPickImageClick: () -> Unit,
+    onCameraClick: () -> Unit,
     onManualClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -172,29 +206,20 @@ private fun InputSelectionContent(
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
             )
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(140.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                    .clickable { onImageClick() },
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("📷", fontSize = 40.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "לחץ לצילום או העלאה מגלריה",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
+                OutlinedButton(
+                    onClick = onCameraClick,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.weight(1f)
+                ) { Text("📷 צילום") }
+                OutlinedButton(
+                    onClick = onPickImageClick,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.weight(1f)
+                ) { Text("🖼️ גלריה") }
             }
         }
 
@@ -260,6 +285,7 @@ private fun LoadingContent(
 @Composable
 private fun ResultStateContent(
     recognizedItems: List<MealItem>,
+    lowConfidence: Boolean,
     errorMessage: String?,
     onItemUpdate: (Int, MealItem) -> Unit,
     onSaveClick: () -> Unit,
@@ -283,7 +309,14 @@ private fun ResultStateContent(
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             modifier = Modifier.padding(horizontal = 8.dp)
         )
-
+        if (lowConfidence) {
+            Text(
+                text = "⚠️ הזיהוי אינו ודאי — מומלץ לעבור על הכמויות ולערוך לפני שמירה.",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+            )
+        }
         // List of editable items
         LazyColumn(
             modifier = Modifier.weight(1f),
@@ -571,7 +604,8 @@ fun AddMealScreenPreviewInput() {
             errorMessage = null,
             onDescriptionChange = {},
             onAnalyzeTextClick = {},
-            onImageClick = {},
+            onPickImageClick = {},
+            onCameraClick = {},
             onManualClick = {}
         )
     }
@@ -594,10 +628,19 @@ fun AddMealScreenPreviewResult() {
                 MealItem("חזה עוף", "150 גרם", 250, 46, 0, 5),
                 MealItem("שמן זית", "1 כף", 120, 0, 0, 14)
             ),
+            lowConfidence = false,
             errorMessage = null,
             onItemUpdate = { _, _ -> },
             onSaveClick = {},
             onManualClick = {}
         )
     }
+}
+
+private fun createCameraImageUri(context: android.content.Context): android.net.Uri {
+    val dir = java.io.File(context.cacheDir, "meal_images").apply { mkdirs() }
+    val file = java.io.File.createTempFile("meal_", ".jpg", dir)
+    return androidx.core.content.FileProvider.getUriForFile(
+        context, "${context.packageName}.fileprovider", file
+    )
 }
