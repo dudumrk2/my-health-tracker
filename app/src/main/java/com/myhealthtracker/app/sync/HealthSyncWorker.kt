@@ -6,7 +6,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.myhealthtracker.app.data.auth.AuthManager
 import com.myhealthtracker.app.data.health.HealthConnectManager
-import com.myhealthtracker.app.data.health.HealthRepository
+import com.myhealthtracker.app.data.health.FirestoreHealthRepository
 import kotlinx.coroutines.flow.first
 import java.time.Instant
 import java.time.LocalDate
@@ -19,7 +19,7 @@ class HealthSyncWorker(
 ) : CoroutineWorker(context, workerParams) {
 
     private val authManager = AuthManager()
-    private val healthRepository = HealthRepository()
+    private val healthRepository = FirestoreHealthRepository()
     private val healthConnectManager = HealthConnectManager(context)
 
     override suspend fun doWork(): Result {

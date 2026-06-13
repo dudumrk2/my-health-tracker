@@ -5,12 +5,13 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.android.gms.tasks.Tasks
-import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.myhealthtracker.app.data.health.ExerciseSessionInfo
+import com.myhealthtracker.app.data.health.FirestoreHealthRepository
 import com.myhealthtracker.app.data.health.HealthConnectManager
 import com.myhealthtracker.app.data.health.HealthRepository
 import com.myhealthtracker.app.data.health.SleepSessionInfo
+import com.myhealthtracker.app.data.profile.FirestoreProfileRepository
 import com.myhealthtracker.app.data.profile.ProfileRepository
 import com.myhealthtracker.app.data.profile.UserProfile
 import io.mockk.every
@@ -57,8 +58,8 @@ class RepositoryAndHealthConnectTest {
             }
             emulatorConfigured = true
         }
-        profileRepository = ProfileRepository(firestore)
-        healthRepository  = HealthRepository(firestore)
+        profileRepository = FirestoreProfileRepository(firestore)
+        healthRepository  = FirestoreHealthRepository(firestore)
     }
 
     @After
@@ -74,7 +75,7 @@ class RepositoryAndHealthConnectTest {
 
     @Test
     fun testProfileRepository_saveAndLoad() = runBlocking {
-        val profile = UserProfile(birthYear = 1990, weightKg = 75.0, heightCm = 180.0)
+        val profile = UserProfile(birthYear = 1990, weightKg = 75.0, heightCm = 180.0, gender = "male")
 
         val saveResult = profileRepository.saveUserProfile(testUid, profile).first()
         assertTrue("Save should succeed", saveResult.isSuccess)
@@ -87,6 +88,7 @@ class RepositoryAndHealthConnectTest {
         assertEquals(1990,  loaded!!.birthYear)
         assertEquals(75.0,  loaded.weightKg, 0.001)
         assertEquals(180.0, loaded.heightCm, 0.001)
+        assertEquals("male", loaded.gender)
     }
 
     // ── HealthRepository ─────────────────────────────────────────────────────
@@ -94,8 +96,8 @@ class RepositoryAndHealthConnectTest {
     @Test
     fun testHealthRepository_idempotentWrite() = runBlocking {
         val date     = "2026-06-11"
-        val sleep    = listOf(SleepSessionInfo(Timestamp.now(), Timestamp.now()))
-        val workouts = listOf(ExerciseSessionInfo("Running", 30, Timestamp.now()))
+        val sleep    = listOf(SleepSessionInfo(Instant.now(), Instant.now()))
+        val workouts = listOf(ExerciseSessionInfo("Running", 30, Instant.now()))
 
         val first = healthRepository.saveDailyHealthData(testUid, date, 5000L, sleep, workouts).first()
         assertTrue("First write should succeed", first.isSuccess)
@@ -139,7 +141,7 @@ class RepositoryAndHealthConnectTest {
     fun testHealthConnectManager_platformTooOld_allReadsReturnEmpty() = runBlocking {
         mockkStatic(HealthConnectClient::class)
         every { HealthConnectClient.getSdkStatus(any()) } returns
-                HealthConnectClient.SDK_UNAVAILABLE_PLATFORM_TOO_OLD
+                HealthConnectClient.SDK_UNAVAILABLE
 
         val context = ApplicationProvider.getApplicationContext<Context>()
         val manager = HealthConnectManager(context)
