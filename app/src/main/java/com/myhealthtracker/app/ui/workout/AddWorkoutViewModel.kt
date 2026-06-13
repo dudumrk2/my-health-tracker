@@ -2,20 +2,22 @@ package com.myhealthtracker.app.ui.workout
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.myhealthtracker.app.data.FakeRepository
 import com.myhealthtracker.app.data.health.HealthRepository
+import com.myhealthtracker.app.data.health.FirestoreHealthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 class AddWorkoutViewModel(
-    private val healthRepository: HealthRepository? = try { HealthRepository() } catch (e: Exception) { null },
+    private val healthRepository: HealthRepository = FakeRepository,
+    private val firestoreHealthRepository: HealthRepository? = try { FirestoreHealthRepository() } catch (e: Exception) { null },
     private val getUid: () -> String? = { try { FirebaseAuth.getInstance().currentUser?.uid } catch (e: Exception) { null } }
 ) : ViewModel() {
 
@@ -57,20 +59,22 @@ class AddWorkoutViewModel(
         viewModelScope.launch {
             try {
                 val todayStr = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-                val startTimestamp = Timestamp.now()
+                val startInstant = Instant.now()
 
-                // Update in-memory state for immediate UI feedback (source = "manual" set inside addWorkout)
-                FakeRepository.addWorkout(
+                // Intentional hybrid write pattern: update the in-memory fake repository for immediate mock UI reactivity,
+                // and also persist to Firestore in the background if the user is authenticated.
+                healthRepository.saveManualWorkout(
+                    uid = "mock_uid",
                     date = todayStr,
                     type = type,
                     durationMin = duration,
-                    startTime = startTimestamp
-                )
+                    startTime = startInstant
+                ).collect()
 
                 // Persist to Firestore when user is authenticated
                 val uid = getUid()
                 if (uid != null) {
-                    healthRepository?.saveManualWorkout(uid, todayStr, type, duration, startTimestamp)?.collect()
+                    firestoreHealthRepository?.saveManualWorkout(uid, todayStr, type, duration, startInstant)?.collect()
                 }
 
                 _isSaved.value = true

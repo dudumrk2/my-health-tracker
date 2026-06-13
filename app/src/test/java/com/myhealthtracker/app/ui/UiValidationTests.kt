@@ -128,7 +128,7 @@ class UiValidationTests {
         assertEquals(1990, profile!!.birthYear)
         assertEquals(80.0, profile.weightKg, 0.001)
         assertEquals(180.0, profile.heightCm, 0.001)
-        assertEquals("נקבה", profile.gender)
+        assertEquals("female", profile.gender)
     }
 
     // --- AddWorkoutViewModel Tests ---

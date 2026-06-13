@@ -1,66 +1,44 @@
 package com.myhealthtracker.app.data
 
-import com.google.firebase.Timestamp
+import com.myhealthtracker.app.data.body.BodyMeasurementRepository
 import com.myhealthtracker.app.data.health.DailyHealthData
-import com.myhealthtracker.app.data.health.SleepSessionInfo
 import com.myhealthtracker.app.data.health.ExerciseSessionInfo
+import com.myhealthtracker.app.data.health.HealthRepository
+import com.myhealthtracker.app.data.health.SleepSessionInfo
+import com.myhealthtracker.app.data.meal.MealRepository
+import com.myhealthtracker.app.data.model.BodyMeasurement
+import com.myhealthtracker.app.data.model.MealEntry
+import com.myhealthtracker.app.data.model.MealItem
+import com.myhealthtracker.app.data.model.MealTotals
+import com.myhealthtracker.app.data.profile.ProfileRepository
 import com.myhealthtracker.app.data.profile.UserProfile
+import com.myhealthtracker.app.data.water.WaterRepository
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.time.LocalDate
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.channels.awaitClose
 import java.time.Instant
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-data class MealItem(
-    val name: String,
-    val quantity: String,
-    val calories: Int,
-    val proteinG: Int,
-    val carbsG: Int,
-    val fatG: Int
-)
-
-data class MealTotals(
-    val calories: Int,
-    val proteinG: Int,
-    val carbsG: Int,
-    val fatG: Int
-)
-
-data class MealEntry(
-    val mealId: String = UUID.randomUUID().toString(),
-    val date: String, // yyyy-MM-dd
-    val loggedAt: Timestamp = Timestamp.now(),
-    val inputType: String, // "text" | "image"
-    val description: String,
-    val items: List<MealItem>,
-    val totals: MealTotals
-)
-
-data class BodyMeasurement(
-    val date: String, // yyyy-MM-dd
-    val weightKg: Double?,
-    val waistCm: Double?,
-    val hipsCm: Double?,
-    val note: String = ""
-)
-
-object FakeRepository {
+object FakeRepository : ProfileRepository, HealthRepository, MealRepository, WaterRepository, BodyMeasurementRepository {
     // Current user auth state (mock)
     private val _isUserLoggedIn = MutableStateFlow(true)
     val isUserLoggedIn: StateFlow<Boolean> = _isUserLoggedIn.asStateFlow()
 
-    // Profile state
+    // Profile state (using English gender value "male")
     private val _profile = MutableStateFlow<UserProfile?>(
         UserProfile(
             birthYear = 1995,
             weightKg = 75.0,
             heightCm = 178.0,
-            gender = "זכר",
-            createdAt = Timestamp.now(),
-            updatedAt = Timestamp.now()
+            gender = "male",
+            createdAt = Instant.now(),
+            updatedAt = Instant.now()
         )
     )
     val profile: StateFlow<UserProfile?> = _profile.asStateFlow()
@@ -71,15 +49,15 @@ object FakeRepository {
 
     // Meals list
     private val _meals = MutableStateFlow<List<MealEntry>>(emptyList())
-    val meals: StateFlow<List<MealEntry>> = _meals.asStateFlow()
+    override val meals: StateFlow<List<MealEntry>> = _meals.asStateFlow()
 
     // Body measurements list
     private val _bodyMeasurements = MutableStateFlow<List<BodyMeasurement>>(emptyList())
-    val bodyMeasurements: StateFlow<List<BodyMeasurement>> = _bodyMeasurements.asStateFlow()
+    override val bodyMeasurements: StateFlow<List<BodyMeasurement>> = _bodyMeasurements.asStateFlow()
 
     // Water log keyed by date -> ml
     private val _waterLog = MutableStateFlow<Map<String, Int>>(emptyMap())
-    val waterLog: StateFlow<Map<String, Int>> = _waterLog.asStateFlow()
+    override val waterLog: StateFlow<Map<String, Int>> = _waterLog.asStateFlow()
 
     // AI Unified insights keyed by date -> (today insight, tomorrow insight)
     private val _aiInsights = MutableStateFlow<Map<String, Pair<String, String>>>(emptyMap())
@@ -95,9 +73,9 @@ object FakeRepository {
             birthYear = 1995,
             weightKg = 75.0,
             heightCm = 178.0,
-            gender = "זכר",
-            createdAt = Timestamp.now(),
-            updatedAt = Timestamp.now()
+            gender = "male",
+            createdAt = Instant.now(),
+            updatedAt = Instant.now()
         )
         setupMockData()
     }
@@ -110,17 +88,120 @@ object FakeRepository {
         _isUserLoggedIn.value = false
     }
 
+    // --- ProfileRepository Implementation ---
+
+    override fun getUserProfile(uid: String): Flow<Result<UserProfile?>> = _profile.map { Result.success(it) }
+
+    override fun saveUserProfile(uid: String, profile: UserProfile): Flow<Result<Unit>> = callbackFlow {
+        val validation = validateProfile(profile)
+        if (validation.isFailure) {
+            trySend(Result.failure(validation.exceptionOrNull() ?: Exception("Validation failed")))
+            close()
+            return@callbackFlow
+        }
+        _profile.value = profile.copy(updatedAt = Instant.now())
+        trySend(Result.success(Unit))
+        close()
+        awaitClose()
+    }
+
+    override fun validateProfile(profile: UserProfile): Result<Unit> {
+        val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+        if (profile.birthYear < 1900 || profile.birthYear > currentYear) {
+            return Result.failure(IllegalArgumentException("Birth year must be between 1900 and $currentYear"))
+        }
+        if (profile.gender.isEmpty()) {
+            return Result.failure(IllegalArgumentException("Gender is required"))
+        }
+        if (profile.gender != "male" && profile.gender != "female" && profile.gender != "other") {
+            return Result.failure(IllegalArgumentException("Gender must be 'male', 'female', or 'other'"))
+        }
+        if (profile.weightKg < 30.0 || profile.weightKg > 300.0) {
+            return Result.failure(IllegalArgumentException("Weight must be between 30.0 kg and 300.0 kg"))
+        }
+        if (profile.heightCm < 100.0 || profile.heightCm > 250.0) {
+            return Result.failure(IllegalArgumentException("Height must be between 100.0 cm and 250.0 cm"))
+        }
+        return Result.success(Unit)
+    }
+
+    override fun calculateAge(birthYear: Int, currentYear: Int): Int {
+        if (birthYear <= 0) return 0
+        val age = currentYear - birthYear
+        return if (age >= 0) age else 0
+    }
+
+    // Helper for direct VM/Mock calls
     fun saveProfile(birthYear: Int, weightKg: Double, heightCm: Double, gender: String) {
         _profile.value = UserProfile(
             birthYear = birthYear,
             weightKg = weightKg,
             heightCm = heightCm,
             gender = gender,
-            createdAt = _profile.value?.createdAt ?: Timestamp.now(),
-            updatedAt = Timestamp.now()
+            createdAt = _profile.value?.createdAt ?: Instant.now(),
+            updatedAt = Instant.now()
         )
     }
 
+    // --- HealthRepository Implementation ---
+
+    override fun getDailyHealthData(uid: String, date: String): Flow<Result<DailyHealthData?>> = _healthDaily.map {
+        Result.success(it[date] ?: DailyHealthData(date = date, steps = 0, sleepMinutes = 0))
+    }
+
+    override fun saveDailyHealthData(
+        uid: String,
+        date: String,
+        steps: Long,
+        sleepSessions: List<SleepSessionInfo>,
+        workouts: List<ExerciseSessionInfo>
+    ): Flow<Result<Unit>> = callbackFlow {
+        saveDailyHealthData(date, steps, aggregateSleepMinutes(sleepSessions), sleepSessions, workouts)
+        trySend(Result.success(Unit))
+        close()
+        awaitClose()
+    }
+
+    override fun saveManualWorkout(
+        uid: String,
+        date: String,
+        type: String,
+        durationMin: Int,
+        startTime: Instant
+    ): Flow<Result<Unit>> = callbackFlow {
+        addWorkout(date, type, durationMin, startTime)
+        trySend(Result.success(Unit))
+        close()
+        awaitClose()
+    }
+
+    private fun aggregateSleepMinutes(sessions: List<SleepSessionInfo>): Int {
+        if (sessions.isEmpty()) return 0
+        val sorted = sessions.sortedBy { it.start.toEpochMilli() }
+        val merged = mutableListOf<SleepSessionInfo>()
+        var current = sorted[0]
+        for (i in 1 until sorted.size) {
+            val next = sorted[i]
+            if (next.start.toEpochMilli() <= current.end.toEpochMilli()) {
+                if (next.end.toEpochMilli() > current.end.toEpochMilli()) {
+                    current = SleepSessionInfo(current.start, next.end)
+                }
+            } else {
+                merged.add(current)
+                current = next
+            }
+        }
+        merged.add(current)
+
+        var totalMin = 0L
+        for (m in merged) {
+            val diffMs = m.end.toEpochMilli() - m.start.toEpochMilli()
+            totalMin += diffMs / (1000 * 60)
+        }
+        return totalMin.toInt()
+    }
+
+    // Helpers for direct VM/Mock calls
     fun getDailyHealthData(date: String): DailyHealthData {
         return _healthDaily.value[date] ?: DailyHealthData(date = date, steps = 0, sleepMinutes = 0)
     }
@@ -140,13 +221,13 @@ object FakeRepository {
             sleepMinutes = sleepMinutes,
             sleepSessions = sleepSessions,
             workouts = workouts,
-            syncedAt = Timestamp.now(),
+            syncedAt = Instant.now(),
             source = docSource
         )
         _healthDaily.value = current
     }
 
-    fun addWorkout(date: String, type: String, durationMin: Int, startTime: Timestamp) {
+    fun addWorkout(date: String, type: String, durationMin: Int, startTime: Instant) {
         val currentData = getDailyHealthData(date)
         val updatedWorkouts = currentData.workouts.toMutableList()
         updatedWorkouts.add(ExerciseSessionInfo(type, durationMin, startTime, source = "manual"))
@@ -160,9 +241,13 @@ object FakeRepository {
         )
     }
 
-    fun addMeal(date: String, inputType: String, description: String, items: List<MealItem>, totals: MealTotals) {
+    // --- MealRepository Implementation ---
+
+    override fun addMeal(date: String, inputType: String, description: String, items: List<MealItem>, totals: MealTotals) {
         val entry = MealEntry(
+            mealId = UUID.randomUUID().toString(),
             date = date,
+            loggedAt = Instant.now(),
             inputType = inputType,
             description = description,
             items = items,
@@ -171,11 +256,13 @@ object FakeRepository {
         _meals.value = _meals.value + entry
     }
 
-    fun deleteMeal(mealId: String) {
+    override fun deleteMeal(mealId: String) {
         _meals.value = _meals.value.filter { it.mealId != mealId }
     }
 
-    fun addBodyMeasurement(date: String, weight: Double?, waist: Double?, hips: Double?, note: String) {
+    // --- BodyMeasurementRepository Implementation ---
+
+    override fun addBodyMeasurement(date: String, weight: Double?, waist: Double?, hips: Double?, note: String) {
         // Remove existing measurement for the same date if exists (idempotent)
         val filtered = _bodyMeasurements.value.filter { it.date != date }
         val entry = BodyMeasurement(date, weight, waist, hips, note)
@@ -183,11 +270,13 @@ object FakeRepository {
 
         // If weight is updated, optionally update profile weight
         if (weight != null) {
-            _profile.value = _profile.value?.copy(weightKg = weight, updatedAt = Timestamp.now())
+            _profile.value = _profile.value?.copy(weightKg = weight, updatedAt = Instant.now())
         }
     }
 
-    fun addWater(date: String, amountMl: Int) {
+    // --- WaterRepository Implementation ---
+
+    override fun addWater(date: String, amountMl: Int) {
         val current = _waterLog.value.toMutableMap()
         val existing = current[date] ?: 0
         current[date] = existing + amountMl
@@ -215,15 +304,15 @@ object FakeRepository {
             sleepMinutes = 440, // 7h 20m
             sleepSessions = listOf(
                 SleepSessionInfo(
-                    start = Timestamp(Instant.now().minusSeconds(8 * 3600).epochSecond, 0),
-                    end = Timestamp(Instant.now().minusSeconds(20 * 60).epochSecond, 0)
+                    start = Instant.now().minusSeconds(8 * 3600),
+                    end = Instant.now().minusSeconds(20 * 60)
                 )
             ),
             workouts = listOf(
-                ExerciseSessionInfo(type = "Running", durationMin = 30, startTime = Timestamp(Instant.now().minusSeconds(4 * 3600).epochSecond, 0)),
-                ExerciseSessionInfo(type = "Strength", durationMin = 15, startTime = Timestamp(Instant.now().minusSeconds(2 * 3600).epochSecond, 0))
+                ExerciseSessionInfo(type = "Running", durationMin = 30, startTime = Instant.now().minusSeconds(4 * 3600)),
+                ExerciseSessionInfo(type = "Strength", durationMin = 15, startTime = Instant.now().minusSeconds(2 * 3600))
             ),
-            syncedAt = Timestamp.now(),
+            syncedAt = Instant.now(),
             source = "health_connect"
         )
 
@@ -234,14 +323,14 @@ object FakeRepository {
             sleepMinutes = 480, // 8h
             sleepSessions = listOf(
                 SleepSessionInfo(
-                    start = Timestamp(Instant.now().minusSeconds(32 * 3600).epochSecond, 0),
-                    end = Timestamp(Instant.now().minusSeconds(24 * 3600).epochSecond, 0)
+                    start = Instant.now().minusSeconds(32 * 3600),
+                    end = Instant.now().minusSeconds(24 * 3600)
                 )
             ),
             workouts = listOf(
-                ExerciseSessionInfo(type = "Walking", durationMin = 45, startTime = Timestamp(Instant.now().minusSeconds(28 * 3600).epochSecond, 0))
+                ExerciseSessionInfo(type = "Walking", durationMin = 45, startTime = Instant.now().minusSeconds(28 * 3600))
             ),
-            syncedAt = Timestamp.now(),
+            syncedAt = Instant.now(),
             source = "health_connect"
         )
 
@@ -252,12 +341,12 @@ object FakeRepository {
             sleepMinutes = 390, // 6h 30m
             sleepSessions = listOf(
                 SleepSessionInfo(
-                    start = Timestamp(Instant.now().minusSeconds(56 * 3600).epochSecond, 0),
-                    end = Timestamp(Instant.now().minusSeconds(49 * 3600 + 30 * 60).epochSecond, 0)
+                    start = Instant.now().minusSeconds(56 * 3600),
+                    end = Instant.now().minusSeconds(49 * 3600 + 30 * 60)
                 )
             ),
             workouts = emptyList(),
-            syncedAt = Timestamp.now(),
+            syncedAt = Instant.now(),
             source = "health_connect"
         )
 
@@ -268,7 +357,9 @@ object FakeRepository {
         // Breakfast
         mockMeals.add(
             MealEntry(
+                mealId = UUID.randomUUID().toString(),
                 date = todayStr,
+                loggedAt = Instant.now(),
                 inputType = "text",
                 description = "חביתה משני ביצים, סלט ירקות קטן עם כפית שמן זית, שתי פרוסות לחם מלא",
                 items = listOf(
@@ -282,7 +373,9 @@ object FakeRepository {
         // Lunch
         mockMeals.add(
             MealEntry(
+                mealId = UUID.randomUUID().toString(),
                 date = todayStr,
+                loggedAt = Instant.now(),
                 inputType = "image",
                 description = "חזה עוף בגריל, כוס אורז בסמטי מבושל, ברוקולי מאודה",
                 items = listOf(
@@ -297,7 +390,9 @@ object FakeRepository {
         // Yesterday lunch
         mockMeals.add(
             MealEntry(
+                mealId = UUID.randomUUID().toString(),
                 date = yesterdayStr,
+                loggedAt = Instant.now(),
                 inputType = "text",
                 description = "פילה סלמון בתנור, פירה תפוחי אדמה, שעועית ירוקה",
                 items = listOf(

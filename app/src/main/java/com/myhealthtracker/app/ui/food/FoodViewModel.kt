@@ -2,9 +2,11 @@ package com.myhealthtracker.app.ui.food
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.myhealthtracker.app.data.meal.MealRepository
+import com.myhealthtracker.app.data.water.WaterRepository
+import com.myhealthtracker.app.data.model.MealEntry
+import com.myhealthtracker.app.data.model.MealTotals
 import com.myhealthtracker.app.data.FakeRepository
-import com.myhealthtracker.app.data.MealEntry
-import com.myhealthtracker.app.data.MealTotals
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,7 +27,10 @@ data class FoodState(
     val isRefreshing: Boolean = false
 )
 
-class FoodViewModel : ViewModel() {
+class FoodViewModel(
+    private val mealRepository: MealRepository = FakeRepository,
+    private val waterRepository: WaterRepository = FakeRepository
+) : ViewModel() {
 
     private val _selectedDate = MutableStateFlow(LocalDate.now())
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
@@ -37,8 +42,8 @@ class FoodViewModel : ViewModel() {
 
     val state: StateFlow<FoodState> = combine(
         _selectedDate,
-        FakeRepository.meals,
-        FakeRepository.waterLog,
+        mealRepository.meals,
+        waterRepository.waterLog,
         _isRefreshing,
         _forcedAdvice
     ) { date, allMeals, waterMap, isRefreshing, forcedAdvice ->
@@ -89,13 +94,17 @@ class FoodViewModel : ViewModel() {
     }
 
     fun selectNextDay() {
-        _selectedDate.value = _selectedDate.value.plusDays(1)
-        _forcedAdvice.value = null
+        // Upper bound constraint check (disable navigating to future dates)
+        val today = LocalDate.now()
+        if (_selectedDate.value.isBefore(today)) {
+            _selectedDate.value = _selectedDate.value.plusDays(1)
+            _forcedAdvice.value = null
+        }
     }
 
     fun quickAddWater(amountMl: Int) {
         val dateStr = _selectedDate.value.format(DateTimeFormatter.ISO_LOCAL_DATE)
-        FakeRepository.addWater(dateStr, amountMl)
+        waterRepository.addWater(dateStr, amountMl)
     }
 
     fun refreshAdvice() {

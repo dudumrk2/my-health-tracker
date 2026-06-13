@@ -50,7 +50,10 @@ fun MainNavigation() {
         }
         entry<Dashboard> {
           MainScreen(
-            backStack = backStack,
+            onNavigateToProfile = { backStack.add(Profile) },
+            onNavigateToAddMeasurement = { backStack.add(AddBodyMeasurement) },
+            onNavigateToAddWorkout = { backStack.add(AddWorkout) },
+            onNavigateToAddMeal = { backStack.add(AddMeal) },
             onLogout = {
               authViewModel.signOut()
               backStack.clear()

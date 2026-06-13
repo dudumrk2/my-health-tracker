@@ -255,7 +255,7 @@ private fun AddBodyMeasurementContent(
 }
 
 @Composable
-fun BodySilhouette(
+private fun BodySilhouette(
     modifier: Modifier = Modifier,
     highlightWaist: Boolean = false,
     highlightHips: Boolean = false

@@ -22,14 +22,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.myhealthtracker.app.data.BodyMeasurement
-import com.myhealthtracker.app.data.MealEntry
-import com.myhealthtracker.app.data.MealTotals
+import com.myhealthtracker.app.data.model.BodyMeasurement
+import com.myhealthtracker.app.data.model.MealEntry
+import com.myhealthtracker.app.data.model.MealTotals
 import com.myhealthtracker.app.data.health.DailyHealthData
+import java.time.Instant
 import com.myhealthtracker.app.data.profile.UserProfile
 import com.myhealthtracker.app.theme.*
 
-private const val DAILY_STEP_GOAL = 10_000f
+private const val DAILY_STEP_GOAL = 10_000L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -178,7 +179,7 @@ private fun DashboardContent(
                     ) {
                         Column {
                             Text(
-                                text = "${state.todayHealth.steps} / ${DAILY_STEP_GOAL.toInt()}",
+                                text = "${state.todayHealth.steps} / $DAILY_STEP_GOAL",
                                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -190,7 +191,7 @@ private fun DashboardContent(
                         }
                         
                         // Circular steps progress indicator
-                        val progress = (state.todayHealth.steps.toFloat() / DAILY_STEP_GOAL).coerceIn(0f, 1f)
+                        val progress = (state.todayHealth.steps.toFloat() / DAILY_STEP_GOAL.toFloat()).coerceIn(0f, 1f)
                         Box(
                             modifier = Modifier.size(60.dp),
                             contentAlignment = Alignment.Center
@@ -521,8 +522,8 @@ fun DashboardScreenPreviewLight() {
                 profile = UserProfile(birthYear = 1990, weightKg = 75.0, heightCm = 178.0, gender = "זכר"),
                 todayHealth = DailyHealthData(steps = 8432, sleepMinutes = 440),
                 meals = listOf(
-                    MealEntry(date = "2026-06-12", inputType = "text", description = "", items = emptyList(), totals = MealTotals(430, 21, 38, 21)),
-                    MealEntry(date = "2026-06-12", inputType = "text", description = "", items = emptyList(), totals = MealTotals(500, 53, 55, 5))
+                    MealEntry(mealId = "1", date = "2026-06-12", loggedAt = Instant.now(), inputType = "text", description = "", items = emptyList(), totals = MealTotals(430, 21, 38, 21)),
+                    MealEntry(mealId = "2", date = "2026-06-12", loggedAt = Instant.now(), inputType = "text", description = "", items = emptyList(), totals = MealTotals(500, 53, 55, 5))
                 ),
                 bodyMeasurements = listOf(
                     BodyMeasurement("2026-06-10", 75.5, 85.0, 97.0),

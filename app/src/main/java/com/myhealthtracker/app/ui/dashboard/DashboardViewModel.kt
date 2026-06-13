@@ -2,11 +2,16 @@ package com.myhealthtracker.app.ui.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.myhealthtracker.app.data.FakeRepository
-import com.myhealthtracker.app.data.MealEntry
-import com.myhealthtracker.app.data.BodyMeasurement
-import com.myhealthtracker.app.data.health.DailyHealthData
+import com.myhealthtracker.app.data.profile.ProfileRepository
 import com.myhealthtracker.app.data.profile.UserProfile
+import com.myhealthtracker.app.data.profile.genderToHebrew
+import com.myhealthtracker.app.data.health.HealthRepository
+import com.myhealthtracker.app.data.health.DailyHealthData
+import com.myhealthtracker.app.data.meal.MealRepository
+import com.myhealthtracker.app.data.body.BodyMeasurementRepository
+import com.myhealthtracker.app.data.model.MealEntry
+import com.myhealthtracker.app.data.model.BodyMeasurement
+import com.myhealthtracker.app.data.FakeRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,26 +33,41 @@ data class DashboardState(
     val isRefreshing: Boolean = false
 )
 
-class DashboardViewModel : ViewModel() {
+class DashboardViewModel(
+    private val profileRepository: ProfileRepository = FakeRepository,
+    private val healthRepository: HealthRepository = FakeRepository,
+    private val mealRepository: MealRepository = FakeRepository,
+    private val bodyMeasurementRepository: BodyMeasurementRepository = FakeRepository
+) : ViewModel() {
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
     private val _forcedInsight = MutableStateFlow<String?>(null)
 
+    private val todayStr = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+
     val state: StateFlow<DashboardState> = combine(
-        FakeRepository.profile,
-        FakeRepository.healthDaily,
-        FakeRepository.meals,
-        FakeRepository.bodyMeasurements,
+        profileRepository.getUserProfile("mock_uid"),
+        healthRepository.getDailyHealthData("mock_uid", todayStr),
+        mealRepository.meals,
+        bodyMeasurementRepository.bodyMeasurements,
         FakeRepository.aiInsights,
         _isRefreshing,
         _forcedInsight
     ) { array ->
         @Suppress("UNCHECKED_CAST")
-        val profile = array[0] as UserProfile?
+        val profileResult = array[0] as Result<UserProfile?>
+        val rawProfile = profileResult.getOrNull()
+        
+        val localizedProfile = rawProfile?.let {
+            it.copy(gender = genderToHebrew(it.gender))
+        }
+
         @Suppress("UNCHECKED_CAST")
-        val healthDaily = array[1] as Map<String, DailyHealthData>
+        val healthResult = array[1] as Result<DailyHealthData?>
+        val todayHealth = healthResult.getOrNull() ?: DailyHealthData(date = todayStr)
+
         @Suppress("UNCHECKED_CAST")
         val meals = array[2] as List<MealEntry>
         @Suppress("UNCHECKED_CAST")
@@ -57,9 +77,6 @@ class DashboardViewModel : ViewModel() {
         val isRefreshing = array[5] as Boolean
         val forcedInsight = array[6] as String?
 
-        val todayStr = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-        val todayHealth = healthDaily[todayStr] ?: DailyHealthData(date = todayStr)
-        
         // Filter meals for this week (last 7 days)
         val today = LocalDate.now()
         val weeklyMeals = meals.filter { meal ->
@@ -88,7 +105,7 @@ class DashboardViewModel : ViewModel() {
         }
 
         DashboardState(
-            profile = profile,
+            profile = localizedProfile,
             todayHealth = todayHealth,
             meals = weeklyMeals,
             bodyMeasurements = bodyMeasurements.sortedBy { it.date },

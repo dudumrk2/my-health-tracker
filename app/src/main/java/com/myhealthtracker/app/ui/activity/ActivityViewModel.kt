@@ -2,15 +2,18 @@ package com.myhealthtracker.app.ui.activity
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.myhealthtracker.app.data.FakeRepository
+import com.myhealthtracker.app.data.health.HealthRepository
 import com.myhealthtracker.app.data.health.ExerciseSessionInfo
 import com.myhealthtracker.app.data.health.DailyHealthData
+import com.myhealthtracker.app.data.FakeRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -24,22 +27,25 @@ data class ActivityState(
     val isRefreshing: Boolean = false
 )
 
-class ActivityViewModel : ViewModel() {
+@OptIn(ExperimentalCoroutinesApi::class)
+class ActivityViewModel(
+    private val healthRepository: HealthRepository = FakeRepository
+) : ViewModel() {
 
     private val _selectedDate = MutableStateFlow(LocalDate.now())
-    val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
-
     private val _isRefreshing = MutableStateFlow(false)
-    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    private val _healthData = _selectedDate.flatMapLatest { date ->
+        val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        healthRepository.getDailyHealthData("mock_uid", dateStr)
+    }
 
     val state: StateFlow<ActivityState> = combine(
         _selectedDate,
-        FakeRepository.healthDaily,
+        _healthData,
         _isRefreshing
-    ) { date, healthMap, isRefreshing ->
-        val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
-        val healthData = healthMap[dateStr] ?: DailyHealthData(date = dateStr)
-        
+    ) { date, healthResult, isRefreshing ->
+        val healthData = healthResult.getOrNull() ?: DailyHealthData(date = date.format(DateTimeFormatter.ISO_LOCAL_DATE))
         ActivityState(
             selectedDate = date,
             steps = healthData.steps,
@@ -62,7 +68,10 @@ class ActivityViewModel : ViewModel() {
     }
 
     fun selectNextDay() {
-        _selectedDate.value = _selectedDate.value.plusDays(1)
+        val today = LocalDate.now()
+        if (_selectedDate.value.isBefore(today)) {
+            _selectedDate.value = _selectedDate.value.plusDays(1)
+        }
     }
 
     fun refreshData() {

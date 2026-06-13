@@ -17,14 +17,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.firebase.Timestamp
+import java.time.Instant
 import com.myhealthtracker.app.data.health.ExerciseSessionInfo
 import com.myhealthtracker.app.theme.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private const val DAILY_STEP_GOAL = 10_000f
+private const val DAILY_STEP_GOAL = 10_000L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,7 +45,6 @@ fun ActivityScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ActivityContent(
     state: ActivityState,
@@ -101,7 +100,10 @@ private fun ActivityContent(
                     )
                 }
 
-                IconButton(onClick = onNextDayClick) {
+                IconButton(
+                    onClick = onNextDayClick,
+                    enabled = state.selectedDate.isBefore(LocalDate.now())
+                ) {
                     Text("▶️", fontSize = 18.sp) // Next Day (RTL)
                 }
 
@@ -134,7 +136,7 @@ private fun ActivityContent(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            val progress = (state.steps.toFloat() / DAILY_STEP_GOAL).coerceIn(0f, 1f)
+                            val progress = (state.steps.toFloat() / DAILY_STEP_GOAL.toFloat()).coerceIn(0f, 1f)
 
                             Box(
                                 modifier = Modifier.size(160.dp),
@@ -165,7 +167,7 @@ private fun ActivityContent(
                             Spacer(modifier = Modifier.height(16.dp))
 
                             Text(
-                                text = "${state.steps} / ${DAILY_STEP_GOAL.toInt()} צעדים",
+                                text = "${state.steps} / $DAILY_STEP_GOAL צעדים",
                                 style = MaterialTheme.typography.titleLarge.copy(
                                     fontWeight = FontWeight.Bold
                                 ),
@@ -331,8 +333,8 @@ fun ActivityScreenPreviewLight() {
                 steps = 8432,
                 sleepMinutes = 440,
                 workouts = listOf(
-                    ExerciseSessionInfo("ריצה", 30, Timestamp.now()),
-                    ExerciseSessionInfo("יוגה (ידני)", 45, Timestamp.now())
+                    ExerciseSessionInfo("ריצה", 30, Instant.now()),
+                    ExerciseSessionInfo("יוגה (ידני)", 45, Instant.now())
                 )
             ),
             onPrevDayClick = {},

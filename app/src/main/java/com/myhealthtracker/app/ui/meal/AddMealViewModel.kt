@@ -2,9 +2,10 @@ package com.myhealthtracker.app.ui.meal
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.myhealthtracker.app.data.meal.MealRepository
+import com.myhealthtracker.app.data.model.MealItem
+import com.myhealthtracker.app.data.model.MealTotals
 import com.myhealthtracker.app.data.FakeRepository
-import com.myhealthtracker.app.data.MealItem
-import com.myhealthtracker.app.data.MealTotals
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +21,9 @@ sealed class AddMealStep {
     object ManualFallback : AddMealStep()
 }
 
-class AddMealViewModel : ViewModel() {
+class AddMealViewModel(
+    private val mealRepository: MealRepository = FakeRepository
+) : ViewModel() {
 
     private val _step = MutableStateFlow<AddMealStep>(AddMealStep.InputSelection)
     val step: StateFlow<AddMealStep> = _step.asStateFlow()
@@ -154,7 +157,7 @@ class AddMealViewModel : ViewModel() {
                 )
             }
 
-            FakeRepository.addMeal(
+            mealRepository.addMeal(
                 date = todayStr,
                 inputType = if (_step.value == AddMealStep.ManualFallback) "text" else "image",
                 description = finalDescription,

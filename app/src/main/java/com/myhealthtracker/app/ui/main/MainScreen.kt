@@ -7,8 +7,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation3.runtime.NavBackStack
-import androidx.navigation3.runtime.NavKey
 import com.myhealthtracker.app.*
 import com.myhealthtracker.app.ui.dashboard.DashboardScreen
 import com.myhealthtracker.app.ui.dashboard.DashboardViewModel
@@ -16,6 +14,9 @@ import com.myhealthtracker.app.ui.activity.ActivityScreen
 import com.myhealthtracker.app.ui.activity.ActivityViewModel
 import com.myhealthtracker.app.ui.food.FoodScreen
 import com.myhealthtracker.app.ui.food.FoodViewModel
+
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 
 enum class MainTab {
     Dashboard,
@@ -26,7 +27,10 @@ enum class MainTab {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    backStack: NavBackStack<NavKey>,
+    onNavigateToProfile: () -> Unit,
+    onNavigateToAddMeasurement: () -> Unit,
+    onNavigateToAddWorkout: () -> Unit,
+    onNavigateToAddMeal: () -> Unit,
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -43,19 +47,19 @@ fun MainScreen(
                 NavigationBarItem(
                     selected = selectedTab == MainTab.Dashboard,
                     onClick = { selectedTab = MainTab.Dashboard },
-                    icon = { Text("📊") }, // Dashboard icon representation
+                    icon = { Text("📊", modifier = Modifier.semantics { contentDescription = "דשבורד" }) },
                     label = { Text("דשבורד") }
                 )
                 NavigationBarItem(
                     selected = selectedTab == MainTab.Activity,
                     onClick = { selectedTab = MainTab.Activity },
-                    icon = { Text("🏃") }, // Activity icon representation
+                    icon = { Text("🏃", modifier = Modifier.semantics { contentDescription = "פעילות" }) },
                     label = { Text("פעילות") }
                 )
                 NavigationBarItem(
                     selected = selectedTab == MainTab.Food,
                     onClick = { selectedTab = MainTab.Food },
-                    icon = { Text("🥗") }, // Food/Meals icon representation
+                    icon = { Text("🥗", modifier = Modifier.semantics { contentDescription = "אוכל" }) },
                     label = { Text("אוכל") }
                 )
             }
@@ -67,8 +71,8 @@ fun MainScreen(
             MainTab.Dashboard -> {
                 DashboardScreen(
                     viewModel = dashboardViewModel,
-                    onNavigateToProfile = { backStack.add(Profile) },
-                    onNavigateToAddMeasurement = { backStack.add(AddBodyMeasurement) },
+                    onNavigateToProfile = onNavigateToProfile,
+                    onNavigateToAddMeasurement = onNavigateToAddMeasurement,
                     onLogout = onLogout,
                     modifier = innerModifier
                 )
@@ -76,14 +80,14 @@ fun MainScreen(
             MainTab.Activity -> {
                 ActivityScreen(
                     viewModel = activityViewModel,
-                    onNavigateToAddWorkout = { backStack.add(AddWorkout) },
+                    onNavigateToAddWorkout = onNavigateToAddWorkout,
                     modifier = innerModifier
                 )
             }
             MainTab.Food -> {
                 FoodScreen(
                     viewModel = foodViewModel,
-                    onNavigateToAddMeal = { backStack.add(AddMeal) },
+                    onNavigateToAddMeal = onNavigateToAddMeal,
                     modifier = innerModifier
                 )
             }

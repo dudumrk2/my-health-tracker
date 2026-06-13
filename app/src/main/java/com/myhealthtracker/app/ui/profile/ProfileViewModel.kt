@@ -2,11 +2,14 @@ package com.myhealthtracker.app.ui.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.myhealthtracker.app.data.FakeRepository
+import com.myhealthtracker.app.data.profile.ProfileRepository
 import com.myhealthtracker.app.data.profile.UserProfile
+import com.myhealthtracker.app.data.profile.genderToHebrew
+import com.myhealthtracker.app.data.FakeRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -18,7 +21,9 @@ sealed class ProfileUiState {
     data class Error(val message: String) : ProfileUiState()
 }
 
-class ProfileViewModel : ViewModel() {
+class ProfileViewModel(
+    private val profileRepository: ProfileRepository = FakeRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Idle)
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
@@ -33,9 +38,11 @@ class ProfileViewModel : ViewModel() {
     fun loadProfile() {
         viewModelScope.launch {
             _uiState.value = ProfileUiState.Loading
-            FakeRepository.profile.collect { profile ->
+            profileRepository.getUserProfile("mock_uid").collect { result ->
+                val profile = result.getOrNull()
                 if (profile != null) {
-                    _uiState.value = ProfileUiState.Loaded(profile)
+                    val hebrewGender = genderToHebrew(profile.gender)
+                    _uiState.value = ProfileUiState.Loaded(profile.copy(gender = hebrewGender))
                     updateAge(profile.birthYear)
                 } else {
                     _uiState.value = ProfileUiState.Idle
@@ -80,13 +87,27 @@ class ProfileViewModel : ViewModel() {
                 return@launch
             }
 
-            FakeRepository.saveProfile(
+            val englishGender = when (gender) {
+                "זכר" -> "male"
+                "נקבה" -> "female"
+                "אחר" -> "other"
+                else -> gender
+            }
+
+            val profile = UserProfile(
                 birthYear = birthYear,
                 weightKg = weight,
                 heightCm = height,
-                gender = gender
+                gender = englishGender
             )
-            _uiState.value = ProfileUiState.Saved
+
+            profileRepository.saveUserProfile("mock_uid", profile).collect { result ->
+                if (result.isSuccess) {
+                    _uiState.value = ProfileUiState.Saved
+                } else {
+                    _uiState.value = ProfileUiState.Error(result.exceptionOrNull()?.message ?: "שגיאה בשמירה")
+                }
+            }
         }
     }
 }

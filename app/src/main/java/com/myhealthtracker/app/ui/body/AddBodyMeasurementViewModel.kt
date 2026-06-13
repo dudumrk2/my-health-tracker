@@ -2,6 +2,8 @@ package com.myhealthtracker.app.ui.body
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.myhealthtracker.app.data.body.BodyMeasurementRepository
+import com.myhealthtracker.app.data.model.BodyMeasurement
 import com.myhealthtracker.app.data.FakeRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -10,7 +12,9 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-class AddBodyMeasurementViewModel : ViewModel() {
+class AddBodyMeasurementViewModel(
+    private val bodyMeasurementRepository: BodyMeasurementRepository = FakeRepository
+) : ViewModel() {
 
     private val _weightStr = MutableStateFlow("")
     val weightStr: StateFlow<String> = _weightStr.asStateFlow()
@@ -35,8 +39,8 @@ class AddBodyMeasurementViewModel : ViewModel() {
     }
 
     private fun loadLastValues() {
-        // Prefill with last recorded values if available
-        val last = FakeRepository.bodyMeasurements.value.lastOrNull()
+        // Prefill with last recorded values ordered by date (not insertion order)
+        val last = bodyMeasurementRepository.bodyMeasurements.value.maxByOrNull { it.date }
         if (last != null) {
             _weightStr.value = last.weightKg?.toString() ?: ""
             _waistStr.value = last.waistCm?.toString() ?: ""
@@ -85,7 +89,7 @@ class AddBodyMeasurementViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val todayStr = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-                FakeRepository.addBodyMeasurement(
+                bodyMeasurementRepository.addBodyMeasurement(
                     date = todayStr,
                     weight = weight,
                     waist = waist,

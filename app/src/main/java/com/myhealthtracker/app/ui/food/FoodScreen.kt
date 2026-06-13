@@ -18,9 +18,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.myhealthtracker.app.data.MealEntry
-import com.myhealthtracker.app.data.MealItem
-import com.myhealthtracker.app.data.MealTotals
+import com.myhealthtracker.app.data.model.MealEntry
+import com.myhealthtracker.app.data.model.MealItem
+import com.myhealthtracker.app.data.model.MealTotals
+import java.time.Instant
 import com.myhealthtracker.app.theme.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -105,7 +106,10 @@ private fun FoodContent(
                     )
                 }
 
-                IconButton(onClick = onNextDayClick) {
+                IconButton(
+                    onClick = onNextDayClick,
+                    enabled = state.selectedDate.isBefore(LocalDate.now())
+                ) {
                     Text("▶️", fontSize = 18.sp) // Next Day (RTL)
                 }
 
@@ -478,7 +482,9 @@ fun FoodScreenPreviewLight() {
                 selectedDate = LocalDate.now(),
                 meals = listOf(
                     MealEntry(
+                        mealId = "1",
                         date = "2026-06-12",
+                        loggedAt = Instant.now(),
                         inputType = "text",
                         description = "ארוחת בוקר קלה",
                         items = listOf(
