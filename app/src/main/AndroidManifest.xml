@@ -10,6 +10,11 @@
     <uses-permission android:name="android.permission.health.READ_SLEEP" />
     <uses-permission android:name="android.permission.health.READ_EXERCISE" />
 
+    <!-- Health Connect package visibility (required on Android 13 and below) -->
+    <queries>
+        <package android:name="com.google.android.apps.healthdata" />
+    </queries>
+
     <application
         android:name=".MyHealthApp"
         android:allowBackup="true"

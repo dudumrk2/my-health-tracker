@@ -1,16 +1,20 @@
 package com.myhealthtracker.app.ui.activity
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.myhealthtracker.app.data.health.HealthConnectManager
 import com.myhealthtracker.app.data.health.HealthRepository
 import com.myhealthtracker.app.data.health.ExerciseSessionInfo
 import com.myhealthtracker.app.data.health.DailyHealthData
 import com.myhealthtracker.app.data.insights.InsightsRefresher
 import com.myhealthtracker.app.di.AppContainer
+import com.myhealthtracker.app.sync.HealthSyncScheduler
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -29,10 +33,21 @@ data class ActivityState(
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ActivityViewModel(
+    application: Application,
     private val healthRepository: HealthRepository = AppContainer.healthRepository,
     private val insightsRefresher: InsightsRefresher = AppContainer.insightsRefresher,
     private val uidProvider: () -> String? = { AppContainer.currentUid() }
-) : ViewModel() {
+) : AndroidViewModel(application) {
+
+    private val healthConnectManager = HealthConnectManager(application)
+
+    /** Health Connect permission strings the UI launcher must request. */
+    val healthPermissions: Set<String> = healthConnectManager.permissions
+
+    // True only when the SDK is available but permissions are not yet granted — the
+    // signal the screen uses to launch the permission request (minimum-permission rule).
+    private val _needsPermissions = MutableStateFlow(false)
+    val needsPermissions: StateFlow<Boolean> = _needsPermissions.asStateFlow()
 
     private val _selectedDate = MutableStateFlow(LocalDate.now())
     private val _isRefreshing = MutableStateFlow(false)
@@ -80,6 +95,31 @@ class ActivityViewModel(
             _selectedDate.value = _selectedDate.value.plusDays(1)
         }
     }
+
+    /**
+     * Checks Health Connect availability/permissions. When granted, (re)schedules the
+     * periodic sync and runs an immediate sync; otherwise flags that the UI should
+     * request permissions. No-op when the SDK isn't installed on the device.
+     */
+    fun checkPermissionsAndSync() {
+        viewModelScope.launch {
+            if (!healthConnectManager.isSdkAvailable()) {
+                _needsPermissions.value = false
+                return@launch
+            }
+            if (healthConnectManager.hasAllPermissions()) {
+                _needsPermissions.value = false
+                val context = getApplication<Application>()
+                HealthSyncScheduler.schedulePeriodic(context)
+                HealthSyncScheduler.syncNow(context)
+            } else {
+                _needsPermissions.value = true
+            }
+        }
+    }
+
+    /** Called by the screen after the permission request returns. */
+    fun onPermissionsResult() = checkPermissionsAndSync()
 
     /** Triggers the backend insights refresh; the snapshot listeners update the cards. */
     fun refreshData() {
