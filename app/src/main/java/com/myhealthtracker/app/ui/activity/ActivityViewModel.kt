@@ -5,9 +5,14 @@ import androidx.lifecycle.viewModelScope
 import com.myhealthtracker.app.data.health.HealthRepository
 import com.myhealthtracker.app.data.health.ExerciseSessionInfo
 import com.myhealthtracker.app.data.health.DailyHealthData
+import com.myhealthtracker.app.data.insights.InsightCategory
+import com.myhealthtracker.app.data.insights.InsightsRefreshException
+import com.myhealthtracker.app.data.insights.InsightsRefresher
+import com.myhealthtracker.app.data.insights.InsightsRepository
+import com.myhealthtracker.app.data.insights.pickInsight
 import com.myhealthtracker.app.data.FakeRepository
+import com.myhealthtracker.app.di.AppContainer
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,16 +29,25 @@ data class ActivityState(
     val steps: Long = 0,
     val sleepMinutes: Int = 0,
     val workouts: List<ExerciseSessionInfo> = emptyList(),
+    val activityInsight: String = "",
+    val activityInsightLabel: String? = null,
+    val sleepInsight: String = "",
+    val sleepInsightLabel: String? = null,
     val isRefreshing: Boolean = false
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ActivityViewModel(
-    private val healthRepository: HealthRepository = FakeRepository
+    private val healthRepository: HealthRepository = FakeRepository,
+    private val insightsRepository: InsightsRepository = AppContainer.insightsRepository,
+    private val insightsRefresher: InsightsRefresher = AppContainer.insightsRefresher
 ) : ViewModel() {
 
     private val _selectedDate = MutableStateFlow(LocalDate.now())
     private val _isRefreshing = MutableStateFlow(false)
+
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
     private val _healthData = _selectedDate.flatMapLatest { date ->
         val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
@@ -43,14 +57,21 @@ class ActivityViewModel(
     val state: StateFlow<ActivityState> = combine(
         _selectedDate,
         _healthData,
-        _isRefreshing
-    ) { date, healthResult, isRefreshing ->
+        _isRefreshing,
+        insightsRepository.insights
+    ) { date, healthResult, isRefreshing, insights ->
         val healthData = healthResult.getOrNull() ?: DailyHealthData(date = date.format(DateTimeFormatter.ISO_LOCAL_DATE))
+        val activity = pickInsight(insights?.today, insights?.tomorrow, InsightCategory.ACTIVITY)
+        val sleep = pickInsight(insights?.today, insights?.tomorrow, InsightCategory.SLEEP)
         ActivityState(
             selectedDate = date,
             steps = healthData.steps,
             sleepMinutes = healthData.sleepMinutes,
             workouts = healthData.workouts,
+            activityInsight = if (isRefreshing) "" else activity.text,
+            activityInsightLabel = if (isRefreshing) null else activity.label,
+            sleepInsight = if (isRefreshing) "" else sleep.text,
+            sleepInsightLabel = if (isRefreshing) null else sleep.label,
             isRefreshing = isRefreshing
         )
     }.stateIn(
@@ -74,11 +95,23 @@ class ActivityViewModel(
         }
     }
 
+    /** Triggers a backend refresh of today's insights; the snapshot listener pushes the new value. */
     fun refreshData() {
         viewModelScope.launch {
             _isRefreshing.value = true
-            delay(1000) // Simulate refresh delay
-            _isRefreshing.value = false
+            _errorMessage.value = null
+            try {
+                insightsRefresher.refresh()
+            } catch (e: InsightsRefreshException) {
+                // Surface the friendly message so the UI can show it; keep the last known insight.
+                _errorMessage.value = e.message
+            } finally {
+                _isRefreshing.value = false
+            }
         }
+    }
+
+    fun clearError() {
+        _errorMessage.value = null
     }
 }

@@ -4,6 +4,38 @@
 
 ---
 
+## Phase 3 — Unified AI Insights · 2026-06-13
+
+- Added `generateInsights` backend (TypeScript, 2nd gen): three triggers sharing one prompt/logic —
+  `generateInsightsEvening` (`onSchedule`, writes `today`→`insights/{D}` **and** `tomorrow`→`insights/{D+1}`),
+  `generateInsightsMidday` (`onSchedule` 15:00, `todayOnly` merge, skips empty days),
+  `generateInsightsManual` (`onCall`, Auth + App Check, `todayOnly` on demand).
+- Server modules mirror Phase 2 separation: `insights/aggregate.ts` (DayData), `insightsPrompt.ts`
+  (Contract B + split `today`/`tomorrow` schema), `insightsParse.ts` (per-field validation + fixed
+  server-side `DISCLAIMER_HE`), `writeInsights.ts` (field-level merge), `core.ts` (orchestration).
+- Android: `data/insights/` — `DailyInsights` model, auth-aware `FirestoreInsightsRepository`
+  (listens to `insights/{today}`), `FunctionsInsightsRefresher` (callable), and pure `pickInsight()`.
+  Dashboard/Activity/Food ViewModels now read real insights (replacing the mock advice) with a
+  per-page refresh button; public state/method contracts preserved for the UI layer.
+- `firestore.rules`: `insights/{date}` is **read-only** to the client (written by Admin SDK).
+- Tests: 24 new server (Jest) + 11 new client (JUnit), all green; `assembleDebug` passes.
+
+### Key Decisions
+- **today/tomorrow document routing** — evening run of day D authors both `today→{D}` and
+  `tomorrow→{D+1}`; midday/manual touch only `today` via field-level merge and never overwrite the
+  `tomorrow` block authored the previous evening. Client reads only `insights/{today}`.
+- **Presence-based `pickInsight`** (not wall-clock) — show `today` if present, else last night's
+  `tomorrow` (labelled "הדגשים שלך להיום"), else "not ready". The before/after-15:00 behavior emerges
+  naturally because `today` is only filled from the 15:00/manual run. Pure and unit-tested.
+- **Disclaimer is a server-side constant**, always written; never taken from model output.
+- **Fail-closed writes** — on Gemini error or unparseable output nothing is written, so an existing
+  `insights` doc is preserved and the next scheduled run retries (no partial documents).
+- **`firestore.rules` restructured to enumerate writable subcollections** instead of a blanket
+  recursive `match /{document=**}` — a read-only rule cannot sit under a broad write grant because
+  rule matches are a union, not an override.
+
+---
+
 ## Phase 2 — Meal Logging + AI Analysis
 
 - Added `analyzeMeal` Cloud Function (TypeScript, 2nd gen): App Check + Auth gated, Vertex AI
