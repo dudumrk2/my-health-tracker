@@ -32,3 +32,8 @@ functions/node_modules/
 
 # Local Gradle daemon config
 gradle/gradle-daemon-jvm.properties
+
+# Local IDE and patch files
+.vscode/
+.claude/
+*.diff
