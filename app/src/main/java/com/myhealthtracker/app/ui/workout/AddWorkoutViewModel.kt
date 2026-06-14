@@ -2,10 +2,8 @@ package com.myhealthtracker.app.ui.workout
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.FirebaseAuth
-import com.myhealthtracker.app.data.FakeRepository
 import com.myhealthtracker.app.data.health.HealthRepository
-import com.myhealthtracker.app.data.health.FirestoreHealthRepository
+import com.myhealthtracker.app.di.AppContainer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,9 +14,8 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 class AddWorkoutViewModel(
-    private val healthRepository: HealthRepository = FakeRepository,
-    private val firestoreHealthRepository: HealthRepository? = try { FirestoreHealthRepository() } catch (e: Exception) { null },
-    private val getUid: () -> String? = { try { FirebaseAuth.getInstance().currentUser?.uid } catch (e: Exception) { null } }
+    private val healthRepository: HealthRepository = AppContainer.healthRepository,
+    private val uidProvider: () -> String? = { AppContainer.currentUid() }
 ) : ViewModel() {
 
     private val _selectedType = MutableStateFlow<String?>(null)
@@ -56,27 +53,22 @@ class AddWorkoutViewModel(
             return
         }
 
+        val uid = uidProvider()
+        if (uid == null) {
+            _errorMessage.value = "נדרשת התחברות מחדש."
+            return
+        }
+
         viewModelScope.launch {
             try {
                 val todayStr = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-                val startInstant = Instant.now()
-
-                // Intentional hybrid write pattern: update the in-memory fake repository for immediate mock UI reactivity,
-                // and also persist to Firestore in the background if the user is authenticated.
                 healthRepository.saveManualWorkout(
-                    uid = "mock_uid",
+                    uid = uid,
                     date = todayStr,
                     type = type,
                     durationMin = duration,
-                    startTime = startInstant
+                    startTime = Instant.now()
                 ).collect()
-
-                // Persist to Firestore when user is authenticated
-                val uid = getUid()
-                if (uid != null) {
-                    firestoreHealthRepository?.saveManualWorkout(uid, todayStr, type, duration, startInstant)?.collect()
-                }
-
                 _isSaved.value = true
             } catch (e: Exception) {
                 _errorMessage.value = "שגיאה בשמירת האימון: ${e.message}"

@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -25,6 +26,13 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.app.Activity
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import com.myhealthtracker.app.R
 import com.myhealthtracker.app.theme.MyHealthTrackerTheme
 
@@ -45,18 +53,54 @@ fun AuthScreen(
     onAuthSuccess: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
-    val isUserLoggedIn by viewModel.isUserLoggedIn.collectAsState()
+    val currentUser by viewModel.currentUser.collectAsState()
 
-    LaunchedEffect(isUserLoggedIn) {
-        if (isUserLoggedIn) {
+    // Navigation is driven by the authenticated user, not by a single sign-in event,
+    // so an already-signed-in user is routed straight past this screen.
+    LaunchedEffect(currentUser) {
+        if (currentUser != null) {
             onAuthSuccess()
+        }
+    }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                val idToken = account.idToken
+                if (idToken != null) {
+                    viewModel.handleGoogleSignIn(idToken)
+                } else {
+                    viewModel.handleSignInError("לא התקבל אסימון התחברות. נסה שוב.")
+                }
+            } catch (e: ApiException) {
+                viewModel.handleSignInError("ההתחברות נכשלה (קוד ${e.statusCode}).")
+            }
         }
     }
 
     AuthScreenContent(
         uiState = uiState,
-        onGoogleSignInClick = { viewModel.handleGoogleSignInMock() },
+        onGoogleSignInClick = {
+            val clientIdResId = context.resources.getIdentifier(
+                "default_web_client_id", "string", context.packageName
+            )
+            if (clientIdResId == 0) {
+                Log.e("AuthScreen", "default_web_client_id missing — google-services.json not configured")
+                viewModel.handleSignInError("האפליקציה אינה מוגדרת להתחברות עם Google.")
+            } else {
+                val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                    .requestIdToken(context.getString(clientIdResId))
+                    .requestEmail()
+                    .build()
+                launcher.launch(GoogleSignIn.getClient(context, gso).signInIntent)
+            }
+        },
         modifier = modifier
     )
 }

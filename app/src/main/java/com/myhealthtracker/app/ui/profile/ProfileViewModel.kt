@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.myhealthtracker.app.data.profile.ProfileRepository
 import com.myhealthtracker.app.data.profile.UserProfile
 import com.myhealthtracker.app.data.profile.genderToHebrew
-import com.myhealthtracker.app.data.FakeRepository
+import com.myhealthtracker.app.di.AppContainer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,7 +22,8 @@ sealed class ProfileUiState {
 }
 
 class ProfileViewModel(
-    private val profileRepository: ProfileRepository = FakeRepository
+    private val profileRepository: ProfileRepository = AppContainer.profileRepository,
+    private val uidProvider: () -> String? = { AppContainer.currentUid() }
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Idle)
@@ -36,9 +37,13 @@ class ProfileViewModel(
     }
 
     fun loadProfile() {
+        val uid = uidProvider() ?: run {
+            _uiState.value = ProfileUiState.Idle
+            return
+        }
         viewModelScope.launch {
             _uiState.value = ProfileUiState.Loading
-            profileRepository.getUserProfile("mock_uid").collect { result ->
+            profileRepository.getUserProfile(uid).collect { result ->
                 val profile = result.getOrNull()
                 if (profile != null) {
                     val hebrewGender = genderToHebrew(profile.gender)
@@ -101,7 +106,12 @@ class ProfileViewModel(
                 gender = englishGender
             )
 
-            profileRepository.saveUserProfile("mock_uid", profile).collect { result ->
+            val uid = uidProvider() ?: run {
+                _uiState.value = ProfileUiState.Error("נדרשת התחברות מחדש.")
+                return@launch
+            }
+
+            profileRepository.saveUserProfile(uid, profile).collect { result ->
                 if (result.isSuccess) {
                     _uiState.value = ProfileUiState.Saved
                 } else {

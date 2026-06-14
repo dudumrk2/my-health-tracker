@@ -4,10 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.myhealthtracker.app.data.meal.MealRepository
 import com.myhealthtracker.app.data.water.WaterRepository
+import com.myhealthtracker.app.data.insights.InsightCategory
+import com.myhealthtracker.app.data.insights.InsightsRefresher
+import com.myhealthtracker.app.data.insights.InsightsRepository
+import com.myhealthtracker.app.data.insights.pickInsight
 import com.myhealthtracker.app.data.model.MealEntry
 import com.myhealthtracker.app.data.model.MealTotals
 import com.myhealthtracker.app.di.AppContainer
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -29,7 +32,9 @@ data class FoodState(
 
 class FoodViewModel(
     private val mealRepository: MealRepository = AppContainer.mealRepository,
-    private val waterRepository: WaterRepository = AppContainer.waterRepository
+    private val waterRepository: WaterRepository = AppContainer.waterRepository,
+    private val insightsRepository: InsightsRepository = AppContainer.insightsRepository,
+    private val insightsRefresher: InsightsRefresher = AppContainer.insightsRefresher
 ) : ViewModel() {
 
     private val _selectedDate = MutableStateFlow(LocalDate.now())
@@ -38,36 +43,26 @@ class FoodViewModel(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
-    private val _forcedAdvice = MutableStateFlow<String?>(null)
-
     val state: StateFlow<FoodState> = combine(
         _selectedDate,
         mealRepository.meals,
         waterRepository.waterLog,
-        _isRefreshing,
-        _forcedAdvice
-    ) { date, allMeals, waterMap, isRefreshing, forcedAdvice ->
+        insightsRepository.insights,
+        _isRefreshing
+    ) { date, allMeals, waterMap, insights, isRefreshing ->
         val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
-        
-        // Filter meals for selected date
+
         val dailyMeals = allMeals.filter { it.date == dateStr }
         val waterIntake = waterMap[dateStr] ?: 0
 
-        // Sum calories and macros
         val totalCal = dailyMeals.sumOf { it.totals.calories }
         val totalProtein = dailyMeals.sumOf { it.totals.proteinG }
         val totalCarbs = dailyMeals.sumOf { it.totals.carbsG }
         val totalFat = dailyMeals.sumOf { it.totals.fatG }
 
-        // Compute AI advice based on current meals or forced advice
-        val advice = when {
-            forcedAdvice != null -> forcedAdvice
-            isRefreshing -> ""
-            dailyMeals.isEmpty() -> "עדיין לא רשמת ארוחות היום. רשום ארוחה לקבלת המלצה תזונתית מבוססת AI!"
-            totalProtein < 50 -> "צריכת החלבון שלך נמוכה כרגע (רק ${totalProtein}ג׳). כדאי לשלב חלבון רזה כמו ביצים, חזה עוף או טופו בארוחה הבאה."
-            totalCarbs > 200 -> "צריכת הפחמימות שלך גבוהה יחסית (${totalCarbs}ג׳). כדאי לשקול להעדיף פחמימות מורכבות בעלות ערך גליקמי נמוך."
-            else -> "מאזן המאקרו שלך נראה מצוין היום! המשך להקפיד על שתיית מים מרובה."
-        }
+        // Nutrition insight: today's sentence if present, else last night's tomorrow
+        // emphasis, else "not ready". Same presence-based selection as the dashboard.
+        val advice = pickInsight(insights?.today, insights?.tomorrow, InsightCategory.NUTRITION).text
 
         FoodState(
             selectedDate = date,
@@ -85,20 +80,16 @@ class FoodViewModel(
 
     fun changeDate(date: LocalDate) {
         _selectedDate.value = date
-        _forcedAdvice.value = null
     }
 
     fun selectPreviousDay() {
         _selectedDate.value = _selectedDate.value.minusDays(1)
-        _forcedAdvice.value = null
     }
 
     fun selectNextDay() {
-        // Upper bound constraint check (disable navigating to future dates)
         val today = LocalDate.now()
         if (_selectedDate.value.isBefore(today)) {
             _selectedDate.value = _selectedDate.value.plusDays(1)
-            _forcedAdvice.value = null
         }
     }
 
@@ -107,12 +98,17 @@ class FoodViewModel(
         waterRepository.addWater(dateStr, amountMl)
     }
 
+    /** On-demand AI refresh; the snapshot listener updates the advice card. */
     fun refreshAdvice() {
         viewModelScope.launch {
             _isRefreshing.value = true
-            delay(1200) // Simulate AI calculation delay
-            _forcedAdvice.value = "המלצת AI מעודכנת: לפי המאזן הנוכחי, אנו ממליצים להוסיף חטיף חלבון או יוגורט דל שומן כארוחת ביניים לקראת האימון."
-            _isRefreshing.value = false
+            try {
+                insightsRefresher.refresh()
+            } catch (_: Exception) {
+                // Friendly failure: keep the last known advice; the user can retry.
+            } finally {
+                _isRefreshing.value = false
+            }
         }
     }
 }

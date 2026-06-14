@@ -3,7 +3,10 @@ package com.myhealthtracker.app.ui.auth
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.myhealthtracker.app.data.FakeRepository
+import androidx.work.WorkManager
+import com.google.firebase.auth.FirebaseUser
+import com.myhealthtracker.app.data.auth.AuthManager
+import com.myhealthtracker.app.di.AppContainer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,25 +15,31 @@ import kotlinx.coroutines.launch
 sealed class AuthUiState {
     object Idle : AuthUiState()
     object Loading : AuthUiState()
-    object Success : AuthUiState()
+    data class Success(val user: FirebaseUser) : AuthUiState()
     data class Error(val message: String) : AuthUiState()
 }
 
 class AuthViewModel(
-    application: Application
+    application: Application,
+    private val authManager: AuthManager = AppContainer.authManager
 ) : AndroidViewModel(application) {
 
-    val isUserLoggedIn: StateFlow<Boolean> = FakeRepository.isUserLoggedIn
-    
+    /** Drives navigation: non-null once Firebase has an authenticated user. */
+    val currentUser: StateFlow<FirebaseUser?> = authManager.authState
+
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
-    fun handleGoogleSignInMock() {
+    fun handleGoogleSignIn(idToken: String) {
         viewModelScope.launch {
             _uiState.value = AuthUiState.Loading
-            kotlinx.coroutines.delay(1000) // Simulate network delay
-            FakeRepository.login()
-            _uiState.value = AuthUiState.Success
+            authManager.signInWithGoogle(idToken).collect { result ->
+                _uiState.value = if (result.isSuccess) {
+                    AuthUiState.Success(result.getOrThrow())
+                } else {
+                    AuthUiState.Error(result.exceptionOrNull()?.message ?: "ההתחברות נכשלה. נסה שוב.")
+                }
+            }
         }
     }
 
@@ -39,7 +48,8 @@ class AuthViewModel(
     }
 
     fun signOut() {
-        FakeRepository.logout()
+        authManager.signOut()
+        WorkManager.getInstance(getApplication()).cancelUniqueWork("HealthConnectSyncWork")
         _uiState.value = AuthUiState.Idle
     }
 }

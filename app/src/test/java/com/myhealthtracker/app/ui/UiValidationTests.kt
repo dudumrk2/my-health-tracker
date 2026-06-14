@@ -43,7 +43,7 @@ class UiValidationTests {
 
     @Test
     fun profileViewModel_initialization_loadsProfileAndCalculatesAge() = runTest {
-        val viewModel = ProfileViewModel()
+        val viewModel = ProfileViewModel(profileRepository = FakeRepository, uidProvider = { "test-uid" })
         val state = viewModel.uiState.value
         assertTrue(state is ProfileUiState.Loaded)
         val loadedProfile = (state as ProfileUiState.Loaded).profile
@@ -56,7 +56,7 @@ class UiValidationTests {
 
     @Test
     fun profileViewModel_saveProfile_invalidBirthYear_returnsError() = runTest {
-        val viewModel = ProfileViewModel()
+        val viewModel = ProfileViewModel(profileRepository = FakeRepository, uidProvider = { "test-uid" })
         
         // Under 1900
         viewModel.saveProfile("1899", "70.0", "175.0", "זכר")
@@ -74,7 +74,7 @@ class UiValidationTests {
 
     @Test
     fun profileViewModel_saveProfile_emptyGender_returnsError() = runTest {
-        val viewModel = ProfileViewModel()
+        val viewModel = ProfileViewModel(profileRepository = FakeRepository, uidProvider = { "test-uid" })
         viewModel.saveProfile("1995", "70.0", "175.0", "")
         val state = viewModel.uiState.value
         assertTrue(state is ProfileUiState.Error)
@@ -83,7 +83,7 @@ class UiValidationTests {
 
     @Test
     fun profileViewModel_saveProfile_invalidWeight_returnsError() = runTest {
-        val viewModel = ProfileViewModel()
+        val viewModel = ProfileViewModel(profileRepository = FakeRepository, uidProvider = { "test-uid" })
         
         // Too low
         viewModel.saveProfile("1995", "29.9", "175.0", "זכר")
@@ -100,7 +100,7 @@ class UiValidationTests {
 
     @Test
     fun profileViewModel_saveProfile_invalidHeight_returnsError() = runTest {
-        val viewModel = ProfileViewModel()
+        val viewModel = ProfileViewModel(profileRepository = FakeRepository, uidProvider = { "test-uid" })
         
         // Too low
         viewModel.saveProfile("1995", "70.0", "99.9", "זכר")
@@ -117,7 +117,7 @@ class UiValidationTests {
 
     @Test
     fun profileViewModel_saveProfile_validInputs_savesProfile() = runTest {
-        val viewModel = ProfileViewModel()
+        val viewModel = ProfileViewModel(profileRepository = FakeRepository, uidProvider = { "test-uid" })
         viewModel.saveProfile("1990", "80.0", "180.0", "נקבה")
         
         val state = viewModel.uiState.value
@@ -135,7 +135,7 @@ class UiValidationTests {
 
     @Test
     fun addWorkoutViewModel_saveWorkout_noTypeSelected_returnsError() = runTest {
-        val viewModel = AddWorkoutViewModel()
+        val viewModel = AddWorkoutViewModel(healthRepository = FakeRepository, uidProvider = { "test-uid" })
         viewModel.onDurationChange("30")
         viewModel.saveWorkout()
         
@@ -145,7 +145,7 @@ class UiValidationTests {
 
     @Test
     fun addWorkoutViewModel_saveWorkout_invalidDuration_returnsError() = runTest {
-        val viewModel = AddWorkoutViewModel()
+        val viewModel = AddWorkoutViewModel(healthRepository = FakeRepository, uidProvider = { "test-uid" })
         viewModel.selectType("ריצה")
         
         // Duration 0
@@ -169,7 +169,7 @@ class UiValidationTests {
 
     @Test
     fun addWorkoutViewModel_saveWorkout_validInputs_savesWorkout() = runTest {
-        val viewModel = AddWorkoutViewModel()
+        val viewModel = AddWorkoutViewModel(healthRepository = FakeRepository, uidProvider = { "test-uid" })
         viewModel.selectType("ריצה")
         viewModel.onDurationChange("45")
         viewModel.saveWorkout()
@@ -188,7 +188,7 @@ class UiValidationTests {
 
     @Test
     fun addBodyMeasurementViewModel_saveMeasurement_invalidWeight_returnsError() = runTest {
-        val viewModel = AddBodyMeasurementViewModel()
+        val viewModel = AddBodyMeasurementViewModel(bodyMeasurementRepository = FakeRepository)
         
         viewModel.onWeightChange("-1.0")
         viewModel.saveMeasurement()
@@ -203,7 +203,7 @@ class UiValidationTests {
 
     @Test
     fun addBodyMeasurementViewModel_saveMeasurement_invalidWaist_returnsError() = runTest {
-        val viewModel = AddBodyMeasurementViewModel()
+        val viewModel = AddBodyMeasurementViewModel(bodyMeasurementRepository = FakeRepository)
         
         viewModel.onWaistChange("-1.0")
         viewModel.saveMeasurement()
@@ -218,7 +218,7 @@ class UiValidationTests {
 
     @Test
     fun addBodyMeasurementViewModel_saveMeasurement_invalidHips_returnsError() = runTest {
-        val viewModel = AddBodyMeasurementViewModel()
+        val viewModel = AddBodyMeasurementViewModel(bodyMeasurementRepository = FakeRepository)
         
         viewModel.onHipsChange("-1.0")
         viewModel.saveMeasurement()
@@ -233,7 +233,7 @@ class UiValidationTests {
 
     @Test
     fun addBodyMeasurementViewModel_saveMeasurement_validInputs_savesMeasurement() = runTest {
-        val viewModel = AddBodyMeasurementViewModel()
+        val viewModel = AddBodyMeasurementViewModel(bodyMeasurementRepository = FakeRepository)
         viewModel.onWeightChange("78.5")
         viewModel.onWaistChange("82.0")
         viewModel.onHipsChange("95.0")

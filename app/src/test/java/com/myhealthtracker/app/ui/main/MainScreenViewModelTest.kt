@@ -15,7 +15,7 @@ class MainScreenViewModelTest {
     @Test
     fun uiState_initiallyIdle() = runTest {
         val application  = mockk<Application>(relaxed = true)
-        val viewModel    = AuthViewModel(application)
+        val viewModel    = AuthViewModel(application, authManager = mockk(relaxed = true))
         assertEquals(AuthUiState.Idle, viewModel.uiState.first())
     }
 }

@@ -5,15 +5,15 @@ import androidx.lifecycle.viewModelScope
 import com.myhealthtracker.app.data.health.HealthRepository
 import com.myhealthtracker.app.data.health.ExerciseSessionInfo
 import com.myhealthtracker.app.data.health.DailyHealthData
-import com.myhealthtracker.app.data.FakeRepository
+import com.myhealthtracker.app.data.insights.InsightsRefresher
+import com.myhealthtracker.app.di.AppContainer
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -29,15 +29,22 @@ data class ActivityState(
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ActivityViewModel(
-    private val healthRepository: HealthRepository = FakeRepository
+    private val healthRepository: HealthRepository = AppContainer.healthRepository,
+    private val insightsRefresher: InsightsRefresher = AppContainer.insightsRefresher,
+    private val uidProvider: () -> String? = { AppContainer.currentUid() }
 ) : ViewModel() {
 
     private val _selectedDate = MutableStateFlow(LocalDate.now())
     private val _isRefreshing = MutableStateFlow(false)
 
     private val _healthData = _selectedDate.flatMapLatest { date ->
-        val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
-        healthRepository.getDailyHealthData("mock_uid", dateStr)
+        val uid = uidProvider()
+        if (uid == null) {
+            flowOf(Result.success<DailyHealthData?>(null))
+        } else {
+            val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
+            healthRepository.getDailyHealthData(uid, dateStr)
+        }
     }
 
     val state: StateFlow<ActivityState> = combine(
@@ -74,11 +81,17 @@ class ActivityViewModel(
         }
     }
 
+    /** Triggers the backend insights refresh; the snapshot listeners update the cards. */
     fun refreshData() {
         viewModelScope.launch {
             _isRefreshing.value = true
-            delay(1000) // Simulate refresh delay
-            _isRefreshing.value = false
+            try {
+                insightsRefresher.refresh()
+            } catch (_: Exception) {
+                // Friendly failure: keep the last known data; the user can retry.
+            } finally {
+                _isRefreshing.value = false
+            }
         }
     }
 }

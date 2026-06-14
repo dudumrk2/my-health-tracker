@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.myhealthtracker.app.data.body.BodyMeasurementRepository
 import com.myhealthtracker.app.data.model.BodyMeasurement
-import com.myhealthtracker.app.data.FakeRepository
+import com.myhealthtracker.app.di.AppContainer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,7 +13,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 class AddBodyMeasurementViewModel(
-    private val bodyMeasurementRepository: BodyMeasurementRepository = FakeRepository
+    private val bodyMeasurementRepository: BodyMeasurementRepository = AppContainer.bodyMeasurementRepository
 ) : ViewModel() {
 
     private val _weightStr = MutableStateFlow("")
