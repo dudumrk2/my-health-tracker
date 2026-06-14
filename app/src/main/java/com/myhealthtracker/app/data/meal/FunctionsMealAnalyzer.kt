@@ -53,7 +53,7 @@ class FunctionsMealAnalyzer(
         }
         try {
             val response = functions.getHttpsCallable("analyzeMeal").call(payload).await()
-            val raw = response.data as? Map<*, *>
+            val raw = response.getData() as? Map<*, *>
                 ?: throw MealAnalysisException("Unexpected response.")
             return mapAnalyzeResponse(raw)
         } catch (e: FirebaseFunctionsException) {

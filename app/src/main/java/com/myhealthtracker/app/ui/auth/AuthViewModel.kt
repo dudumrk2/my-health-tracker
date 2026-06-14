@@ -1,12 +1,13 @@
 package com.myhealthtracker.app.ui.auth
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import android.content.Context
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
 import com.google.firebase.auth.FirebaseUser
 import com.myhealthtracker.app.data.auth.AuthManager
 import com.myhealthtracker.app.di.AppContainer
+import com.myhealthtracker.app.sync.HealthSyncScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,9 +21,8 @@ sealed class AuthUiState {
 }
 
 class AuthViewModel(
-    application: Application,
     private val authManager: AuthManager = AppContainer.authManager
-) : AndroidViewModel(application) {
+) : ViewModel() {
 
     /** Drives navigation: non-null once Firebase has an authenticated user. */
     val currentUser: StateFlow<FirebaseUser?> = authManager.authState
@@ -47,9 +47,9 @@ class AuthViewModel(
         _uiState.value = AuthUiState.Error(message)
     }
 
-    fun signOut() {
+    fun signOut(context: Context) {
         authManager.signOut()
-        WorkManager.getInstance(getApplication()).cancelUniqueWork("HealthConnectSyncWork")
+        WorkManager.getInstance(context).cancelUniqueWork(HealthSyncScheduler.PERIODIC_WORK_NAME)
         _uiState.value = AuthUiState.Idle
     }
 }

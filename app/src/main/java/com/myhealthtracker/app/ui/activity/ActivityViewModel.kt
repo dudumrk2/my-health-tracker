@@ -1,7 +1,7 @@
 package com.myhealthtracker.app.ui.activity
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import android.content.Context
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.myhealthtracker.app.data.health.HealthConnectManager
 import com.myhealthtracker.app.data.health.HealthRepository
@@ -33,16 +33,10 @@ data class ActivityState(
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ActivityViewModel(
-    application: Application,
     private val healthRepository: HealthRepository = AppContainer.healthRepository,
     private val insightsRefresher: InsightsRefresher = AppContainer.insightsRefresher,
     private val uidProvider: () -> String? = { AppContainer.currentUid() }
-) : AndroidViewModel(application) {
-
-    private val healthConnectManager = HealthConnectManager(application)
-
-    /** Health Connect permission strings the UI launcher must request. */
-    val healthPermissions: Set<String> = healthConnectManager.permissions
+) : ViewModel() {
 
     // True only when the SDK is available but permissions are not yet granted — the
     // signal the screen uses to launch the permission request (minimum-permission rule).
@@ -100,8 +94,12 @@ class ActivityViewModel(
      * Checks Health Connect availability/permissions. When granted, (re)schedules the
      * periodic sync and runs an immediate sync; otherwise flags that the UI should
      * request permissions. No-op when the SDK isn't installed on the device.
+     * Takes [Context] from the screen so this stays a plain ViewModel (the default
+     * factory can't construct an AndroidViewModel with extra constructor args).
      */
-    fun checkPermissionsAndSync() {
+    fun checkPermissionsAndSync(context: Context) {
+        val appContext = context.applicationContext
+        val healthConnectManager = HealthConnectManager(appContext)
         viewModelScope.launch {
             if (!healthConnectManager.isSdkAvailable()) {
                 _needsPermissions.value = false
@@ -109,9 +107,8 @@ class ActivityViewModel(
             }
             if (healthConnectManager.hasAllPermissions()) {
                 _needsPermissions.value = false
-                val context = getApplication<Application>()
-                HealthSyncScheduler.schedulePeriodic(context)
-                HealthSyncScheduler.syncNow(context)
+                HealthSyncScheduler.schedulePeriodic(appContext)
+                HealthSyncScheduler.syncNow(appContext)
             } else {
                 _needsPermissions.value = true
             }
@@ -119,7 +116,7 @@ class ActivityViewModel(
     }
 
     /** Called by the screen after the permission request returns. */
-    fun onPermissionsResult() = checkPermissionsAndSync()
+    fun onPermissionsResult(context: Context) = checkPermissionsAndSync(context)
 
     /** Triggers the backend insights refresh; the snapshot listeners update the cards. */
     fun refreshData() {

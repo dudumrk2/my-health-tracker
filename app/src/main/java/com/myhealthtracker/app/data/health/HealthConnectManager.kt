@@ -21,11 +21,16 @@ class HealthConnectManager(private val context: Context) {
         }
     }
 
-    val permissions = setOf(
-        HealthPermission.getReadPermission(StepsRecord::class),
-        HealthPermission.getReadPermission(SleepSessionRecord::class),
-        HealthPermission.getReadPermission(ExerciseSessionRecord::class)
-    )
+    val permissions = PERMISSIONS
+
+    companion object {
+        /** Read-only Health Connect permissions this app uses (minimum-permission rule). */
+        val PERMISSIONS = setOf(
+            HealthPermission.getReadPermission(StepsRecord::class),
+            HealthPermission.getReadPermission(SleepSessionRecord::class),
+            HealthPermission.getReadPermission(ExerciseSessionRecord::class)
+        )
+    }
 
     fun getSdkStatus(): Int {
         return HealthConnectClient.getSdkStatus(context)

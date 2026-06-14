@@ -37,3 +37,6 @@ gradle/gradle-daemon-jvm.properties
 .vscode/
 .claude/
 *.diff
+
+# Device logcat captures
+logs/

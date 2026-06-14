@@ -87,18 +87,22 @@ fun AuthScreen(
     AuthScreenContent(
         uiState = uiState,
         onGoogleSignInClick = {
+            val activity = context as? Activity
             val clientIdResId = context.resources.getIdentifier(
                 "default_web_client_id", "string", context.packageName
             )
             if (clientIdResId == 0) {
                 Log.e("AuthScreen", "default_web_client_id missing — google-services.json not configured")
                 viewModel.handleSignInError("האפליקציה אינה מוגדרת להתחברות עם Google.")
+            } else if (activity == null) {
+                Log.e("AuthScreen", "Context is not an Activity")
+                viewModel.handleSignInError("שגיאה פנימית: לא ניתן למצוא Activity.")
             } else {
                 val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                     .requestIdToken(context.getString(clientIdResId))
                     .requestEmail()
                     .build()
-                launcher.launch(GoogleSignIn.getClient(context, gso).signInIntent)
+                launcher.launch(GoogleSignIn.getClient(activity, gso).signInIntent)
             }
         },
         modifier = modifier

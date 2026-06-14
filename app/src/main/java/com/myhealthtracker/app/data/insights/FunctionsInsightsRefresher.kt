@@ -18,7 +18,7 @@ class FunctionsInsightsRefresher(
     override suspend fun refresh(): InsightRefreshResult {
         try {
             val response = functions.getHttpsCallable("generateInsightsManual").call().await()
-            return mapRefreshResponse(response.data as? Map<*, *>)
+            return mapRefreshResponse(response.getData() as? Map<*, *>)
         } catch (e: FirebaseFunctionsException) {
             throw InsightsRefreshException(
                 when (e.code) {

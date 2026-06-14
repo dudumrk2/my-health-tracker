@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.entryProvider
@@ -68,13 +69,14 @@ fun MainNavigation() {
           )
         }
         entry<Dashboard> {
+          val context = LocalContext.current
           MainScreen(
             onNavigateToProfile = { backStack.add(Profile) },
             onNavigateToAddMeasurement = { backStack.add(AddBodyMeasurement) },
             onNavigateToAddWorkout = { backStack.add(AddWorkout) },
             onNavigateToAddMeal = { backStack.add(AddMeal) },
             onLogout = {
-              authViewModel.signOut()
+              authViewModel.signOut(context)
               backStack.clear()
               backStack.add(Auth)
             }
