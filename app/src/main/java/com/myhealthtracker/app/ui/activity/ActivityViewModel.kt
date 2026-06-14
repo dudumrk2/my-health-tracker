@@ -1,6 +1,7 @@
 package com.myhealthtracker.app.ui.activity
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.myhealthtracker.app.data.health.HealthConnectManager
@@ -101,18 +102,29 @@ class ActivityViewModel(
         val appContext = context.applicationContext
         val healthConnectManager = HealthConnectManager(appContext)
         viewModelScope.launch {
+            // getSdkStatus: 1=UNAVAILABLE, 2=PROVIDER_UPDATE_REQUIRED, 3=AVAILABLE
+            val sdkStatus = healthConnectManager.getSdkStatus()
             if (!healthConnectManager.isSdkAvailable()) {
+                Log.w(TAG, "Health Connect NOT available (sdkStatus=$sdkStatus) — no permission prompt shown")
                 _needsPermissions.value = false
                 return@launch
             }
-            if (healthConnectManager.hasAllPermissions()) {
+            val granted = healthConnectManager.hasAllPermissions()
+            Log.i(TAG, "Health Connect available (sdkStatus=$sdkStatus), permissionsGranted=$granted")
+            if (granted) {
                 _needsPermissions.value = false
                 HealthSyncScheduler.schedulePeriodic(appContext)
                 HealthSyncScheduler.syncNow(appContext)
+                Log.i(TAG, "Permissions granted — periodic + immediate sync enqueued")
             } else {
                 _needsPermissions.value = true
+                Log.i(TAG, "Permissions missing — requesting Health Connect permissions")
             }
         }
+    }
+
+    private companion object {
+        const val TAG = "HCSync"
     }
 
     /** Called by the screen after the permission request returns. */

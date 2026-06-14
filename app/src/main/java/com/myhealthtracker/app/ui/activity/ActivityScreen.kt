@@ -132,7 +132,10 @@ fun ActivityScreen(
 
     LaunchedEffect(Unit) { viewModel.checkPermissionsAndSync(context) }
     LaunchedEffect(needsPermissions) {
-        if (needsPermissions) permissionLauncher.launch(HealthConnectManager.PERMISSIONS)
+        if (needsPermissions) {
+            android.util.Log.i("HCSync", "Launching Health Connect permission request")
+            permissionLauncher.launch(HealthConnectManager.PERMISSIONS)
+        }
     }
 
     ActivityContent(

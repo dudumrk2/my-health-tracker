@@ -38,16 +38,21 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Health Connect legacy rationale redirection (Android 13 and below) -->
+            <intent-filter>
+                <action android:name="androidx.health.platform.client.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
         </activity>
 
-        <!-- Health Connect permissions rationale redirection -->
+        <!-- Health Connect system-integrated rationale redirection (Android 14 and above) -->
         <activity-alias
             android:name=".RationaleActivity"
             android:targetActivity=".MainActivity"
             android:exported="true"
             android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
             <intent-filter>
-                <action android:name="androidx.health.platform.client.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
             </intent-filter>
         </activity-alias>
 
