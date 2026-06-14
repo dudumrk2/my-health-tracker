@@ -21,6 +21,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
@@ -73,11 +74,12 @@ class FoodViewModelRefreshTest {
         assertEquals(1, refresher.calls)
         assertEquals(true, refresher.observedRefreshingDuringCall) // loading was set before the call
         assertEquals(false, vm.isRefreshing.value)                 // and cleared afterwards
+        assertNull(vm.errorMessage.value)                          // success leaves no error
     }
 
     @Test
-    fun `refreshAdvice clears refreshing even when the refresher fails`() = runTest(dispatcher) {
-        val refresher = FakeRefresher().apply { error = "boom" }
+    fun `refreshAdvice surfaces the friendly error and clears refreshing on failure`() = runTest(dispatcher) {
+        val refresher = FakeRefresher().apply { error = "שירות ה-AI עמוס כרגע. נסה שוב בעוד רגע." }
         val vm = FoodViewModel(FakeMealRepo(), FakeWaterRepo(), FakeInsightsRepo(), refresher)
 
         vm.refreshAdvice()
@@ -85,5 +87,9 @@ class FoodViewModelRefreshTest {
 
         assertEquals(1, refresher.calls)
         assertEquals(false, vm.isRefreshing.value)
+        assertEquals("שירות ה-AI עמוס כרגע. נסה שוב בעוד רגע.", vm.errorMessage.value)
+
+        vm.clearError()
+        assertNull(vm.errorMessage.value)
     }
 }

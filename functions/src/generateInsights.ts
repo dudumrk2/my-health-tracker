@@ -68,6 +68,10 @@ function prodDeps(): InsightsRunDeps {
  * for one user is logged and skipped — never fatal for the rest.
  */
 async function runForAllUsers(date: string, mode: WriteMode, trigger: string, skipEmpty: boolean): Promise<void> {
+  // TODO(scale): single-user MVP per CLAUDE.md. If this ever serves many users,
+  // sequential per-user Gemini calls (~1-2s each) will approach the 540s function
+  // timeout — switch to a fan-out architecture (Cloud Tasks / Pub/Sub) so user
+  // batches run in parallel.
   const users = await getFirestore().collection("users").get();
   let written = 0, skipped = 0, failed = 0;
   for (const userDoc of users.docs) {

@@ -51,6 +51,9 @@ class DashboardViewModel(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
     private val todayStr = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
 
     val state: StateFlow<DashboardState> = combine(
@@ -112,13 +115,19 @@ class DashboardViewModel(
     fun refreshInsights() {
         viewModelScope.launch {
             _isRefreshing.value = true
+            _errorMessage.value = null
             try {
                 insightsRefresher.refresh()
-            } catch (_: InsightsRefreshException) {
-                // Friendly failure: keep the last known insight; user can retry.
+            } catch (e: InsightsRefreshException) {
+                // Surface the friendly message so the UI can show it; keep the last known insight.
+                _errorMessage.value = e.message
             } finally {
                 _isRefreshing.value = false
             }
         }
+    }
+
+    fun clearError() {
+        _errorMessage.value = null
     }
 }

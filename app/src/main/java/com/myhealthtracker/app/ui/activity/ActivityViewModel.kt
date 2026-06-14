@@ -16,6 +16,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -44,6 +45,9 @@ class ActivityViewModel(
 
     private val _selectedDate = MutableStateFlow(LocalDate.now())
     private val _isRefreshing = MutableStateFlow(false)
+
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
     private val _healthData = _selectedDate.flatMapLatest { date ->
         val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
@@ -95,13 +99,19 @@ class ActivityViewModel(
     fun refreshData() {
         viewModelScope.launch {
             _isRefreshing.value = true
+            _errorMessage.value = null
             try {
                 insightsRefresher.refresh()
-            } catch (_: InsightsRefreshException) {
-                // Friendly failure: keep the last known insight; user can retry.
+            } catch (e: InsightsRefreshException) {
+                // Surface the friendly message so the UI can show it; keep the last known insight.
+                _errorMessage.value = e.message
             } finally {
                 _isRefreshing.value = false
             }
         }
+    }
+
+    fun clearError() {
+        _errorMessage.value = null
     }
 }
