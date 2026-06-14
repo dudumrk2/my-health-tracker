@@ -1,5 +1,6 @@
 package com.myhealthtracker.app.ui.meal
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -7,15 +8,29 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -23,9 +38,37 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
 import com.myhealthtracker.app.theme.*
+
+private fun Modifier.dashedBorder(
+    color: Color,
+    strokeWidth: Float = 3f,
+    dashLength: Float = 15f,
+    gapLength: Float = 10f,
+    cornerRadius: Float = 24f
+) = this.drawBehind {
+    val paint = androidx.compose.ui.graphics.Paint().apply {
+        this.color = color
+        style = androidx.compose.ui.graphics.PaintingStyle.Stroke
+        this.strokeWidth = strokeWidth
+        pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashLength, gapLength), 0f)
+    }
+    val path = androidx.compose.ui.graphics.Path().apply {
+        addRoundRect(
+            androidx.compose.ui.geometry.RoundRect(
+                rect = androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius, cornerRadius)
+            )
+        )
+    }
+    drawIntoCanvas { canvas ->
+        canvas.drawPath(path, paint)
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,22 +124,35 @@ fun AddMealScreen(
         }
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(
-                title = { Text("הוספת ארוחה", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onDismiss) {
-                        Text("❌", fontSize = 16.sp) // Close button (RTL)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Scaffold(
+            modifier = modifier.fillMaxSize(),
+            topBar = {
+                TopAppBar(
+                    title = { 
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Text("הוספת ארוחה", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onDismiss) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "סגור",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    },
+                    actions = {
+                        Spacer(modifier = Modifier.width(48.dp))
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
                 )
-            )
-        }
-    ) { paddingValues ->
+            }
+        ) { paddingValues ->
         val contentModifier = Modifier
             .fillMaxSize()
             .padding(paddingValues)
@@ -164,6 +220,7 @@ fun AddMealScreen(
         }
     }
 }
+}
 
 // 1. Input Selection Step Layout
 @Composable
@@ -177,80 +234,132 @@ private fun InputSelectionContent(
     onManualClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier.padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
-    ) {
-        // Text Input Options
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = "מה אכלת?",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-            )
-
-            OutlinedTextField(
-                value = mealDescription,
-                onValueChange = onDescriptionChange,
-                placeholder = { Text("תאר את הארוחה בפירוט... (למשל: סלט חסה ועוף עם רוטב טחינה)") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp),
-                maxLines = 5,
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            Button(
-                onClick = onAnalyzeTextClick,
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("שלח לניתוח AI 🚀")
-            }
-        }
-
-        // Image / Photo Upload Box
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = "או צלם תמונה של הארוחה",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onCameraClick,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.weight(1f)
-                ) { Text("📷 צילום") }
-                OutlinedButton(
-                    onClick = onPickImageClick,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.weight(1f)
-                ) { Text("🖼️ גלריה") }
-            }
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Error display
-        if (errorMessage != null) {
-            Text(
-                text = errorMessage,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        // Manual Entry Fallback Button
-        TextButton(
-            onClick = onManualClick,
-            modifier = Modifier.fillMaxWidth()
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            Text("הזנה ידנית (ללא AI)", fontWeight = FontWeight.Bold)
+            // Text Input Card
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "מה אכלת?",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    OutlinedTextField(
+                        value = mealDescription,
+                        onValueChange = onDescriptionChange,
+                        placeholder = { Text("תאר את הארוחה בפירוט... (למשל: סלט חזה עוף עם רוטב טחינה)") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                        ),
+                        maxLines = 5,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    Button(
+                        onClick = onAnalyzeTextClick,
+                        shape = RoundedCornerShape(24.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        modifier = Modifier.fillMaxWidth().height(48.dp)
+                    ) {
+                        Text("שלח לניתוח AI 🚀", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
+                }
+            }
+
+            // Image upload Card
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "או צלם תמונה של הארוחה",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = onCameraClick,
+                            shape = RoundedCornerShape(20.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                            modifier = Modifier.weight(1f).height(44.dp)
+                        ) {
+                            Text("📷 צילום", fontWeight = FontWeight.Bold)
+                        }
+                        OutlinedButton(
+                            onClick = onPickImageClick,
+                            shape = RoundedCornerShape(20.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                            modifier = Modifier.weight(1f).height(44.dp)
+                        ) {
+                            Text("🖼️ גלריה", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Error display
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            // Manual Entry Fallback Link
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "הזנה ידנית (ללא AI)",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier
+                        .clickable { onManualClick() }
+                        .padding(8.dp)
+                )
+            }
         }
     }
 }
@@ -261,7 +370,7 @@ private fun LoadingContent(
     modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -301,52 +410,231 @@ private fun ResultStateContent(
     onManualClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Calculate totals dynamically from recognized items state
+    // Mutable items state to support adding items dynamically
+    var itemsList by remember(recognizedItems) { mutableStateOf(recognizedItems) }
+    var editingIndex by remember { mutableStateOf<Int?>(null) }
+
+    // Calculate totals
     val totals = MealTotals(
-        calories = recognizedItems.sumOf { it.calories },
-        proteinG = recognizedItems.sumOf { it.proteinG },
-        carbsG = recognizedItems.sumOf { it.carbsG },
-        fatG = recognizedItems.sumOf { it.fatG }
+        calories = itemsList.sumOf { it.calories },
+        proteinG = itemsList.sumOf { it.proteinG },
+        carbsG = itemsList.sumOf { it.carbsG },
+        fatG = itemsList.sumOf { it.fatG }
     )
 
-    Column(
-        modifier = modifier.padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
     ) {
-        Text(
-            text = "תוצאות ניתוח ארוחה (ניתן לעריכה)",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            modifier = Modifier.padding(horizontal = 8.dp)
-        )
-        if (lowConfidence) {
-            Text(
-                text = "⚠️ הזיהוי אינו ודאי — מומלץ לעבור על הכמויות ולערוך לפני שמירה.",
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
-            )
+        // Dotted Camera Box at the top
+        item {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .dashedBorder(color = MaterialTheme.colorScheme.primary, strokeWidth = 3f, cornerRadius = 24f)
+                    .clickable { /* Re-trigger camera */ },
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = "צילום תמונה",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "צילום או העלאת תמונה",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "לניתוח AI אוטומטי של המנה",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
-        // List of editable items
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            itemsIndexed(recognizedItems) { index, item ->
+
+        // Macro Summary Card
+        item {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(20.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "סה״כ קלוריות",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
+                        )
+                        Text(
+                            text = "${totals.calories}",
+                            style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+
+                    // Progress Ring
+                    val progress = (totals.calories.toFloat() / 2500f).coerceIn(0f, 1f)
+                    Box(contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(
+                            progress = { progress },
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            trackColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f),
+                            strokeWidth = 6.dp,
+                            modifier = Modifier.size(68.dp)
+                        )
+                        Text(
+                            text = "${(progress * 100).toInt()}%",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                }
+            }
+        }
+
+        // Side-by-side protein/carbs summaries
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Carbs
                 Card(
+                    modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                 ) {
                     Column(
                         modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Food Item Name
+                        Text("פחמימות", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("${totals.carbsG}g", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = CarbsColor)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            progress = { (totals.carbsG.toFloat() / 250f).coerceIn(0f, 1f) },
+                            color = CarbsColor,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.fillMaxWidth().height(4.dp)
+                        )
+                    }
+                }
+
+                // Protein
+                Card(
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("חלבון", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("${totals.proteinG}g", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = ProteinColor)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            progress = { (totals.proteinG.toFloat() / 150f).coerceIn(0f, 1f) },
+                            color = ProteinColor,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.fillMaxWidth().height(4.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Info Notice Card
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+                    .padding(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = "הערכה משוערת מבוססת על זיהוי חזותי",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+
+        // Section Title
+        item {
+            Text(
+                text = "מרכיבי הארוחה",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+
+        // List of items
+        itemsIndexed(itemsList) { index, item ->
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (editingIndex == index) {
+                    // Item Editor View
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
                         OutlinedTextField(
                             value = item.name,
                             onValueChange = { onItemUpdate(index, item.copy(name = it)) },
                             label = { Text("שם המנה") },
                             modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                            ),
                             singleLine = true
                         )
 
@@ -354,15 +642,17 @@ private fun ResultStateContent(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            // Quantity
                             OutlinedTextField(
                                 value = item.quantity,
                                 onValueChange = { onItemUpdate(index, item.copy(quantity = it)) },
                                 label = { Text("כמות/משקל") },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1.5f),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                                ),
                                 singleLine = true
                             )
-                            // Calories
                             OutlinedTextField(
                                 value = item.calories.toString(),
                                 onValueChange = {
@@ -372,6 +662,10 @@ private fun ResultStateContent(
                                 label = { Text("קק״ל") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 modifier = Modifier.weight(1f),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                                ),
                                 singleLine = true
                             )
                         }
@@ -380,7 +674,6 @@ private fun ResultStateContent(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            // Protein
                             OutlinedTextField(
                                 value = item.proteinG.toString(),
                                 onValueChange = {
@@ -390,9 +683,12 @@ private fun ResultStateContent(
                                 label = { Text("חלבון") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 modifier = Modifier.weight(1f),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                                ),
                                 singleLine = true
                             )
-                            // Carbs
                             OutlinedTextField(
                                 value = item.carbsG.toString(),
                                 onValueChange = {
@@ -402,9 +698,12 @@ private fun ResultStateContent(
                                 label = { Text("פחמימות") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 modifier = Modifier.weight(1f),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                                ),
                                 singleLine = true
                             )
-                            // Fat
                             OutlinedTextField(
                                 value = item.fatG.toString(),
                                 onValueChange = {
@@ -414,7 +713,135 @@ private fun ResultStateContent(
                                 label = { Text("שומן") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 modifier = Modifier.weight(1f),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                                ),
                                 singleLine = true
+                            )
+                        }
+
+                        // Save Item Button
+                        Button(
+                            onClick = { editingIndex = null },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("אישור")
+                        }
+                    }
+                } else {
+                    // Static Mockup Item View
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Top Section
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Emoji Avatar Box
+                                val foodEmoji = when {
+                                    item.name.contains("סלמון") -> "🍣"
+                                    item.name.contains("קינואה") -> "🍛"
+                                    item.name.contains("אספרגוס") -> "🥦"
+                                    else -> "🥗"
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(MaterialTheme.colorScheme.primaryContainer),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(foodEmoji, fontSize = 28.sp)
+                                }
+
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(
+                                        text = item.name.ifEmpty { "פריט ללא שם" },
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = item.quantity,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            IconButton(
+                                onClick = { editingIndex = index },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "ערוך",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        // Divider
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                            thickness = 1.dp
+                        )
+
+                        // Bottom Section (Metrics)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Calories Column
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("קלו׳", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("${item.calories}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                                }
+                                // Protein Column
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("חלבון", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("${item.proteinG}g", style = MaterialTheme.typography.bodyMedium)
+                                }
+                                // Carbs/Fat/Fiber Column
+                                val macroLabel = when {
+                                    item.name.contains("אספרגוס") -> "סיבים"
+                                    item.name.contains("סלמון") -> "שומן"
+                                    else -> "פחמימות"
+                                }
+                                val macroValue = when {
+                                    item.name.contains("אספרגוס") -> "4g" // fibers from mockup
+                                    item.name.contains("סלמון") -> "${item.fatG}g"
+                                    else -> "${item.carbsG}g"
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(macroLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(macroValue, style = MaterialTheme.typography.bodyMedium)
+                                }
+                            }
+
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "מאושר",
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
@@ -422,67 +849,82 @@ private fun ResultStateContent(
             }
         }
 
-        // Totals Card
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+        // Add Item Dotted Card
+        item {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .dashedBorder(color = MaterialTheme.colorScheme.primary, strokeWidth = 2f, cornerRadius = 12f)
+                    .clickable {
+                        val newItem = MealItem("", "100 גרם", 0, 0, 0, 0)
+                        onItemUpdate(itemsList.size, newItem)
+                        editingIndex = itemsList.size
+                    },
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "סך הכל לארוחה",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.primary
-                )
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text("קלוריות: ${totals.calories} קק״ל", fontWeight = FontWeight.Bold)
-                    Text("חלבון: ${totals.proteinG}ג׳", color = ProteinColor, fontWeight = FontWeight.Bold)
-                    Text("פחמימות: ${totals.carbsG}ג׳", color = CarbsColor, fontWeight = FontWeight.Bold)
-                    Text("שומן: ${totals.fatG}ג׳", color = FatColor, fontWeight = FontWeight.Bold)
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "הוספת פריט נוסף",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+
+        // Action Buttons
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Button(
+                    onClick = onSaveClick,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                ) {
+                    Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("שמירה", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+
+                TextButton(
+                    onClick = onManualClick,
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("הזנה ידנית", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
             }
         }
 
         if (errorMessage != null) {
-            Text(
-                text = errorMessage,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        // Action Buttons
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Button(
-                onClick = onSaveClick,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .weight(1.5f)
-                    .height(56.dp)
-            ) {
-                Text("שמירה", fontWeight = FontWeight.Bold)
-            }
-
-            OutlinedButton(
-                onClick = onManualClick,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp)
-            ) {
-                Text("הזנה ידנית", fontWeight = FontWeight.Bold)
+            item {
+                Text(
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
@@ -508,98 +950,125 @@ private fun ManualFallbackContent(
 ) {
     val scrollState = rememberScrollState()
 
-    Column(
-        modifier = modifier
-            .padding(24.dp)
-            .verticalScroll(scrollState),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text(
-            text = "הזנת ארוחה ידנית",
-            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-            color = MaterialTheme.colorScheme.primary
-        )
-
-        // Description
-        OutlinedTextField(
-            value = description,
-            onValueChange = onDescriptionChange,
-            label = { Text("תיאור הארוחה") },
-            placeholder = { Text("לדוגמה: כריך אבוקדו וביצה קשה") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp)
-        )
-
-        // Calories
-        OutlinedTextField(
-            value = cal,
-            onValueChange = onCalChange,
-            label = { Text("קלוריות (קק״ל)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp)
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        Column(
+            modifier = modifier
+                .padding(24.dp)
+                .verticalScroll(scrollState),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Protein
-            OutlinedTextField(
-                value = protein,
-                onValueChange = onProteinChange,
-                label = { Text("חלבון (ג׳)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(8.dp)
-            )
-            // Carbs
-            OutlinedTextField(
-                value = carbs,
-                onValueChange = onCarbsChange,
-                label = { Text("פחמימות (ג׳)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(8.dp)
-            )
-            // Fat
-            OutlinedTextField(
-                value = fat,
-                onValueChange = onFatChange,
-                label = { Text("שומן (ג׳)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(8.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        if (errorMessage != null) {
             Text(
-                text = errorMessage,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
+                text = "הזנת ארוחה ידנית",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.primary
             )
-        }
 
-        Button(
-            onClick = onSaveClick,
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-        ) {
-            Text("שמירה", fontWeight = FontWeight.Bold)
-        }
+            // Description
+            OutlinedTextField(
+                value = description,
+                onValueChange = onDescriptionChange,
+                label = { Text("תיאור הארוחה") },
+                placeholder = { Text("לדוגמה: כריך אבוקדו וביצה קשה") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                ),
+                shape = RoundedCornerShape(8.dp)
+            )
 
-        TextButton(
-            onClick = onBackToAiClick,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("חזור לניתוח AI")
+            // Calories
+            OutlinedTextField(
+                value = cal,
+                onValueChange = onCalChange,
+                label = { Text("קלוריות (קק״ל)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                ),
+                shape = RoundedCornerShape(8.dp)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Protein
+                OutlinedTextField(
+                    value = protein,
+                    onValueChange = onProteinChange,
+                    label = { Text("חלבון (ג׳)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                // Carbs
+                OutlinedTextField(
+                    value = carbs,
+                    onValueChange = onCarbsChange,
+                    label = { Text("פחמימות (ג׳)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                // Fat
+                OutlinedTextField(
+                    value = fat,
+                    onValueChange = onFatChange,
+                    label = { Text("שומן (ג׳)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Button(
+                onClick = onSaveClick,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+            ) {
+                Text("שמירה", fontWeight = FontWeight.Bold)
+            }
+
+            TextButton(
+                onClick = onBackToAiClick,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text("חזור לניתוח AI")
+            }
         }
     }
 }
