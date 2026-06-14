@@ -4,7 +4,14 @@ import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { VertexAI } from "@google-cloud/vertexai";
 import { validateRequest, ValidationError, AnalyzeMealRequest } from "./validation";
-import { buildSystemInstruction, RESPONSE_SCHEMA, ProfileContext } from "./prompt";
+import {
+  GEMINI_MODEL,
+  buildMealSystemInstruction,
+  MEAL_RESPONSE_SCHEMA,
+  ProfileContext,
+  mealTextPrompt,
+  mealImagePrompt,
+} from "./prompts";
 import { parseGeminiResult, ParseError, MealResult } from "./parse";
 import { callWithRetry, withTimeout } from "./vertexClient";
 
@@ -14,7 +21,7 @@ const LOCATION = process.env.VERTEX_LOCATION || "us-central1";
 // Function deploy region is independent of the Vertex location; keep it aligned
 // with the client's default callable region (us-central1) unless overridden.
 const FUNCTION_REGION = process.env.FUNCTION_REGION || "us-central1";
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const MODEL = GEMINI_MODEL;
 const VERTEX_TIMEOUT_MS = 15000;
 
 async function readProfile(uid: string): Promise<ProfileContext | null> {
@@ -36,17 +43,17 @@ async function runGemini(req: AnalyzeMealRequest, profile: ProfileContext | null
   const vertex = new VertexAI({ project: process.env.GCLOUD_PROJECT!, location: LOCATION });
   const model = vertex.getGenerativeModel({
     model: MODEL,
-    generationConfig: { responseMimeType: "application/json", responseSchema: RESPONSE_SCHEMA as never },
-    systemInstruction: { role: "system", parts: [{ text: buildSystemInstruction(profile) }] },
+    generationConfig: { responseMimeType: "application/json", responseSchema: MEAL_RESPONSE_SCHEMA as never },
+    systemInstruction: { role: "system", parts: [{ text: buildMealSystemInstruction(profile) }] },
   });
 
   const parts =
     req.inputType === "image"
       ? [
-          { text: "Analyze the food in this image." },
+          { text: mealImagePrompt() },
           { inlineData: { mimeType: "image/jpeg", data: req.imageBase64! } },
         ]
-      : [{ text: `Analyze this meal description: ${req.text}` }];
+      : [{ text: mealTextPrompt(req.text!) }];
 
   const result = await callWithRetry(
     () => withTimeout(model.generateContent({ contents: [{ role: "user", parts }] }), VERTEX_TIMEOUT_MS),

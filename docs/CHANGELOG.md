@@ -10,9 +10,9 @@
   `generateInsightsEvening` (`onSchedule`, writes `today`→`insights/{D}` **and** `tomorrow`→`insights/{D+1}`),
   `generateInsightsMidday` (`onSchedule` 15:00, `todayOnly` merge, skips empty days),
   `generateInsightsManual` (`onCall`, Auth + App Check, `todayOnly` on demand).
-- Server modules mirror Phase 2 separation: `insights/aggregate.ts` (DayData), `insightsPrompt.ts`
-  (Contract B + split `today`/`tomorrow` schema), `insightsParse.ts` (per-field validation + fixed
-  server-side `DISCLAIMER_HE`), `writeInsights.ts` (field-level merge), `core.ts` (orchestration).
+- Server modules mirror Phase 2 separation: `insights/aggregate.ts` (DayData), `insightsParse.ts`
+  (per-field validation + fixed server-side `DISCLAIMER_HE`), `writeInsights.ts` (field-level merge),
+  `core.ts` (orchestration). All AI prompts + the model id live in one file — see below.
 - Android: `data/insights/` — `DailyInsights` model, auth-aware `FirestoreInsightsRepository`
   (listens to `insights/{today}`), `FunctionsInsightsRefresher` (callable), and pure `pickInsight()`.
   Dashboard/Activity/Food ViewModels now read real insights (replacing the mock advice) with a
@@ -21,6 +21,10 @@
 - Tests: 24 new server (Jest) + 11 new client (JUnit), all green; `assembleDebug` passes.
 
 ### Key Decisions
+- **Single prompt/model source of truth** — all AI prompts (Contract A meals + Contract B insights:
+  system instructions, user-turn builders, response schemas) and the `GEMINI_MODEL` constant live in
+  `functions/src/prompts.ts`. Replaced the scattered `prompt.ts` / `insights/insightsPrompt.ts` and the
+  duplicated model literal. AI is server-side only — no prompts/keys on the client.
 - **today/tomorrow document routing** — evening run of day D authors both `today→{D}` and
   `tomorrow→{D+1}`; midday/manual touch only `today` via field-level merge and never overwrite the
   `tomorrow` block authored the previous evening. Client reads only `insights/{today}`.

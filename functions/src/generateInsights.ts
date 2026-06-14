@@ -6,7 +6,7 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { VertexAI } from "@google-cloud/vertexai";
 import { callWithRetry, withTimeout } from "./vertexClient";
 import { fetchDayData } from "./insights/aggregate";
-import { RESPONSE_SCHEMA } from "./insights/insightsPrompt";
+import { GEMINI_MODEL, INSIGHTS_RESPONSE_SCHEMA } from "./prompts";
 import { ParsedInsights } from "./insights/insightsParse";
 import { writeInsights, WriteMode, InsightsDb } from "./insights/writeInsights";
 import { runInsightsForUser, InsightsRunDeps } from "./insights/core";
@@ -15,7 +15,7 @@ if (getApps().length === 0) initializeApp();
 
 const LOCATION = process.env.VERTEX_LOCATION || "us-central1";
 const FUNCTION_REGION = process.env.FUNCTION_REGION || "us-central1";
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const MODEL = GEMINI_MODEL;
 const TZ = process.env.INSIGHTS_TZ || "Asia/Jerusalem";
 const EVENING_SCHEDULE = process.env.INSIGHTS_EVENING_SCHEDULE || "0 21 * * *";
 const MIDDAY_SCHEDULE = process.env.INSIGHTS_MIDDAY_SCHEDULE || "0 15 * * *";
@@ -32,7 +32,7 @@ async function geminiGenerate(systemInstruction: string, userPrompt: string): Pr
   const vertex = new VertexAI({ project: process.env.GCLOUD_PROJECT!, location: LOCATION });
   const model = vertex.getGenerativeModel({
     model: MODEL,
-    generationConfig: { responseMimeType: "application/json", responseSchema: RESPONSE_SCHEMA as never },
+    generationConfig: { responseMimeType: "application/json", responseSchema: INSIGHTS_RESPONSE_SCHEMA as never },
     systemInstruction: { role: "system", parts: [{ text: systemInstruction }] },
   });
   const result = await callWithRetry(
