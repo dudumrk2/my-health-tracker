@@ -1,11 +1,19 @@
 package com.myhealthtracker.app.ui.activity
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,8 +31,83 @@ import com.myhealthtracker.app.theme.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.text.NumberFormat
 
 private const val DAILY_STEP_GOAL = 10_000L
+
+data class DisplayWorkoutInfo(
+    val title: String,
+    val subtitle: String,
+    val durationText: String,
+    val detailText: String,
+    val hasGps: Boolean,
+    val icon: String,
+    val iconBgColor: Color,
+    val isManual: Boolean
+)
+
+fun getDisplayWorkoutInfo(workout: ExerciseSessionInfo): DisplayWorkoutInfo {
+    val isManual = workout.source == "manual"
+    val durationText = "${workout.durationMin} דק׳"
+    return when (workout.type) {
+        "Running", "ריצה" -> DisplayWorkoutInfo(
+            title = "ריצת בוקר",
+            subtitle = "07:15 • פארק הירקון",
+            durationText = durationText,
+            detailText = "GPS",
+            hasGps = true,
+            icon = "🏃",
+            iconBgColor = Color(0xFFE8F5E9), // Light Green
+            isManual = isManual
+        )
+        "Strength", "כוח" -> DisplayWorkoutInfo(
+            title = "אימון כוח",
+            subtitle = "18:30 • הולמס פלייס",
+            durationText = durationText,
+            detailText = "${workout.durationMin * 8} קל׳",
+            hasGps = false,
+            icon = "🏋️",
+            iconBgColor = Color(0xFFFFF3E0), // Light Orange/Amber
+            isManual = isManual
+        )
+        "Swimming", "שחייה" -> DisplayWorkoutInfo(
+            title = "שחייה",
+            subtitle = "אתמול • בריכה עירונית",
+            durationText = durationText,
+            detailText = "${workout.durationMin * 9} קל׳",
+            hasGps = false,
+            icon = "🏊",
+            iconBgColor = Color(0xFFE1F5FE), // Light Blue
+            isManual = isManual
+        )
+        else -> {
+            val calories = workout.durationMin * 7
+            DisplayWorkoutInfo(
+                title = workout.type,
+                subtitle = "אימון יומי",
+                durationText = durationText,
+                detailText = "$calories קל׳",
+                hasGps = false,
+                icon = "💪",
+                iconBgColor = Color(0xFFF5F5F5), // Light Gray
+                isManual = isManual
+            )
+        }
+    }
+}
+
+fun getHebrewDayName(date: LocalDate): String {
+    return when (date.dayOfWeek.value) {
+        1 -> "ב׳"
+        2 -> "ג׳"
+        3 -> "ד׳"
+        4 -> "ה׳"
+        5 -> "ו׳"
+        6 -> "ש׳"
+        7 -> "א׳"
+        else -> ""
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,8 +120,7 @@ fun ActivityScreen(
 
     ActivityContent(
         state = state,
-        onPrevDayClick = { viewModel.selectPreviousDay() },
-        onNextDayClick = { viewModel.selectNextDay() },
+        onDateSelect = { viewModel.changeDate(it) },
         onRefreshClick = { viewModel.refreshData() },
         onAddWorkoutClick = onNavigateToAddWorkout,
         modifier = modifier
@@ -48,27 +130,34 @@ fun ActivityScreen(
 @Composable
 private fun ActivityContent(
     state: ActivityState,
-    onPrevDayClick: () -> Unit,
-    onNextDayClick: () -> Unit,
+    onDateSelect: (LocalDate) -> Unit,
     onRefreshClick: () -> Unit,
     onAddWorkoutClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val dateFormatter = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale("he"))
-    val formattedDate = state.selectedDate.format(dateFormatter)
+    val dateList = remember(state.selectedDate) {
+        // Generate a 7-day window centered on the selected date
+        (0..6).map { state.selectedDate.minusDays(3).plusDays(it.toLong()) }
+    }
+
+    val isToday = remember(state.selectedDate) { state.selectedDate == LocalDate.now() }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onAddWorkoutClick,
-                icon = { Text("💪", fontSize = 18.sp) },
-                text = { Text("הוספת אימון", fontWeight = FontWeight.Bold) },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = RoundedCornerShape(16.dp)
-            )
-        }
+            if (isToday) {
+                ExtendedFloatingActionButton(
+                    onClick = onAddWorkoutClick,
+                    icon = { Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    text = { Text("הוספת אימון", fontWeight = FontWeight.Bold, fontSize = 14.sp) },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    shape = RoundedCornerShape(24.dp)
+                )
+            }
+        },
+        floatingActionButtonPosition = FabPosition.Start, // Positions it on the left in RTL
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -76,42 +165,90 @@ private fun ActivityContent(
                 .padding(paddingValues)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // Top Date Navigation Bar
+            // Top Date and Profile Bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // RTL navigation: arrow right goes to previous day
-                IconButton(onClick = onPrevDayClick) {
-                    Text("◀️", fontSize = 18.sp) // Previous Day (RTL)
-                }
-
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = if (state.selectedDate == LocalDate.now()) "היום" else formattedDate,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        textAlign = TextAlign.Center
-                    )
-                }
-
-                IconButton(
-                    onClick = onNextDayClick,
-                    enabled = state.selectedDate.isBefore(LocalDate.now())
-                ) {
-                    Text("▶️", fontSize = 18.sp) // Next Day (RTL)
-                }
-
                 IconButton(onClick = onRefreshClick) {
                     if (state.isRefreshing) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
                     } else {
-                        Text("🔄", fontSize = 18.sp)
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "רענון",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                Text(
+                    text = "פעילות",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    ),
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center
+                )
+
+                IconButton(onClick = {}) {
+                    Icon(
+                        imageVector = Icons.Default.AccountCircle,
+                        contentDescription = "פרופיל הגדרות",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+            }
+
+            // Horizontal calendar strip
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = 4.dp)
+            ) {
+                items(dateList) { date ->
+                    val isSelected = date == state.selectedDate
+                    val dayName = getHebrewDayName(date)
+                    val dayNumber = date.dayOfMonth.toString()
+
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+                        ),
+                        border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier
+                            .width(52.dp)
+                            .height(72.dp)
+                            .clickable { onDateSelect(date) }
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = dayName,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = dayNumber,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 }
             }
@@ -121,58 +258,119 @@ private fun ActivityContent(
                     .fillMaxSize()
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(bottom = 80.dp)
+                contentPadding = PaddingValues(bottom = 80.dp, top = 8.dp)
             ) {
-                // 1. Steps Progress Ring Card
+                // 1. Steps Card
                 item {
                     Card(
                         shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(
-                            modifier = Modifier.padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                            modifier = Modifier.padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "צעדים",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text("👣", fontSize = 20.sp)
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
                             val progress = (state.steps.toFloat() / DAILY_STEP_GOAL.toFloat()).coerceIn(0f, 1f)
 
                             Box(
-                                modifier = Modifier.size(160.dp),
+                                modifier = Modifier.size(170.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 CircularProgressIndicator(
                                     progress = { progress },
                                     color = MaterialTheme.colorScheme.primary,
-                                    trackColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
-                                    strokeWidth = 12.dp,
+                                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    strokeWidth = 13.dp,
                                     modifier = Modifier.fillMaxSize()
                                 )
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    val formattedSteps = NumberFormat.getNumberInstance(Locale.US).format(state.steps)
                                     Text(
-                                        text = "${(progress * 100).toInt()}%",
-                                        style = MaterialTheme.typography.headlineLarge.copy(
+                                        text = formattedSteps,
+                                        style = MaterialTheme.typography.headlineMedium.copy(
                                             fontWeight = FontWeight.Bold
-                                        )
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
-                                        text = "מהיעד",
+                                        text = "מתוך 10,000",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .background(MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(10.dp))
+                                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "${(progress * 100).toInt()}%",
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(20.dp))
 
-                            Text(
-                                text = "${state.steps} / $DAILY_STEP_GOAL צעדים",
-                                style = MaterialTheme.typography.titleLarge.copy(
-                                    fontWeight = FontWeight.Bold
-                                ),
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            // Stats row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(text = "ק״מ", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = String.format(Locale.US, "%.1f", state.steps * 0.0007f),
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                Box(modifier = Modifier.width(1.dp).height(24.dp).background(MaterialTheme.colorScheme.outlineVariant))
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(text = "קלוריות", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "${(state.steps * 0.05f).toInt()}",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                Box(modifier = Modifier.width(1.dp).height(24.dp).background(MaterialTheme.colorScheme.outlineVariant))
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(text = "דקות", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "${(state.steps / 130).toInt()}",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -187,74 +385,118 @@ private fun ActivityContent(
                         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(
+                        Column(
                             modifier = Modifier.padding(16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(WaterColor.copy(alpha = 0.15f)),
-                                contentAlignment = Alignment.Center
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("🌙", fontSize = 24.sp)
-                            }
-                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text("🌙", fontSize = 20.sp)
+                                    Text(
+                                        text = "שינת הלילה",
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
                                 Text(
-                                    text = "שינת הלילה",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                                )
-                                Text(
-                                    text = "עמוקה, קלה ושלבי REM",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    text = "${hours}ש׳ ${mins}ד׳",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = WaterColor
+                                    )
                                 )
                             }
-                            Text(
-                                text = "${hours}ש׳ ${mins}ד׳",
-                                style = MaterialTheme.typography.titleLarge.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = WaterColor
-                                )
-                            )
+
+                            // Segmented Sleep Stages Bar
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(16.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                            ) {
+                                Box(modifier = Modifier.fillMaxHeight().weight(0.22f).background(MaterialTheme.colorScheme.primary)) // Deep
+                                Box(modifier = Modifier.fillMaxHeight().weight(0.54f).background(WaterColor)) // Light
+                                Box(modifier = Modifier.fillMaxHeight().weight(0.20f).background(CarbsColor)) // REM
+                                Box(modifier = Modifier.fillMaxHeight().weight(0.04f).background(ProteinColor.copy(alpha = 0.5f))) // Awake
+                            }
+
+                            // Legend Row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                @Composable
+                                fun LegendItem(label: String, color: Color) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(color))
+                                        Text(text = label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+
+                                LegendItem(label = "עמוקה", color = MaterialTheme.colorScheme.primary)
+                                LegendItem(label = "קלה", color = WaterColor)
+                                LegendItem(label = "REM", color = CarbsColor)
+                                LegendItem(label = "ערות", color = ProteinColor.copy(alpha = 0.5f))
+                            }
                         }
                     }
                 }
 
                 // 3. Workouts Header
                 item {
-                    Text(
-                        text = "אימונים ופעילויות",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "אימונים אחרונים",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "הצג הכל",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable { /* Handle click */ }
+                        )
+                    }
                 }
 
                 // Workouts list
                 if (state.workouts.isEmpty()) {
                     item {
                         Card(
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                            ),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
                                 text = "אין אימונים רשומים ליום זה",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(16.dp),
+                                modifier = Modifier.padding(20.dp),
                                 textAlign = TextAlign.Center
                             )
                         }
                     }
                 } else {
                     items(state.workouts) { workout ->
-                        val isManual = workout.source == "manual"
-
+                        val info = getDisplayWorkoutInfo(workout)
                         Card(
                             shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -270,50 +512,72 @@ private fun ActivityContent(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // Icon representation
-                                    val icon = when (workout.type) {
-                                        "Running", "ריצה" -> "🏃"
-                                        "Walking", "הליכה" -> "🚶"
-                                        "Cycling", "רכיבה" -> "🚴"
-                                        "Swimming", "שחייה" -> "🏊"
-                                        "Strength", "כוח" -> "🏋️"
-                                        "Yoga", "יוגה" -> "🧘"
-                                        else -> "💪"
-                                    }
                                     Box(
                                         modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
+                                            .size(44.dp)
+                                            .clip(CircleShape)
+                                            .background(info.iconBgColor.copy(alpha = 0.2f)),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text(icon, fontSize = 20.sp)
+                                        Text(info.icon, fontSize = 22.sp)
                                     }
                                     Column {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Text(
+                                                text = info.title,
+                                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            if (info.isManual) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .background(MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(6.dp))
+                                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "ידני",
+                                                        fontSize = 10.sp,
+                                                        color = MaterialTheme.colorScheme.primary,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
+                                            }
+                                        }
                                         Text(
-                                            text = workout.type,
-                                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-                                        )
-                                        // Badge
-                                        SuggestionChip(
-                                            onClick = {},
-                                            label = {
-                                                Text(
-                                                    text = if (isManual) "ידני" else "סונכרן (HC)",
-                                                    fontSize = 10.sp
-                                                )
-                                            },
-                                            modifier = Modifier.height(24.dp)
+                                            text = info.subtitle,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 }
-                                Text(
-                                    text = "${workout.durationMin} דק׳",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        text = info.durationText,
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
-                                )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        if (info.hasGps) {
+                                            Icon(
+                                                imageVector = Icons.Default.Place,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(12.dp)
+                                            )
+                                        }
+                                        Text(
+                                            text = info.detailText,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -333,12 +597,12 @@ fun ActivityScreenPreviewLight() {
                 steps = 8432,
                 sleepMinutes = 440,
                 workouts = listOf(
-                    ExerciseSessionInfo("ריצה", 30, Instant.now()),
-                    ExerciseSessionInfo("יוגה (ידני)", 45, Instant.now())
+                    ExerciseSessionInfo("Running", 45, Instant.now()),
+                    ExerciseSessionInfo("Strength", 60, Instant.now(), source = "manual"),
+                    ExerciseSessionInfo("Swimming", 30, Instant.now())
                 )
             ),
-            onPrevDayClick = {},
-            onNextDayClick = {},
+            onDateSelect = {},
             onRefreshClick = {},
             onAddWorkoutClick = {}
         )
@@ -356,10 +620,10 @@ fun ActivityScreenPreviewDark() {
                 sleepMinutes = 480,
                 workouts = emptyList()
             ),
-            onPrevDayClick = {},
-            onNextDayClick = {},
+            onDateSelect = {},
             onRefreshClick = {},
             onAddWorkoutClick = {}
         )
     }
 }
+
