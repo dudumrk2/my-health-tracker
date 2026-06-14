@@ -1,6 +1,6 @@
 import { logger } from "firebase-functions/v2";
 import { DayData } from "./aggregate";
-import { buildSystemInstruction, buildUserPrompt } from "./insightsPrompt";
+import { buildInsightsSystemInstruction, buildInsightsUserPrompt } from "../prompts";
 import { parseInsights, ParsedInsights, InsightsParseError } from "./insightsParse";
 import { WriteMode } from "./writeInsights";
 
@@ -48,7 +48,7 @@ export async function runInsightsForUser(
       return { status: "skipped" };
     }
 
-    const raw = await deps.generate(buildSystemInstruction(), buildUserPrompt(day));
+    const raw = await deps.generate(buildInsightsSystemInstruction(), buildInsightsUserPrompt(day));
     const parsed = parseInsights(raw);
     await deps.write(uid, date, parsed, opts.mode, opts.trigger);
 
