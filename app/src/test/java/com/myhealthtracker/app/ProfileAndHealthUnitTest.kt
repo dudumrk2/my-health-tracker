@@ -48,8 +48,10 @@ class ProfileAndHealthUnitTest {
         // Valid gender values succeed
         assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "male")).isSuccess)
         assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "female")).isSuccess)
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "other")).isSuccess)
-        // Invalid gender value fails
+        // Invalid gender values fail
+        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "other")).isFailure)
+        val errorOther = profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "other")).exceptionOrNull()
+        assertEquals("Gender must be 'male' or 'female'", errorOther?.message)
         assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "invalid_gender")).isFailure)
     }
 
