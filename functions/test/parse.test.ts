@@ -7,18 +7,47 @@ describe("parseGeminiResult", () => {
         { name: "Egg", quantity: "2", calories: 140, proteinG: 12, carbsG: 1, fatG: 10 },
         { name: "Toast", quantity: "1 slice", calories: 80, proteinG: 3, carbsG: 15, fatG: 1 },
       ],
+      recommendation: "להוסיף ירקות חתוכים לקבלת סיבים תזונתיים",
+      quality: {
+        processedScore: 2,
+        hasComplexCarbs: true,
+        hasSimpleCarbs: false,
+        hasHealthyFats: true,
+        insulinImpact: "low",
+      },
       lowConfidence: false,
     });
     const r = parseGeminiResult(raw);
     expect(r.items).toHaveLength(2);
     expect(r.totals).toEqual({ calories: 220, proteinG: 15, carbsG: 16, fatG: 11 });
+    expect(r.recommendation).toBe("להוסיף ירקות חתוכים לקבלת סיבים תזונתיים");
+    expect(r.quality).toEqual({
+      processedScore: 2,
+      hasComplexCarbs: true,
+      hasSimpleCarbs: false,
+      hasHealthyFats: true,
+      insulinImpact: "low",
+    });
     expect(r.lowConfidence).toBe(false);
   });
 
   it("handles no-food result as empty items with zero totals", () => {
-    const r = parseGeminiResult(JSON.stringify({ items: [], lowConfidence: false }));
+    const r = parseGeminiResult(JSON.stringify({
+      items: [],
+      recommendation: "",
+      quality: {
+        processedScore: 1,
+        hasComplexCarbs: false,
+        hasSimpleCarbs: false,
+        hasHealthyFats: false,
+        insulinImpact: "low",
+      },
+      lowConfidence: false
+    }));
     expect(r.items).toHaveLength(0);
     expect(r.totals).toEqual({ calories: 0, proteinG: 0, carbsG: 0, fatG: 0 });
+    expect(r.recommendation).toBe("");
+    expect(r.quality.processedScore).toBe(1);
   });
 
   it("throws ParseError on non-JSON output", () => {
@@ -34,5 +63,13 @@ describe("parseGeminiResult", () => {
     const r = parseGeminiResult(raw);
     expect(r.items[0].calories).toBe(0);
     expect(r.lowConfidence).toBe(false);
+    expect(r.quality).toEqual({
+      processedScore: 1,
+      hasComplexCarbs: false,
+      hasSimpleCarbs: false,
+      hasHealthyFats: false,
+      insulinImpact: "low",
+    });
+    expect(r.recommendation).toBe("");
   });
 });

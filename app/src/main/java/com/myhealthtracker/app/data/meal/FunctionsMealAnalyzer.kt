@@ -4,6 +4,7 @@ import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
+import com.myhealthtracker.app.data.model.MealQuality
 import kotlinx.coroutines.tasks.await
 import kotlin.math.roundToInt
 
@@ -35,7 +36,24 @@ fun mapAnalyzeResponse(raw: Map<*, *>): MealAnalysisResult {
         carbsG = items.sumOf { it.carbsG },
         fatG = items.sumOf { it.fatG }
     )
-    return MealAnalysisResult(items, totals, raw["lowConfidence"] == true)
+    val rec = raw["recommendation"] as? String
+    val qRaw = raw["quality"] as? Map<*, *>
+    val quality = qRaw?.let {
+        MealQuality(
+            processedScore = anyToInt(it["processedScore"]),
+            hasComplexCarbs = it["hasComplexCarbs"] == true,
+            hasSimpleCarbs = it["hasSimpleCarbs"] == true,
+            hasHealthyFats = it["hasHealthyFats"] == true,
+            insulinImpact = anyToString(it["insulinImpact"])
+        )
+    }
+    return MealAnalysisResult(
+        items = items,
+        totals = totals,
+        lowConfidence = raw["lowConfidence"] == true,
+        recommendation = rec,
+        quality = quality
+    )
 }
 
 class FunctionsMealAnalyzer(

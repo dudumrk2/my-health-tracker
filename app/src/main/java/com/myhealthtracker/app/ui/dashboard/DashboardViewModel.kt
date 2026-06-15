@@ -33,6 +33,8 @@ data class DashboardState(
     val meals: List<MealEntry> = emptyList(),
     val bodyMeasurements: List<BodyMeasurement> = emptyList(),
     val unifiedInsight: String = "",
+    val weeklyAerobicMinutes: Int = 0,
+    val weeklyStrengthWorkouts: Int = 0,
     val isRefreshing: Boolean = false
 )
 
@@ -55,7 +57,13 @@ class DashboardViewModel(
     private val profileFlow =
         if (uid != null) profileRepository.getUserProfile(uid) else flowOf(Result.success<UserProfile?>(null))
     private val healthFlow =
-        if (uid != null) healthRepository.getDailyHealthData(uid, todayStr) else flowOf(Result.success<DailyHealthData?>(null))
+        if (uid != null) {
+            val startDate = LocalDate.now().minusDays(6).format(DateTimeFormatter.ISO_LOCAL_DATE)
+            val endDate = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            healthRepository.getWeeklyHealthData(uid, startDate, endDate)
+        } else {
+            flowOf(Result.success(emptyList()))
+        }
 
     val state: StateFlow<DashboardState> = combine(
         profileFlow,
@@ -70,7 +78,8 @@ class DashboardViewModel(
         val localizedProfile = rawProfile?.let { it.copy(gender = genderToHebrew(it.gender)) }
 
         @Suppress("UNCHECKED_CAST")
-        val todayHealth = (array[1] as Result<DailyHealthData?>).getOrNull() ?: DailyHealthData(date = todayStr)
+        val healthList = (array[1] as Result<List<DailyHealthData>>).getOrNull() ?: emptyList()
+        val todayHealth = healthList.find { it.date == todayStr } ?: DailyHealthData(date = todayStr)
 
         @Suppress("UNCHECKED_CAST")
         val meals = array[2] as List<MealEntry>
@@ -89,6 +98,19 @@ class DashboardViewModel(
             }
         }
 
+        var weeklyAerobicMinutes = 0
+        var weeklyStrengthWorkouts = 0
+        for (day in healthList) {
+            for (w in day.workouts) {
+                val type = w.type.lowercase()
+                if (listOf("ריצה", "הליכה", "אופניים", "ספינינג", "זומבה", "running", "walking", "cycling", "spinning", "zumba").contains(type)) {
+                    weeklyAerobicMinutes += w.durationMin
+                } else if (listOf("כוח", "פונקציונלי", "strength", "functional").contains(type)) {
+                    weeklyStrengthWorkouts += 1
+                }
+            }
+        }
+
         // Unified general insight: today's sentence if present, else last night's
         // tomorrow emphasis, else a "not ready" message. Selection is presence-based.
         val unifiedInsight = pickInsight(insights?.today, insights?.tomorrow, InsightCategory.GENERAL).text
@@ -99,6 +121,8 @@ class DashboardViewModel(
             meals = weeklyMeals,
             bodyMeasurements = bodyMeasurements.sortedBy { it.date },
             unifiedInsight = unifiedInsight,
+            weeklyAerobicMinutes = weeklyAerobicMinutes,
+            weeklyStrengthWorkouts = weeklyStrengthWorkouts,
             isRefreshing = isRefreshing
         )
     }.stateIn(

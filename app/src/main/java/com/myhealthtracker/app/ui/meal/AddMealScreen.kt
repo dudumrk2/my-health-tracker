@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
+import com.myhealthtracker.app.data.model.MealQuality
 import com.myhealthtracker.app.theme.*
 
 private fun Modifier.dashedBorder(
@@ -89,6 +90,8 @@ fun AddMealScreen(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val isSaved by viewModel.isSaved.collectAsState()
     val lowConfidence by viewModel.lowConfidence.collectAsState()
+    val recommendation by viewModel.recommendation.collectAsState()
+    val quality by viewModel.quality.collectAsState()
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
@@ -223,6 +226,8 @@ fun AddMealScreen(
                 ResultStateContent(
                     recognizedItems = recognizedItems,
                     lowConfidence = lowConfidence,
+                    recommendation = recommendation,
+                    quality = quality,
                     errorMessage = errorMessage,
                     onItemUpdate = { index, item -> viewModel.updateItem(index, item) },
                     onSaveClick = { viewModel.saveMeal() },
@@ -435,6 +440,8 @@ private fun LoadingContent(
 private fun ResultStateContent(
     recognizedItems: List<MealItem>,
     lowConfidence: Boolean,
+    recommendation: String?,
+    quality: MealQuality?,
     errorMessage: String?,
     onItemUpdate: (Int, MealItem) -> Unit,
     onSaveClick: () -> Unit,
@@ -453,14 +460,15 @@ private fun ResultStateContent(
         fatG = itemsList.sumOf { it.fatG }
     )
 
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
-    ) {
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        LazyColumn(
+            modifier = modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
+        ) {
         // Dotted Camera Box at the top
         item {
             Box(
@@ -630,6 +638,143 @@ private fun ResultStateContent(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
+            }
+        }
+
+        // AI quality and recommendation cards
+        if (quality != null) {
+            item {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "איכות תזונתית (AI)",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        // Processed Food Score
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "רמת עיבוד מזון:",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            val score = quality.processedScore
+                            val scoreText = when (score) {
+                                1 -> "לא מעובד כלל 🥬"
+                                2 -> "מעובד מינימלית 🍎"
+                                3 -> "מעובד 🍞"
+                                4 -> "מעובד מאוד 🍕"
+                                else -> "אולטרה-מעובד 🍩"
+                            }
+                            Text(
+                                text = scoreText,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = if (score <= 2) TealLight else if (score == 3) CarbsColor else FatColor
+                            )
+                        }
+
+                        // Insulin Impact
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "השפעה על אינסולין:",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            val impact = quality.insulinImpact
+                            val impactText = when (impact) {
+                                "low" -> "נמוכה 🟢"
+                                "medium" -> "בינונית 🟡"
+                                else -> "גבוהה 🔴"
+                            }
+                            Text(
+                                text = impactText,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = when (impact) {
+                                    "low" -> TealLight
+                                    "medium" -> CarbsColor
+                                    else -> FatColor
+                                }
+                            )
+                        }
+
+                        // Quality Chips Flow-like Row
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (quality.hasComplexCarbs) {
+                                SuggestionChip(
+                                    onClick = {},
+                                    label = { Text("פחמימות מורכבות ✅") }
+                                )
+                            }
+                            if (quality.hasSimpleCarbs) {
+                                SuggestionChip(
+                                    onClick = {},
+                                    label = { Text("פחמימות פשוטות ⚠️") }
+                                )
+                            }
+                            if (quality.hasHealthyFats) {
+                                SuggestionChip(
+                                    onClick = {},
+                                    label = { Text("שומנים בריאים 🥑") }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!recommendation.isNullOrEmpty()) {
+            item {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary
+                            )
+                            Text(
+                                text = "המלצת שדרוג AI",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
+                        Text(
+                            text = recommendation,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
             }
         }
 
@@ -960,6 +1105,7 @@ private fun ResultStateContent(
         }
     }
 }
+}
 
 // 4. Manual Fallback Step Layout
 @Composable
@@ -1138,6 +1284,8 @@ fun AddMealScreenPreviewResult() {
                 MealItem("שמן זית", "1 כף", 120, 0, 0, 14)
             ),
             lowConfidence = false,
+            recommendation = null,
+            quality = null,
             errorMessage = null,
             onItemUpdate = { _, _ -> },
             onSaveClick = {},

@@ -16,9 +16,19 @@ export interface MealTotals {
   fatG: number;
 }
 
+export interface MealQuality {
+  processedScore: number;
+  hasComplexCarbs: boolean;
+  hasSimpleCarbs: boolean;
+  hasHealthyFats: boolean;
+  insulinImpact: string;
+}
+
 export interface MealResult {
   items: MealItem[];
   totals: MealTotals;
+  recommendation: string;
+  quality: MealQuality;
   lowConfidence: boolean;
 }
 
@@ -67,5 +77,20 @@ export function parseGeminiResult(raw: string): MealResult {
     { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 }
   );
 
-  return { items, totals, lowConfidence: obj.lowConfidence === true };
+  const q = (obj.quality ?? {}) as Record<string, unknown>;
+  const quality: MealQuality = {
+    processedScore: typeof q.processedScore === "number" ? Math.round(q.processedScore) : 1,
+    hasComplexCarbs: q.hasComplexCarbs === true,
+    hasSimpleCarbs: q.hasSimpleCarbs === true,
+    hasHealthyFats: q.hasHealthyFats === true,
+    insulinImpact: typeof q.insulinImpact === "string" ? q.insulinImpact : "low",
+  };
+
+  return {
+    items,
+    totals,
+    recommendation: str(obj.recommendation),
+    quality,
+    lowConfidence: obj.lowConfidence === true,
+  };
 }

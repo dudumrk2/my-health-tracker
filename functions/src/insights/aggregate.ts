@@ -30,6 +30,8 @@ export interface DayData {
   hasHealthData: boolean;
   hasMeals: boolean;
   isEmpty: boolean;
+  weeklyAerobicMinutes: number;
+  weeklyStrengthWorkouts: number;
 }
 
 /** Raw documents gathered from Firestore, shaped as `DocumentSnapshot.data()` plain objects. */
@@ -97,6 +99,8 @@ export function buildDayData(input: RawDayInputs): DayData {
     hasHealthData,
     hasMeals,
     isEmpty: !hasHealthData && !hasMeals && waterMl <= 0,
+    weeklyAerobicMinutes: 0,
+    weeklyStrengthWorkouts: 0,
   };
 }
 
@@ -104,14 +108,41 @@ export function buildDayData(input: RawDayInputs): DayData {
 export async function fetchDayData(uid: string, date: string): Promise<DayData> {
   const db = getFirestore();
   const userRef = db.doc(`users/${uid}`);
-  const [userSnap, healthSnap, mealsSnap, waterSnap] = await Promise.all([
+
+  const baseDate = new Date(date);
+  const minDateObj = new Date(baseDate);
+  minDateObj.setDate(baseDate.getDate() - 6);
+  const minDate = minDateObj.toISOString().split("T")[0];
+
+  const [userSnap, healthSnap, mealsSnap, waterSnap, weeklyHealthSnap] = await Promise.all([
     userRef.get(),
     userRef.collection("healthDaily").doc(date).get(),
     userRef.collection("meals").where("date", "==", date).get(),
     userRef.collection("water").doc(date).get(),
+    userRef.collection("healthDaily")
+      .where("__name__", ">=", minDate)
+      .where("__name__", "<=", date)
+      .get()
   ]);
 
-  return buildDayData({
+  let weeklyAerobicMinutes = 0;
+  let weeklyStrengthWorkouts = 0;
+
+  for (const doc of weeklyHealthSnap.docs) {
+    const data = doc.data();
+    const workouts = Array.isArray(data.workouts) ? data.workouts : [];
+    for (const w of workouts) {
+      const type = (w.type || "").toLowerCase();
+      const duration = typeof w.durationMin === "number" ? w.durationMin : 0;
+      if (["ריצה", "הליכה", "אופניים", "ספינינג", "זומבה", "running", "walking", "cycling", "spinning", "zumba"].includes(type)) {
+        weeklyAerobicMinutes += duration;
+      } else if (["כוח", "פונקציונלי", "strength", "functional"].includes(type)) {
+        weeklyStrengthWorkouts += 1;
+      }
+    }
+  }
+
+  const dayData = buildDayData({
     date,
     currentYear: new Date().getUTCFullYear(),
     userDoc: userSnap.exists ? (userSnap.data() as Record<string, unknown>) : null,
@@ -119,4 +150,8 @@ export async function fetchDayData(uid: string, date: string): Promise<DayData> 
     meals: mealsSnap.docs.map((d) => d.data() as Record<string, unknown>),
     water: waterSnap.exists ? (waterSnap.data() as Record<string, unknown>) : null,
   });
+
+  dayData.weeklyAerobicMinutes = weeklyAerobicMinutes;
+  dayData.weeklyStrengthWorkouts = weeklyStrengthWorkouts;
+  return dayData;
 }

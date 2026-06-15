@@ -7,6 +7,7 @@ import com.myhealthtracker.app.data.meal.MealRepository
 import com.myhealthtracker.app.data.model.MealEntry
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
+import com.myhealthtracker.app.data.model.MealQuality
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,8 +41,28 @@ class AddMealViewModelTest {
     private class FakeMealRepo : MealRepository {
         val saved = mutableListOf<MealEntry>()
         override val meals: StateFlow<List<MealEntry>> = MutableStateFlow(emptyList())
-        override fun addMeal(date: String, inputType: String, description: String, items: List<MealItem>, totals: MealTotals) {
-            saved.add(MealEntry("id", date, java.time.Instant.now(), inputType, description, items, totals))
+        override fun addMeal(
+            date: String,
+            inputType: String,
+            description: String,
+            items: List<MealItem>,
+            totals: MealTotals,
+            recommendation: String?,
+            quality: MealQuality?
+        ) {
+            saved.add(
+                MealEntry(
+                    mealId = "id",
+                    date = date,
+                    loggedAt = java.time.Instant.now(),
+                    inputType = inputType,
+                    description = description,
+                    items = items,
+                    totals = totals,
+                    recommendation = recommendation,
+                    quality = quality
+                )
+            )
         }
         override fun deleteMeal(mealId: String) {}
     }
@@ -90,8 +111,21 @@ class AddMealViewModelTest {
     @Test
     fun `saving recognized items writes to repository`() = runTest(dispatcher) {
         val repo = FakeMealRepo()
+        val quality = MealQuality(
+            processedScore = 2,
+            hasComplexCarbs = true,
+            hasSimpleCarbs = false,
+            hasHealthyFats = true,
+            insulinImpact = "low"
+        )
         val analyzer = FakeAnalyzer(
-            result = MealAnalysisResult(listOf(MealItem("Egg", "2", 140, 12, 1, 10)), MealTotals(140, 12, 1, 10), false)
+            result = MealAnalysisResult(
+                items = listOf(MealItem("Egg", "2", 140, 12, 1, 10)),
+                totals = MealTotals(140, 12, 1, 10),
+                lowConfidence = false,
+                recommendation = "שדרג עם תרד",
+                quality = quality
+            )
         )
         val vm = AddMealViewModel(repo, analyzer)
         vm.onDescriptionChange("2 eggs")
@@ -101,6 +135,8 @@ class AddMealViewModelTest {
         advanceUntilIdle()
         assertEquals(1, repo.saved.size)
         assertEquals(140, repo.saved.first().totals.calories)
+        assertEquals("שדרג עם תרד", repo.saved.first().recommendation)
+        assertEquals(quality, repo.saved.first().quality)
         assertTrue(vm.isSaved.value)
     }
 

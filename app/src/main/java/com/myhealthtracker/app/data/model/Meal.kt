@@ -18,6 +18,14 @@ data class MealTotals(
     val fatG: Int
 )
 
+data class MealQuality(
+    val processedScore: Int = 1,
+    val hasComplexCarbs: Boolean = false,
+    val hasSimpleCarbs: Boolean = false,
+    val hasHealthyFats: Boolean = false,
+    val insulinImpact: String = "low"
+)
+
 data class MealEntry(
     val mealId: String,
     val date: String, // yyyy-MM-dd
@@ -25,5 +33,7 @@ data class MealEntry(
     val inputType: String, // "text" | "image"
     val description: String,
     val items: List<MealItem>,
-    val totals: MealTotals
+    val totals: MealTotals,
+    val recommendation: String? = null,
+    val quality: MealQuality? = null
 )

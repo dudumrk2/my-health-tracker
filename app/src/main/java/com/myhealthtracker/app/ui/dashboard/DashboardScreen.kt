@@ -238,6 +238,55 @@ private fun DashboardContent(
                             .padding(vertical = 8.dp)
                     )
 
+                    // Weekly Exercise Targets
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Aerobic Goal Column
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "אירובי שבועי",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "${state.weeklyAerobicMinutes} / 150 דק׳",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            LinearProgressIndicator(
+                                progress = { (state.weeklyAerobicMinutes.toFloat() / 150f).coerceIn(0f, 1f) },
+                                color = TealLight,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                strokeCap = StrokeCap.Round,
+                                modifier = Modifier.fillMaxWidth().height(6.dp).padding(top = 4.dp)
+                            )
+                        }
+                        // Strength Goal Column
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "אימוני כוח שבועיים",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "${state.weeklyStrengthWorkouts} / 2 אימונים",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            LinearProgressIndicator(
+                                progress = { (state.weeklyStrengthWorkouts.toFloat() / 2f).coerceIn(0f, 1f) },
+                                color = ProteinColor,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                strokeCap = StrokeCap.Round,
+                                modifier = Modifier.fillMaxWidth().height(6.dp).padding(top = 4.dp)
+                            )
+                        }
+                    }
+
                     // Info banner
                     val missingSteps = (DAILY_STEP_GOAL - state.todayHealth.steps).coerceAtLeast(0)
                     Box(

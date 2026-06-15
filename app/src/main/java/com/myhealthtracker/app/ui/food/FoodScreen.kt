@@ -11,14 +11,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.CompositionLocalProvider
@@ -38,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import com.myhealthtracker.app.data.model.MealEntry
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
+import com.myhealthtracker.app.data.model.MealQuality
 import java.time.Instant
 import com.myhealthtracker.app.theme.*
 import java.time.LocalDate
@@ -119,6 +123,9 @@ private fun FoodContent(
     onAddMealClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var selectedMeal by remember { mutableStateOf<MealEntry?>(null) }
+    var selectedMealTitle by remember { mutableStateOf("") }
+
     val dateList = remember(state.selectedDate) {
         // Generate a 7-day window centered on the selected date
         (0..6).map { state.selectedDate.minusDays(3).plusDays(it.toLong()) }
@@ -486,11 +493,17 @@ private fun FoodContent(
                         }
                     } else {
                         itemsIndexed(state.meals) { index, meal ->
+                            val mealTitle = getMealTitle(meal.description, index)
                             Card(
                                 shape = RoundedCornerShape(16.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedMealTitle = mealTitle
+                                        selectedMeal = meal
+                                    }
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -562,6 +575,263 @@ private fun FoodContent(
                                 }
                             }
                         }
+                    }
+                }
+            }
+
+            selectedMeal?.let { meal ->
+                MealDetailSheet(
+                    meal = meal,
+                    title = selectedMealTitle,
+                    onDismiss = { selectedMeal = null }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MealDetailSheet(
+    meal: MealEntry,
+    title: String,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+        containerColor = MaterialTheme.colorScheme.background
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = formatInstantToTime(meal.loggedAt),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "סגור",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Text(
+                text = meal.description.ifEmpty { "ארוחה ללא תיאור" },
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "סה״כ קלוריות",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "${meal.totals.calories} קק״ל",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            MacroProgressBarHorizontal(
+                                name = "חלבון",
+                                value = meal.totals.proteinG,
+                                target = 150,
+                                color = ProteinColor
+                            )
+                        }
+                        Box(modifier = Modifier.weight(1f)) {
+                            MacroProgressBarHorizontal(
+                                name = "פחמימות",
+                                value = meal.totals.carbsG,
+                                target = 250,
+                                color = CarbsColor
+                            )
+                        }
+                        Box(modifier = Modifier.weight(1f)) {
+                            MacroProgressBarHorizontal(
+                                name = "שומן",
+                                value = meal.totals.fatG,
+                                target = 70,
+                                color = FatColor
+                            )
+                        }
+                    }
+                }
+            }
+
+            val quality = meal.quality
+            if (quality != null) {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "איכות תזונתית (AI)",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "רמת עיבוד מזון:",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            val score = quality.processedScore
+                            val scoreText = when (score) {
+                                1 -> "לא מעובד כלל 🥬"
+                                2 -> "מעובד מינימלית 🍎"
+                                3 -> "מעובד 🍞"
+                                4 -> "מעובד מאוד 🍕"
+                                else -> "אולטרה-מעובד 🍩"
+                            }
+                            Text(
+                                text = scoreText,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = if (score <= 2) TealLight else if (score == 3) CarbsColor else FatColor
+                            )
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "השפעה על אינסולין:",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            val impact = quality.insulinImpact
+                            val impactText = when (impact) {
+                                "low" -> "נמוכה 🟢"
+                                "medium" -> "בינונית 🟡"
+                                else -> "גבוהה 🔴"
+                            }
+                            Text(
+                                text = impactText,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = when (impact) {
+                                    "low" -> TealLight
+                                    "medium" -> CarbsColor
+                                    else -> FatColor
+                                }
+                            )
+                        }
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (quality.hasComplexCarbs) {
+                                SuggestionChip(
+                                    onClick = {},
+                                    label = { Text("פחמימות מורכבות ✅") }
+                                )
+                            }
+                            if (quality.hasSimpleCarbs) {
+                                SuggestionChip(
+                                    onClick = {},
+                                    label = { Text("פחמימות פשוטות ⚠️") }
+                                )
+                            }
+                            if (quality.hasHealthyFats) {
+                                SuggestionChip(
+                                    onClick = {},
+                                    label = { Text("שומנים בריאים 🥑") }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            val recommendation = meal.recommendation
+            if (!recommendation.isNullOrEmpty()) {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Lightbulb,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary
+                            )
+                            Text(
+                                text = "המלצת שדרוג AI",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
+                        Text(
+                            text = recommendation,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             }
