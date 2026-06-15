@@ -12,6 +12,8 @@ const fullDay = (): DayData => ({
   hasHealthData: true,
   hasMeals: true,
   isEmpty: false,
+  weeklyAerobicMinutes: 0,
+  weeklyStrengthWorkouts: 0,
 });
 
 const emptyDay = (): DayData => ({
@@ -25,6 +27,8 @@ const emptyDay = (): DayData => ({
   hasHealthData: false,
   hasMeals: false,
   isEmpty: true,
+  weeklyAerobicMinutes: 0,
+  weeklyStrengthWorkouts: 0,
 });
 
 const validModelOutput = JSON.stringify({

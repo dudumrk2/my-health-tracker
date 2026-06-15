@@ -40,11 +40,13 @@ fun mapAnalyzeResponse(raw: Map<*, *>): MealAnalysisResult {
     val qRaw = raw["quality"] as? Map<*, *>
     val quality = qRaw?.let {
         MealQuality(
-            processedScore = anyToInt(it["processedScore"]),
+            // Default to the model's neutral baseline (1 / "low") rather than 0 / "",
+            // which the UI's when-blocks would otherwise render as the worst rating.
+            processedScore = (it["processedScore"] as? Number)?.toDouble()?.roundToInt()?.takeIf { s -> s in 1..5 } ?: 1,
             hasComplexCarbs = it["hasComplexCarbs"] == true,
             hasSimpleCarbs = it["hasSimpleCarbs"] == true,
             hasHealthyFats = it["hasHealthyFats"] == true,
-            insulinImpact = anyToString(it["insulinImpact"])
+            insulinImpact = (it["insulinImpact"] as? String)?.takeIf { s -> s.isNotEmpty() } ?: "low"
         )
     }
     return MealAnalysisResult(
