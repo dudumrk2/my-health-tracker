@@ -36,6 +36,11 @@ class ProfileViewModel(
         loadProfile()
     }
 
+    fun resetState() {
+        _uiState.value = ProfileUiState.Idle
+        loadProfile()
+    }
+
     fun loadProfile() {
         val uid = uidProvider() ?: run {
             _uiState.value = ProfileUiState.Idle
@@ -66,7 +71,7 @@ class ProfileViewModel(
         _calculatedAge.value = if (age >= 0) age else 0
     }
 
-    fun saveProfile(birthYearStr: String, weightStr: String, heightStr: String, gender: String) {
+    fun saveProfile(birthYearStr: String, weightStr: String, heightStr: String, gender: String, themePreference: String = "system") {
         viewModelScope.launch {
             _uiState.value = ProfileUiState.Loading
             
@@ -103,7 +108,8 @@ class ProfileViewModel(
                 birthYear = birthYear,
                 weightKg = weight,
                 heightCm = height,
-                gender = englishGender
+                gender = englishGender,
+                themePreference = themePreference
             )
 
             val uid = uidProvider() ?: run {

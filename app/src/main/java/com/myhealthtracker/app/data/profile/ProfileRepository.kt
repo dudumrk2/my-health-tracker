@@ -13,6 +13,7 @@ data class UserProfile(
     val weightKg: Double = 0.0,
     val heightCm: Double = 0.0,
     val gender: String = "",
+    val themePreference: String = "system",
     val createdAt: Instant? = null,
     val updatedAt: Instant? = null
 )
@@ -53,6 +54,7 @@ class FirestoreProfileRepository(private val firestore: FirebaseFirestore = Fire
                         weightKg = (profileMap["weightKg"] as? Double) ?: ((profileMap["weightKg"] as? Long)?.toDouble() ?: 0.0),
                         heightCm = (profileMap["heightCm"] as? Double) ?: ((profileMap["heightCm"] as? Long)?.toDouble() ?: 0.0),
                         gender = (profileMap["gender"] as? String) ?: "",
+                        themePreference = (profileMap["themePreference"] as? String) ?: "system",
                         createdAt = createdAtTimestamp?.toDate()?.toInstant(),
                         updatedAt = updatedAtTimestamp?.toDate()?.toInstant()
                     )
@@ -90,6 +92,7 @@ class FirestoreProfileRepository(private val firestore: FirebaseFirestore = Fire
                             "weightKg" to profile.weightKg,
                             "heightCm" to profile.heightCm,
                             "gender" to profile.gender,
+                            "themePreference" to profile.themePreference,
                             "createdAt" to finalCreatedAt,
                             "updatedAt" to Timestamp.now()
                         )

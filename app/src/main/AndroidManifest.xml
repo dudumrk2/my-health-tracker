@@ -20,6 +20,10 @@
         </intent>
     </queries>
 
+    <!-- Camera Permissions -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-permission android:name="android.permission.CAMERA" />
+
     <application
         android:name=".MyHealthApp"
         android:allowBackup="true"
@@ -58,7 +62,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
+            android:authorities="com.myhealthtracker.app.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
