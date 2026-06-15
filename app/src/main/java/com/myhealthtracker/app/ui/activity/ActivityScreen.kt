@@ -1,5 +1,9 @@
 package com.myhealthtracker.app.ui.activity
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.ui.platform.LocalContext
+import androidx.health.connect.client.PermissionController
+import com.myhealthtracker.app.data.health.HealthConnectManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -116,7 +120,23 @@ fun ActivityScreen(
     onNavigateToAddWorkout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val state by viewModel.state.collectAsState()
+    val needsPermissions by viewModel.needsPermissions.collectAsState()
+
+    // Health Connect permission flow: check on entry, and request only when the SDK is
+    // present but permissions are missing. Granting triggers an immediate + periodic sync.
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = PermissionController.createRequestPermissionResultContract()
+    ) { viewModel.onPermissionsResult(context) }
+
+    LaunchedEffect(Unit) { viewModel.checkPermissionsAndSync(context) }
+    LaunchedEffect(needsPermissions) {
+        if (needsPermissions) {
+            android.util.Log.i("HCSync", "Launching Health Connect permission request")
+            permissionLauncher.launch(HealthConnectManager.PERMISSIONS)
+        }
+    }
 
     ActivityContent(
         state = state,

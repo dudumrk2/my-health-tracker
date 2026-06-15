@@ -1,11 +1,29 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
     match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-      match /{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == uid;
+      // The user document itself (holds `profile`).
+      allow read, write: if isOwner(uid);
+
+      // Insights are authored only by Cloud Functions via the Admin SDK (which
+      // bypasses these rules). Clients may read their own insights but never write
+      // them. NOTE: a read-only match cannot sit under a broad recursive
+      // `match /{document=**}` write grant — rule matches are a union, so the
+      // writable subcollections are enumerated explicitly below instead.
+      match /insights/{date} {
+        allow read: if isOwner(uid);
+        allow write: if false;
       }
+
+      // Client-writable subcollections (see data model in CLAUDE.md).
+      match /healthDaily/{date}      { allow read, write: if isOwner(uid); }
+      match /meals/{mealId}          { allow read, write: if isOwner(uid); }
+      match /water/{date}            { allow read, write: if isOwner(uid); }
+      match /bodyMeasurements/{date} { allow read, write: if isOwner(uid); }
     }
   }
 }

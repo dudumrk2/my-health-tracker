@@ -35,6 +35,7 @@ fun ProfileScreen(
     var weightStr by remember { mutableStateOf("") }
     var heightStr by remember { mutableStateOf("") }
     var selectedGender by remember { mutableStateOf("") }
+    var themePreference by remember { mutableStateOf("system") }
 
     LaunchedEffect(uiState) {
         if (uiState is ProfileUiState.Loaded) {
@@ -43,8 +44,10 @@ fun ProfileScreen(
             weightStr = if (profile.weightKg > 0.0) profile.weightKg.toString() else ""
             heightStr = if (profile.heightCm > 0.0) profile.heightCm.toString() else ""
             selectedGender = profile.gender
+            themePreference = profile.themePreference
             viewModel.updateAge(profile.birthYear)
         } else if (uiState is ProfileUiState.Saved) {
+            viewModel.resetState()
             onSaveSuccess()
         }
     }
@@ -55,6 +58,7 @@ fun ProfileScreen(
         weightStr = weightStr,
         heightStr = heightStr,
         selectedGender = selectedGender,
+        themePreference = themePreference,
         calculatedAge = calculatedAge,
         onBirthYearChange = {
             birthYearStr = it
@@ -63,8 +67,13 @@ fun ProfileScreen(
         onWeightChange = { weightStr = it },
         onHeightChange = { heightStr = it },
         onGenderSelect = { selectedGender = it },
+        onThemeSelect = { themePreference = it },
         onSaveClick = {
-            viewModel.saveProfile(birthYearStr, weightStr, heightStr, selectedGender)
+            viewModel.saveProfile(birthYearStr, weightStr, heightStr, selectedGender, themePreference)
+        },
+        onBackClick = {
+            viewModel.resetState()
+            onSaveSuccess()
         },
         modifier = modifier
     )
@@ -77,12 +86,15 @@ private fun ProfileScreenContent(
     weightStr: String,
     heightStr: String,
     selectedGender: String,
+    themePreference: String,
     calculatedAge: Int,
     onBirthYearChange: (String) -> Unit,
     onWeightChange: (String) -> Unit,
     onHeightChange: (String) -> Unit,
     onGenderSelect: (String) -> Unit,
+    onThemeSelect: (String) -> Unit,
     onSaveClick: () -> Unit,
+    onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -105,6 +117,16 @@ private fun ProfileScreenContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+            // Back Button (Top Left)
+            Box(modifier = Modifier.fillMaxWidth()) {
+                TextButton(
+                    onClick = onBackClick,
+                    modifier = Modifier.align(Alignment.CenterStart)
+                ) {
+                    Text("ביטול", color = MaterialTheme.colorScheme.primary)
+                }
+            }
+
             // Header
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -226,6 +248,53 @@ private fun ProfileScreenContent(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp)
                     )
+
+                    // Theme Preference Selection
+                    Column {
+                        Text(
+                            text = "העדפת תצוגה",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 8.dp)
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            val themes = listOf(
+                                "system" to "מערכת",
+                                "light" to "בהירה",
+                                "dark" to "כהה"
+                            )
+                            themes.forEach { (themeValue, themeLabel) ->
+                                val isSelected = themePreference == themeValue
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(48.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(
+                                            if (isSelected) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.surfaceVariant.copy(
+                                                alpha = 0.5f
+                                            )
+                                        )
+                                        .clickable { onThemeSelect(themeValue) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = themeLabel,
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        ),
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -282,12 +351,15 @@ fun ProfileScreenPreviewLight() {
             weightStr = "75.0",
             heightStr = "178.0",
             selectedGender = "זכר",
+            themePreference = "light",
             calculatedAge = 31,
             onBirthYearChange = {},
             onWeightChange = {},
             onHeightChange = {},
             onGenderSelect = {},
-            onSaveClick = {}
+            onThemeSelect = {},
+            onSaveClick = {},
+            onBackClick = {}
         )
     }
 }
@@ -302,12 +374,15 @@ fun ProfileScreenPreviewDark() {
             weightStr = "75.0",
             heightStr = "178.0",
             selectedGender = "נקבה",
+            themePreference = "dark",
             calculatedAge = 31,
             onBirthYearChange = {},
             onWeightChange = {},
             onHeightChange = {},
             onGenderSelect = {},
-            onSaveClick = {}
+            onThemeSelect = {},
+            onSaveClick = {},
+            onBackClick = {}
         )
     }
 }

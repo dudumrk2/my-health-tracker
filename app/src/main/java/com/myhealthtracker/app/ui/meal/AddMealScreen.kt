@@ -91,16 +91,10 @@ fun AddMealScreen(
     val lowConfidence by viewModel.lowConfidence.collectAsState()
 
     val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+
     var pendingCameraFile by remember { mutableStateOf<java.io.File?>(null) }
     var pendingCameraUri by remember { mutableStateOf<android.net.Uri?>(null) }
-
-    val galleryLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
-        if (uri != null) {
-            viewModel.analyzeImageUri(context, uri)
-        }
-    }
 
     val cameraLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.TakePicture()
@@ -112,9 +106,37 @@ fun AddMealScreen(
                 viewModel.analyzeImageUri(context.applicationContext, uri)
             }
         } finally {
-            file?.delete()
+            if (!success) {
+                file?.delete()
+            }
             pendingCameraFile = null
             pendingCameraUri = null
+        }
+    }
+
+    val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // Re-trigger the camera logic if granted
+            val file = createCameraImageFile(context)
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                context, "com.myhealthtracker.app.fileprovider", file
+            )
+            pendingCameraFile = file
+            pendingCameraUri = uri
+            cameraLauncher.launch(uri)
+        } else {
+            // Handle permission denied
+            android.util.Log.e("AddMealScreen", "Camera permission denied")
+        }
+    }
+
+    val galleryLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.analyzeImageUri(context, uri)
         }
     }
 
@@ -173,13 +195,22 @@ fun AddMealScreen(
                         )
                     },
                     onCameraClick = {
-                        val file = createCameraImageFile(context)
-                        val uri = androidx.core.content.FileProvider.getUriForFile(
-                            context, "${context.packageName}.fileprovider", file
-                        )
-                        pendingCameraFile = file
-                        pendingCameraUri = uri
-                        cameraLauncher.launch(uri)
+                        val cameraPermission = android.Manifest.permission.CAMERA
+                        val isGranted = androidx.core.content.ContextCompat.checkSelfPermission(
+                            context, cameraPermission
+                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+                        if (isGranted) {
+                            val file = createCameraImageFile(context)
+                            val uri = androidx.core.content.FileProvider.getUriForFile(
+                                context, "com.myhealthtracker.app.fileprovider", file
+                            )
+                            pendingCameraFile = file
+                            pendingCameraUri = uri
+                            cameraLauncher.launch(uri)
+                        } else {
+                            permissionLauncher.launch(cameraPermission)
+                        }
                     },
                     onManualClick = { viewModel.switchToManualFallback() },
                     modifier = contentModifier

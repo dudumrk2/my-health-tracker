@@ -4,6 +4,24 @@
 
 ---
 
+## Integration Phase — UI ↔ real backend · 2026-06-14
+
+- Replaced the UI's `FakeRepository` mock with the real layers behind the existing ViewModel
+  interfaces (Composables unchanged). `AppContainer` now provides real Auth/Profile/Health/
+  Meal/Water/Body/Insights singletons + `currentUid()`; `FakeRepository` moved to the test source set.
+- Auth: real Google Sign-In (Firebase) restored in `AuthScreen`/`AuthViewModel`; navigation routes
+  by session + profile existence (no profile → setup, else dashboard).
+- Insights: ported the Phase 3 backend (`generateInsights*`, `insights/*`, read-only `firestore.rules`)
+  and client layer (`FirestoreInsightsRepository`, `FunctionsInsightsRefresher`, presence-based
+  `pickInsight`); dashboard/food cards + refresh buttons wired to real today/tomorrow data.
+- Added missing `FirestoreBodyMeasurementRepository`. Restored Health Connect → Firestore sync:
+  `HealthSyncScheduler` (periodic + immediate) + permission prompt on the Activity tab; added HC
+  package-visibility `<queries>` to the manifest.
+- **Why:** the UI phase was built mock-first by design; this phase connects it end-to-end. Phase 3
+  was never merged, so its backend + data layer were ported (its branch predated the UI redesign).
+
+---
+
 ## Phase 2 — Meal Logging + AI Analysis
 
 - Added `analyzeMeal` Cloud Function (TypeScript, 2nd gen): App Check + Auth gated, Vertex AI

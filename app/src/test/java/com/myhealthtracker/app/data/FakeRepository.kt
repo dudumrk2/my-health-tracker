@@ -37,6 +37,7 @@ object FakeRepository : ProfileRepository, HealthRepository, MealRepository, Wat
             weightKg = 75.0,
             heightCm = 178.0,
             gender = "male",
+            themePreference = "system",
             createdAt = Instant.now(),
             updatedAt = Instant.now()
         )
@@ -74,6 +75,7 @@ object FakeRepository : ProfileRepository, HealthRepository, MealRepository, Wat
             weightKg = 75.0,
             heightCm = 178.0,
             gender = "male",
+            themePreference = "system",
             createdAt = Instant.now(),
             updatedAt = Instant.now()
         )
@@ -132,12 +134,13 @@ object FakeRepository : ProfileRepository, HealthRepository, MealRepository, Wat
     }
 
     // Helper for direct VM/Mock calls
-    fun saveProfile(birthYear: Int, weightKg: Double, heightCm: Double, gender: String) {
+    fun saveProfile(birthYear: Int, weightKg: Double, heightCm: Double, gender: String, themePreference: String = "system") {
         _profile.value = UserProfile(
             birthYear = birthYear,
             weightKg = weightKg,
             heightCm = heightCm,
             gender = gender,
+            themePreference = themePreference,
             createdAt = _profile.value?.createdAt ?: Instant.now(),
             updatedAt = Instant.now()
         )
