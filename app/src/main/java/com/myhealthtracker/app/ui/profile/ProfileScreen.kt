@@ -198,7 +198,7 @@ private fun ProfileScreenContent(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            val genders = listOf("זכר", "נקבה", "אחר")
+                            val genders = listOf("זכר", "נקבה")
                             genders.forEach { genderOption ->
                                 val isSelected = selectedGender == genderOption
                                 Box(
