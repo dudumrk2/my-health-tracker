@@ -42,6 +42,8 @@ import com.myhealthtracker.app.data.model.MealEntry
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
 import com.myhealthtracker.app.data.model.MealQuality
+import com.myhealthtracker.app.ui.meal.MealQualityCard
+import com.myhealthtracker.app.ui.meal.MealRecommendationCard
 import java.time.Instant
 import com.myhealthtracker.app.theme.*
 import java.time.LocalDate
@@ -705,137 +707,87 @@ fun MealDetailSheet(
                 }
             }
 
+            // Ingredients list
+            if (meal.items.isNotEmpty()) {
+                Text(
+                    text = "מרכיבי הארוחה",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                meal.items.forEach { item ->
+                    MealDetailItemCard(item = item)
+                }
+            }
+
             val quality = meal.quality
             if (quality != null) {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            text = "איכות תזונתית (AI)",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.primary
-                        )
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "רמת עיבוד מזון:",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            val score = quality.processedScore
-                            val scoreText = when (score) {
-                                1 -> "לא מעובד כלל 🥬"
-                                2 -> "מעובד מינימלית 🍎"
-                                3 -> "מעובד 🍞"
-                                4 -> "מעובד מאוד 🍕"
-                                else -> "אולטרה-מעובד 🍩"
-                            }
-                            Text(
-                                text = scoreText,
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                color = if (score <= 2) TealLight else if (score == 3) CarbsColor else FatColor
-                            )
-                        }
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "השפעה על אינסולין:",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            val impact = quality.insulinImpact
-                            val impactText = when (impact) {
-                                "low" -> "נמוכה 🟢"
-                                "medium" -> "בינונית 🟡"
-                                else -> "גבוהה 🔴"
-                            }
-                            Text(
-                                text = impactText,
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                color = when (impact) {
-                                    "low" -> TealLight
-                                    "medium" -> CarbsColor
-                                    else -> FatColor
-                                }
-                            )
-                        }
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            if (quality.hasComplexCarbs) {
-                                SuggestionChip(
-                                    onClick = {},
-                                    label = { Text("פחמימות מורכבות ✅") }
-                                )
-                            }
-                            if (quality.hasSimpleCarbs) {
-                                SuggestionChip(
-                                    onClick = {},
-                                    label = { Text("פחמימות פשוטות ⚠️") }
-                                )
-                            }
-                            if (quality.hasHealthyFats) {
-                                SuggestionChip(
-                                    onClick = {},
-                                    label = { Text("שומנים בריאים 🥑") }
-                                )
-                            }
-                        }
-                    }
-                }
+                MealQualityCard(quality = quality)
             }
 
             val recommendation = meal.recommendation
             if (!recommendation.isNullOrEmpty()) {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Lightbulb,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.secondary
-                            )
-                            Text(
-                                text = "המלצת שדרוג AI",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.secondary
-                            )
-                        }
-                        Text(
-                            text = recommendation,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
+                MealRecommendationCard(recommendation = recommendation)
             }
         }
+    }
+}
+
+@Composable
+private fun MealDetailItemCard(item: MealItem) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = item.name.ifEmpty { "פריט ללא שם" },
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = item.quantity,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                MealDetailItemMacro(label = "קלו׳", value = "${item.calories}")
+                MealDetailItemMacro(label = "חלבון", value = "${item.proteinG}g")
+                MealDetailItemMacro(label = "פחמימות", value = "${item.carbsG}g")
+                MealDetailItemMacro(label = "שומן", value = "${item.fatG}g")
+            }
+        }
+    }
+}
+
+@Composable
+private fun MealDetailItemMacro(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
