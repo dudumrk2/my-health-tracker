@@ -82,13 +82,13 @@ describe("buildDayData", () => {
     const d = buildDayData({
       date: "2026-06-13",
       currentYear: 2026,
-      userDoc: { profile: { gender: "other" } },
+      userDoc: { profile: { gender: "female" } },
       healthDaily: { steps: "oops", workouts: "not-an-array" } as never,
       meals: [{ date: "2026-06-13" } as never],
       water: { amountMl: "nope" } as never,
     });
 
-    expect(d.profile).toEqual({ gender: "other", weightKg: undefined, heightCm: undefined, age: undefined });
+    expect(d.profile).toEqual({ gender: "female", weightKg: undefined, heightCm: undefined, age: undefined });
     expect(d.steps).toBe(0);
     expect(d.workouts).toEqual([]);
     expect(d.meals.count).toBe(1);
