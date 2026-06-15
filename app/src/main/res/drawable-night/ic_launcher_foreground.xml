@@ -6,34 +6,34 @@
     android:viewportHeight="400">
     <!-- Heart -->
     <path
-        android:strokeColor="#0f6e56"
+        android:strokeColor="#4fd0ad"
         android:strokeWidth="8"
         android:strokeLineJoin="round"
         android:pathData="M200,300 C150,250 100,200 100,140 A60,60 0,0 1,200 110 A60,60 0,0 1,300 140 C300,200 250,250 200,300 Z" />
     <!-- Pulse -->
     <path
-        android:strokeColor="#0f6e56"
+        android:strokeColor="#4fd0ad"
         android:strokeWidth="6"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:pathData="M110,160 H150 L165,130 L185,200 L210,100 L230,175 L245,160 H290" />
     <!-- Plus icon -->
     <path
-        android:fillColor="#0f6e56"
-        android:fillAlpha="0.1"
+        android:fillColor="#4fd0ad"
+        android:fillAlpha="0.2"
         android:pathData="M310,220m-25,0a25,25 0,1 1,50 0a25,25 0,1 1,-50 0" />
     <path
-        android:strokeColor="#0f6e56"
+        android:strokeColor="#4fd0ad"
         android:strokeWidth="3"
         android:strokeLineCap="round"
         android:pathData="M302,220 H318 M310,212 V228" />
     <!-- Minus icon -->
     <path
-        android:fillColor="#0f6e56"
-        android:fillAlpha="0.1"
+        android:fillColor="#4fd0ad"
+        android:fillAlpha="0.2"
         android:pathData="M90,120m-20,0a20,20 0,1 1,40 0a20,20 0,1 1,-40 0" />
     <path
-        android:strokeColor="#0f6e56"
+        android:strokeColor="#4fd0ad"
         android:strokeWidth="3"
         android:strokeLineCap="round"
         android:pathData="M82,120 H98" />
