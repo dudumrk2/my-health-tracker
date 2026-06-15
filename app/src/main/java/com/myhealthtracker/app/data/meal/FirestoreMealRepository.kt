@@ -6,6 +6,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.myhealthtracker.app.data.model.MealEntry
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
+import com.myhealthtracker.app.data.model.MealQuality
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,11 +46,16 @@ class FirestoreMealRepository(
     }
 
     override fun addMeal(
-        date: String, inputType: String, description: String,
-        items: List<MealItem>, totals: MealTotals
+        date: String,
+        inputType: String,
+        description: String,
+        items: List<MealItem>,
+        totals: MealTotals,
+        recommendation: String?,
+        quality: MealQuality?
     ) {
         val uid = auth.currentUser?.uid ?: return
-        val data = mapOf(
+        val data = mutableMapOf(
             "date" to date,
             "loggedAt" to Timestamp.now(),
             "inputType" to inputType,
@@ -58,6 +64,12 @@ class FirestoreMealRepository(
             "totals" to totals.toMap(),
             "aiModel" to "gemini-2.5-flash"
         )
+        if (recommendation != null) {
+            data["recommendation"] = recommendation
+        }
+        if (quality != null) {
+            data["quality"] = quality.toMap()
+        }
         firestore.collection("users").document(uid).collection("meals").add(data)
     }
 
@@ -74,6 +86,14 @@ private fun MealItem.toMap() = mapOf(
 
 private fun MealTotals.toMap() = mapOf(
     "calories" to calories, "proteinG" to proteinG, "carbsG" to carbsG, "fatG" to fatG
+)
+
+private fun MealQuality.toMap() = mapOf(
+    "processedScore" to processedScore,
+    "hasComplexCarbs" to hasComplexCarbs,
+    "hasSimpleCarbs" to hasSimpleCarbs,
+    "hasHealthyFats" to hasHealthyFats,
+    "insulinImpact" to insulinImpact
 )
 
 private fun com.google.firebase.firestore.DocumentSnapshot.toMealEntry(): MealEntry? {
@@ -97,6 +117,17 @@ private fun com.google.firebase.firestore.DocumentSnapshot.toMealEntry(): MealEn
         carbsG = (t["carbsG"] as? Number)?.toInt() ?: 0,
         fatG = (t["fatG"] as? Number)?.toInt() ?: 0
     )
+    val rec = getString("recommendation")
+    val q = get("quality") as? Map<*, *>
+    val quality = q?.let {
+        MealQuality(
+            processedScore = (it["processedScore"] as? Number)?.toInt() ?: 1,
+            hasComplexCarbs = it["hasComplexCarbs"] as? Boolean ?: false,
+            hasSimpleCarbs = it["hasSimpleCarbs"] as? Boolean ?: false,
+            hasHealthyFats = it["hasHealthyFats"] as? Boolean ?: false,
+            insulinImpact = it["insulinImpact"] as? String ?: "low"
+        )
+    }
     return MealEntry(
         mealId = id,
         date = date,
@@ -104,6 +135,8 @@ private fun com.google.firebase.firestore.DocumentSnapshot.toMealEntry(): MealEn
         inputType = getString("inputType") ?: "text",
         description = getString("description") ?: "",
         items = items,
-        totals = totals
+        totals = totals,
+        recommendation = rec,
+        quality = quality
     )
 }

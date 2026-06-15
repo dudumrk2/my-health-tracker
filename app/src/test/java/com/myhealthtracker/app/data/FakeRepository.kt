@@ -10,6 +10,7 @@ import com.myhealthtracker.app.data.model.BodyMeasurement
 import com.myhealthtracker.app.data.model.MealEntry
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
+import com.myhealthtracker.app.data.model.MealQuality
 import com.myhealthtracker.app.data.profile.ProfileRepository
 import com.myhealthtracker.app.data.profile.UserProfile
 import com.myhealthtracker.app.data.water.WaterRepository
@@ -147,6 +148,11 @@ object FakeRepository : ProfileRepository, HealthRepository, MealRepository, Wat
     }
 
     // --- HealthRepository Implementation ---
+    
+    override fun getWeeklyHealthData(uid: String, startDate: String, endDate: String): Flow<Result<List<DailyHealthData>>> = _healthDaily.map { map ->
+        val list = map.values.filter { it.date in startDate..endDate }
+        Result.success(list)
+    }
 
     override fun getDailyHealthData(uid: String, date: String): Flow<Result<DailyHealthData?>> = _healthDaily.map {
         Result.success(it[date] ?: DailyHealthData(date = date, steps = 0, sleepMinutes = 0))
@@ -246,7 +252,15 @@ object FakeRepository : ProfileRepository, HealthRepository, MealRepository, Wat
 
     // --- MealRepository Implementation ---
 
-    override fun addMeal(date: String, inputType: String, description: String, items: List<MealItem>, totals: MealTotals) {
+    override fun addMeal(
+        date: String,
+        inputType: String,
+        description: String,
+        items: List<MealItem>,
+        totals: MealTotals,
+        recommendation: String?,
+        quality: MealQuality?
+    ) {
         val entry = MealEntry(
             mealId = UUID.randomUUID().toString(),
             date = date,
@@ -254,7 +268,9 @@ object FakeRepository : ProfileRepository, HealthRepository, MealRepository, Wat
             inputType = inputType,
             description = description,
             items = items,
-            totals = totals
+            totals = totals,
+            recommendation = recommendation,
+            quality = quality
         )
         _meals.value = _meals.value + entry
     }

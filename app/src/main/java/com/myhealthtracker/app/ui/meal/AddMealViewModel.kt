@@ -9,6 +9,7 @@ import com.myhealthtracker.app.data.meal.MealAnalyzer
 import com.myhealthtracker.app.data.meal.MealRepository
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
+import com.myhealthtracker.app.data.model.MealQuality
 import com.myhealthtracker.app.di.AppContainer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,6 +43,12 @@ class AddMealViewModel(
 
     private val _lowConfidence = MutableStateFlow(false)
     val lowConfidence: StateFlow<Boolean> = _lowConfidence.asStateFlow()
+
+    private val _recommendation = MutableStateFlow<String?>(null)
+    val recommendation: StateFlow<String?> = _recommendation.asStateFlow()
+
+    private val _quality = MutableStateFlow<MealQuality?>(null)
+    val quality: StateFlow<MealQuality?> = _quality.asStateFlow()
 
     private val _manualCal = MutableStateFlow("")
     val manualCal: StateFlow<String> = _manualCal.asStateFlow()
@@ -103,6 +110,8 @@ class AddMealViewModel(
                 lastInputType = "image"
                 _recognizedItems.value = result.items
                 _lowConfidence.value = result.lowConfidence
+                _recommendation.value = result.recommendation
+                _quality.value = result.quality
                 _step.value = AddMealStep.ResultState
             } catch (e: MealAnalysisException) {
                 _errorMessage.value = e.message
@@ -120,6 +129,8 @@ class AddMealViewModel(
                 lastInputType = inputType
                 _recognizedItems.value = result.items
                 _lowConfidence.value = result.lowConfidence
+                _recommendation.value = result.recommendation
+                _quality.value = result.quality
                 _step.value = AddMealStep.ResultState
             } catch (e: MealAnalysisException) {
                 _errorMessage.value = e.message
@@ -177,7 +188,9 @@ class AddMealViewModel(
                 inputType = if (manual) "text" else lastInputType,
                 description = description,
                 items = items,
-                totals = totals
+                totals = totals,
+                recommendation = if (manual) null else _recommendation.value,
+                quality = if (manual) null else _quality.value
             )
             _isSaved.value = true
         }
@@ -186,10 +199,14 @@ class AddMealViewModel(
     fun switchToManualFallback() {
         _errorMessage.value = null
         _step.value = AddMealStep.ManualFallback
+        _recommendation.value = null
+        _quality.value = null
     }
 
     fun resetToInput() {
         _errorMessage.value = null
         _step.value = AddMealStep.InputSelection
+        _recommendation.value = null
+        _quality.value = null
     }
 }

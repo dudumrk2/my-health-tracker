@@ -14,7 +14,15 @@ class FunctionsMealAnalyzerTest {
                       "proteinG" to 12.0, "carbsG" to 1.0, "fatG" to 10.0)
             ),
             "totals" to mapOf("calories" to 140.0, "proteinG" to 12.0, "carbsG" to 1.0, "fatG" to 10.0),
-            "lowConfidence" to true
+            "lowConfidence" to true,
+            "recommendation" to "שדרג עם תרד",
+            "quality" to mapOf(
+                "processedScore" to 2,
+                "hasComplexCarbs" to true,
+                "hasSimpleCarbs" to false,
+                "hasHealthyFats" to true,
+                "insulinImpact" to "low"
+            )
         )
         val result = mapAnalyzeResponse(raw)
         assertEquals(1, result.items.size)
@@ -22,6 +30,13 @@ class FunctionsMealAnalyzerTest {
         assertEquals(140, result.items[0].calories)
         assertEquals(140, result.totals.calories)
         assertTrue(result.lowConfidence)
+        assertEquals("שדרג עם תרד", result.recommendation)
+        org.junit.Assert.assertNotNull(result.quality)
+        assertEquals(2, result.quality?.processedScore)
+        assertTrue(result.quality?.hasComplexCarbs == true)
+        org.junit.Assert.assertFalse(result.quality?.hasSimpleCarbs == true)
+        assertTrue(result.quality?.hasHealthyFats == true)
+        assertEquals("low", result.quality?.insulinImpact)
     }
 
     @Test

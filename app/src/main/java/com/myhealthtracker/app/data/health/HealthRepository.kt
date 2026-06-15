@@ -35,6 +35,7 @@ data class DailyHealthData(
 
 interface HealthRepository {
     fun getDailyHealthData(uid: String, date: String): Flow<Result<DailyHealthData?>>
+    fun getWeeklyHealthData(uid: String, startDate: String, endDate: String): Flow<Result<List<DailyHealthData>>>
     fun saveDailyHealthData(
         uid: String,
         date: String,
@@ -54,6 +55,51 @@ interface HealthRepository {
 class FirestoreHealthRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) : HealthRepository {
+
+    override fun getWeeklyHealthData(uid: String, startDate: String, endDate: String): Flow<Result<List<DailyHealthData>>> = callbackFlow {
+        val query = firestore.collection("users")
+            .document(uid)
+            .collection("healthDaily")
+            .whereGreaterThanOrEqualTo("__name__", startDate)
+            .whereLessThanOrEqualTo("__name__", endDate)
+
+        val listener = query.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                trySend(Result.failure(error))
+                return@addSnapshotListener
+            }
+            if (snapshot != null) {
+                val list = snapshot.documents.mapNotNull { doc ->
+                    val data = doc.toObject(DailyHealthDataDto::class.java) ?: return@mapNotNull null
+                    DailyHealthData(
+                        date = data.date ?: doc.id,
+                        steps = data.steps ?: 0L,
+                        sleepMinutes = data.sleepMinutes ?: 0,
+                        sleepSessions = data.sleepSessions?.map { 
+                            SleepSessionInfo(
+                                start = it.start?.toDate()?.toInstant() ?: Instant.now(), 
+                                end = it.end?.toDate()?.toInstant() ?: Instant.now()
+                            ) 
+                        } ?: emptyList(),
+                        workouts = data.workouts?.map { 
+                            ExerciseSessionInfo(
+                                type = it.type ?: "Exercise", 
+                                durationMin = it.durationMin ?: 0, 
+                                startTime = it.startTime?.toDate()?.toInstant() ?: Instant.now(), 
+                                source = it.source ?: "health_connect"
+                            ) 
+                        } ?: emptyList(),
+                        syncedAt = data.syncedAt?.toDate()?.toInstant(),
+                        source = data.source ?: "health_connect"
+                    )
+                }
+                trySend(Result.success(list))
+            } else {
+                trySend(Result.success(emptyList()))
+            }
+        }
+        awaitClose { listener.remove() }
+    }
 
     override fun getDailyHealthData(uid: String, date: String): Flow<Result<DailyHealthData?>> = callbackFlow {
         val docRef = firestore.collection("users")

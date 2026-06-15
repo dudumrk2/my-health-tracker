@@ -2,11 +2,14 @@ package com.myhealthtracker.app.data.meal
 
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
+import com.myhealthtracker.app.data.model.MealQuality
 
 data class MealAnalysisResult(
     val items: List<MealItem>,
     val totals: MealTotals,
-    val lowConfidence: Boolean
+    val lowConfidence: Boolean,
+    val recommendation: String? = null,
+    val quality: MealQuality? = null
 )
 
 class MealAnalysisException(message: String) : Exception(message)

@@ -38,9 +38,21 @@ export const MEAL_RESPONSE_SCHEMA = {
         required: ["name", "quantity", "calories", "proteinG", "carbsG", "fatG"],
       },
     },
+    recommendation: { type: SchemaType.STRING },
+    quality: {
+      type: SchemaType.OBJECT,
+      properties: {
+        processedScore: { type: SchemaType.NUMBER },
+        hasComplexCarbs: { type: SchemaType.BOOLEAN },
+        hasSimpleCarbs: { type: SchemaType.BOOLEAN },
+        hasHealthyFats: { type: SchemaType.BOOLEAN },
+        insulinImpact: { type: SchemaType.STRING },
+      },
+      required: ["processedScore", "hasComplexCarbs", "hasSimpleCarbs", "hasHealthyFats", "insulinImpact"],
+    },
     lowConfidence: { type: SchemaType.BOOLEAN },
   },
-  required: ["items", "lowConfidence"],
+  required: ["items", "recommendation", "quality", "lowConfidence"],
 } as const;
 
 export function buildMealSystemInstruction(profile: ProfileContext | null): string {
@@ -53,9 +65,17 @@ export function buildMealSystemInstruction(profile: ProfileContext | null): stri
     profileLine,
     "Rules:",
     "- Respond with JSON only, matching the provided schema. No markdown, no wrapping text.",
-    "- Use metric units. Quantity is a short human-readable string (e.g. '150 g', '1 cup').",
+    "- Write the 'name' and 'quantity' fields in Hebrew (the product language). Keep all numeric values as plain numbers.",
+    "- Use metric units. Quantity is a short human-readable string in Hebrew (e.g. '150 גרם', '1 כוס').",
+    "- In the 'recommendation' field, provide a single, focused, actionable recommendation in Hebrew (product language) for adding an ingredient or side dish that would upgrade the meal nutritionally (e.g. adding protein, healthy fats, fiber, vegetables, or balancing the glycemic index). Limit it to one short sentence. If the input contains no food, set the recommendation field to an empty string.",
+    "- In the 'quality' object, evaluate the nutritional quality of the whole meal:",
+    "  * processedScore: 1 (fully unprocessed/whole foods like raw fruit/vegetables/pure meat) to 5 (highly ultra-processed foods like snacks/sweet drinks/processed meats).",
+    "  * hasComplexCarbs: true if the meal contains whole grains, legumes, or starchy vegetables.",
+    "  * hasSimpleCarbs: true if the meal contains refined flour, sugar, sweets, or high-sugar processed foods.",
+    "  * hasHealthyFats: true if the meal contains olive oil, avocado, tahini, nuts, or fatty fish.",
+    "  * insulinImpact: 'low' (minimal blood sugar spike, high in protein/fiber/healthy fats), 'medium' (moderate spike), or 'high' (rapid blood sugar/insulin spike, high in refined carbs/sugar).",
     "- Estimate values when uncertain; set lowConfidence=true when the identification or amounts are uncertain.",
-    "- If the input (text or image) contains no food, return an empty items array and lowConfidence=false.",
+    "- If the input (text or image) contains no food, return an empty items array, lowConfidence=false, empty recommendation, and processedScore=1, hasComplexCarbs=false, hasSimpleCarbs=false, hasHealthyFats=false, insulinImpact='low'.",
     "- Do NOT diagnose, give medical advice, or recommend diets. Only identify and estimate.",
   ].join("\n");
 }
@@ -118,6 +138,15 @@ export function buildInsightsSystemInstruction(): string {
     "- Base feedback ONLY on the data provided below. Do not invent numbers or hard targets that were not given.",
     "- This is NOT medical or personalized dietary advice. Do not diagnose or prescribe diets.",
     "- If a category has no data, give a gentle, encouraging note for that category rather than a number.",
+    "Demographics & Special Context Guidelines:",
+    "- If the user profile indicates a FEMALE aged 40 or older, she is in the pre-menopause/menopause demographic. For this profile, tailor recommendations to their specific metabolic changes:",
+    "  * Satiety signals in the brain decrease due to low estrogen. Write in a highly empathetic tone, making it clear that weight fluctuations or hunger are physiological, not a personal failure.",
+    "  * Highly emphasize an insulin-lowering diet: recommend eating healthy fats (tahini, avocado, olive oil, nuts), vegetables, and high-quality protein, while avoiding insulin-spiking carbs/sugar.",
+    "  * Highly emphasize strength/resistance training to prevent the muscle loss caused by hormonal drops.",
+    "Weekly Exercise Goals Guidance:",
+    "- Evaluate the user's weekly exercise progress: Aerobic goal is 150+ minutes (vital for visceral fat reduction), and Strength/Resistance goal is at least 2 workouts.",
+    "- If the weekly aerobic minutes are low, gently encourage cardiorespiratory activity (e.g. fast walking, cycling, running).",
+    "- If weekly strength workouts are below 2, gently suggest adding a resistance/strength session to protect muscle and support bone density.",
   ].join("\n");
 }
 
@@ -133,6 +162,8 @@ export function buildInsightsUserPrompt(day: DayData): string {
       ? day.workouts.map((w) => `${w.type} ${w.durationMin}min`).join(", ")
       : "none";
 
+  const weeklyLine = `Weekly totals: ${day.weeklyAerobicMinutes} min aerobic exercise (goal: 150 min), ${day.weeklyStrengthWorkouts} strength workouts (goal: 2).`;
+
   const t = day.meals.totals;
   const mealLine =
     day.meals.count > 0
@@ -143,6 +174,7 @@ export function buildInsightsUserPrompt(day: DayData): string {
     `Date: ${day.date}.`,
     profileLine,
     `Activity: ${day.steps} steps. Workouts: ${workoutLine}.`,
+    weeklyLine,
     `Sleep: ${day.sleepMinutes} minutes${day.sleepMinutes === 0 ? " (no sleep data)" : ""}.`,
     `Nutrition: ${mealLine}.`,
     `Water: ${day.waterMl} ml.`,
