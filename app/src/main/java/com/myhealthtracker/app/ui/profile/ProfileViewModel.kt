@@ -100,7 +100,6 @@ class ProfileViewModel(
             val englishGender = when (gender) {
                 "זכר" -> "male"
                 "נקבה" -> "female"
-                "אחר" -> "other"
                 else -> gender
             }
 

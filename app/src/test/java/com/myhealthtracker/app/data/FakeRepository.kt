@@ -116,8 +116,8 @@ object FakeRepository : ProfileRepository, HealthRepository, MealRepository, Wat
         if (profile.gender.isEmpty()) {
             return Result.failure(IllegalArgumentException("Gender is required"))
         }
-        if (profile.gender != "male" && profile.gender != "female" && profile.gender != "other") {
-            return Result.failure(IllegalArgumentException("Gender must be 'male', 'female', or 'other'"))
+        if (profile.gender != "male" && profile.gender != "female") {
+            return Result.failure(IllegalArgumentException("Gender must be 'male' or 'female'"))
         }
         if (profile.weightKg < 30.0 || profile.weightKg > 300.0) {
             return Result.failure(IllegalArgumentException("Weight must be between 30.0 kg and 300.0 kg"))
