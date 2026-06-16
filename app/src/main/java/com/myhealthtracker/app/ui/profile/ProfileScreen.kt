@@ -21,6 +21,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.rememberLauncherForActivityResult
 import android.os.Build
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
 import com.myhealthtracker.app.data.goals.ACTIVITY_LEVEL_OPTIONS
 import com.myhealthtracker.app.data.goals.FOCUS_AREA_OPTIONS
 import com.myhealthtracker.app.data.goals.GoalCalculator
