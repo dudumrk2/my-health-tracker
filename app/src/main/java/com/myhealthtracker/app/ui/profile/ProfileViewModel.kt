@@ -119,9 +119,11 @@ class ProfileViewModel(
         viewModelScope.launch {
             _uiState.value = ProfileUiState.Loading
 
-            val birthYear = birthYearStr.toIntOrNull() ?: 0
-            val weight = weightStr.toDoubleOrNull() ?: 0.0
-            val height = heightStr.toDoubleOrNull() ?: 0.0
+            val birthYear = birthYearStr.toIntOrNull()
+            if (birthYear == null) {
+                _uiState.value = ProfileUiState.Error("שנת הלידה חייבת להיות מספר שלם")
+                return@launch
+            }
 
             val currentYear = Calendar.getInstance().get(Calendar.YEAR)
             if (birthYear < 1900 || birthYear > currentYear) {
@@ -132,8 +134,20 @@ class ProfileViewModel(
                 _uiState.value = ProfileUiState.Error("אנא בחר מין")
                 return@launch
             }
+
+            val weight = weightStr.toDoubleOrNull()
+            if (weight == null) {
+                _uiState.value = ProfileUiState.Error("המשקל חייב להיות מספר תקין")
+                return@launch
+            }
             if (weight < 30.0 || weight > 300.0) {
                 _uiState.value = ProfileUiState.Error("המשקל חייב להיות בין 30.0 ל-300.0 ק״ג")
+                return@launch
+            }
+
+            val height = heightStr.toDoubleOrNull()
+            if (height == null) {
+                _uiState.value = ProfileUiState.Error("הגובה חייב להיות מספר תקין")
                 return@launch
             }
             if (height < 100.0 || height > 250.0) {

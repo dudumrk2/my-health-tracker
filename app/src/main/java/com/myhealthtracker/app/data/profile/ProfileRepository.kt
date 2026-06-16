@@ -140,14 +140,17 @@ class FirestoreProfileRepository(private val firestore: FirebaseFirestore = Fire
                         "createdAt" to finalCreatedAt,
                         "updatedAt" to Timestamp.now()
                     )
-                    profile.goalOverrides?.let { o ->
+                    if (profile.goalOverrides == null) {
+                        profileData["goalOverrides"] = com.google.firebase.firestore.FieldValue.delete()
+                    } else {
+                        val o = profile.goalOverrides
                         val overridesMap = mutableMapOf<String, Any>()
-                        o.caloriesKcal?.let { overridesMap["caloriesKcal"] = it }
-                        o.steps?.let { overridesMap["steps"] = it }
-                        o.proteinG?.let { overridesMap["proteinG"] = it }
-                        o.sleepHours?.let { overridesMap["sleepHours"] = it }
-                        o.waterMl?.let { overridesMap["waterMl"] = it }
-                        if (overridesMap.isNotEmpty()) profileData["goalOverrides"] = overridesMap
+                        overridesMap["caloriesKcal"] = o.caloriesKcal ?: com.google.firebase.firestore.FieldValue.delete()
+                        overridesMap["steps"] = o.steps ?: com.google.firebase.firestore.FieldValue.delete()
+                        overridesMap["proteinG"] = o.proteinG ?: com.google.firebase.firestore.FieldValue.delete()
+                        overridesMap["sleepHours"] = o.sleepHours ?: com.google.firebase.firestore.FieldValue.delete()
+                        overridesMap["waterMl"] = o.waterMl ?: com.google.firebase.firestore.FieldValue.delete()
+                        profileData["goalOverrides"] = overridesMap
                     }
                     val data = mapOf("profile" to profileData)
 
