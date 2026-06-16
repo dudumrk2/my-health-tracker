@@ -34,6 +34,7 @@ data class UserProfile(
     val focusAreas: List<String> = emptyList(),
     // Optional manual overrides of computed goals.
     val goalOverrides: GoalOverrides? = null,
+    val quickActionsEnabled: Boolean = true,
     val createdAt: Instant? = null,
     val updatedAt: Instant? = null
 )
@@ -97,6 +98,7 @@ class FirestoreProfileRepository(private val firestore: FirebaseFirestore = Fire
                         activityLevel = (profileMap["activityLevel"] as? String) ?: "moderate",
                         focusAreas = focusAreas,
                         goalOverrides = goalOverrides,
+                        quickActionsEnabled = (profileMap["quickActionsEnabled"] as? Boolean) ?: true,
                         createdAt = createdAtTimestamp?.toDate()?.toInstant(),
                         updatedAt = updatedAtTimestamp?.toDate()?.toInstant()
                     )
@@ -137,6 +139,7 @@ class FirestoreProfileRepository(private val firestore: FirebaseFirestore = Fire
                         "primaryGoal" to profile.primaryGoal,
                         "activityLevel" to profile.activityLevel,
                         "focusAreas" to profile.focusAreas,
+                        "quickActionsEnabled" to profile.quickActionsEnabled,
                         "createdAt" to finalCreatedAt,
                         "updatedAt" to Timestamp.now()
                     )
