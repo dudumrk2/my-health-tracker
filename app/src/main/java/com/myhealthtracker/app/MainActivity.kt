@@ -5,8 +5,10 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -53,18 +55,33 @@ class MainActivity : ComponentActivity() {
             }
 
             val context = LocalContext.current
-            LaunchedEffect(authUser, quickActionsEnabled) {
-                // Start only when the preference is on AND we may post notifications.
-                // The POST_NOTIFICATIONS permission is requested from the Profile toggle
-                // (the explicit consent surface), never silently prompted on launch —
-                // that kept the toggle and the actual notification state in sync.
-                val canPost = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                    ContextCompat.checkSelfPermission(
-                        context, android.Manifest.permission.POST_NOTIFICATIONS
-                    ) == PackageManager.PERMISSION_GRANTED
-
-                if (authUser != null && quickActionsEnabled && canPost) {
+            // Posts the system permission dialog (Android 13+) and reacts to the result:
+            // start the notification on grant, stop it on denial.
+            val notificationPermissionLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) { granted ->
+                if (granted) {
                     QuickActionsNotificationManager.start(context)
+                } else {
+                    QuickActionsNotificationManager.stop(context)
+                }
+            }
+
+            LaunchedEffect(authUser, quickActionsEnabled) {
+                if (authUser != null && quickActionsEnabled) {
+                    val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        ContextCompat.checkSelfPermission(
+                            context, android.Manifest.permission.POST_NOTIFICATIONS
+                        ) != PackageManager.PERMISSION_GRANTED
+
+                    if (needsPermission) {
+                        // First run on Android 13+: ask for the notification permission so the
+                        // ongoing quick-actions notification can actually be posted. (After two
+                        // denials the system returns the result without showing UI.)
+                        notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        QuickActionsNotificationManager.start(context)
+                    }
                 } else {
                     QuickActionsNotificationManager.stop(context)
                 }
