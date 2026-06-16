@@ -1,5 +1,6 @@
 import { handleDeleteUserData } from "../src/deleteUserData";
 import { PurgeDeps } from "../src/account/purgeUser";
+import { HttpsError } from "firebase-functions/v2/https";
 
 describe("handleDeleteUserData", () => {
   function noopDeps(calls: string[]): PurgeDeps {
@@ -10,6 +11,7 @@ describe("handleDeleteUserData", () => {
   }
 
   it("rejects an unauthenticated request", async () => {
+    await expect(handleDeleteUserData(undefined, noopDeps([]))).rejects.toBeInstanceOf(HttpsError);
     await expect(handleDeleteUserData(undefined, noopDeps([]))).rejects.toMatchObject({
       code: "unauthenticated",
     });
