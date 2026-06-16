@@ -5,6 +5,10 @@ export interface DayProfile {
   weightKg?: number;
   heightCm?: number;
   age?: number;
+  /** Self-declared usage goal: "lose" | "maintain" | "gain". Chosen by the user, never inferred. */
+  primaryGoal?: string;
+  /** Self-declared focus areas (e.g. "menopause"). Direct user input only — never derived from age/gender. */
+  focusAreas?: string[];
 }
 
 export interface DayWorkout {
@@ -56,11 +60,16 @@ function buildProfile(userDoc: Record<string, unknown> | null, currentYear: numb
   const profile = (userDoc?.profile ?? null) as Record<string, unknown> | null;
   if (!profile) return null;
   const birthYear = optNum(profile.birthYear);
+  const focusAreas = Array.isArray(profile.focusAreas)
+    ? (profile.focusAreas as unknown[]).filter((f): f is string => typeof f === "string")
+    : undefined;
   return {
     gender: typeof profile.gender === "string" ? profile.gender : undefined,
     weightKg: optNum(profile.weightKg),
     heightCm: optNum(profile.heightCm),
     age: birthYear !== undefined ? currentYear - birthYear : undefined,
+    primaryGoal: typeof profile.primaryGoal === "string" ? profile.primaryGoal : undefined,
+    focusAreas: focusAreas && focusAreas.length > 0 ? focusAreas : undefined,
   };
 }
 

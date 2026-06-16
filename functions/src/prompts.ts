@@ -138,11 +138,17 @@ export function buildInsightsSystemInstruction(): string {
     "- Base feedback ONLY on the data provided below. Do not invent numbers or hard targets that were not given.",
     "- This is NOT medical or personalized dietary advice. Do not diagnose or prescribe diets.",
     "- If a category has no data, give a gentle, encouraging note for that category rather than a number.",
-    "Demographics & Special Context Guidelines:",
-    "- If the user profile indicates a FEMALE aged 40 or older, she is in the pre-menopause/menopause demographic. For this profile, tailor recommendations to their specific metabolic changes:",
-    "  * Satiety signals in the brain decrease due to low estrogen. Write in a highly empathetic tone, making it clear that weight fluctuations or hunger are physiological, not a personal failure.",
-    "  * Highly emphasize an insulin-lowering diet: recommend eating healthy fats (tahini, avocado, olive oil, nuts), vegetables, and high-quality protein, while avoiding insulin-spiking carbs/sugar.",
-    "  * Highly emphasize strength/resistance training to prevent the muscle loss caused by hormonal drops.",
+    "User-Declared Focus Guidelines:",
+    "- Tailor tone toward the user's declared primaryGoal (lose/maintain/gain) supportively.",
+    "- ONLY if the user has SELF-DECLARED a focus area in focusAreas, you may reference it.",
+    "  Never infer any health/medical state from age or gender.",
+    "- If focusAreas includes 'menopause': you may share GENERAL, non-prescriptive information",
+    "  (e.g. that strength training helps preserve muscle, that whole foods support metabolic",
+    "  health), always phrased as general wellness info, in an empathetic tone, and ALWAYS",
+    "  append a brief note recommending consulting a doctor for personalized guidance.",
+    "  Do NOT prescribe a diet, dosage, or treatment. Do NOT diagnose.",
+    "- For any health-related focus area, prefer 'you might consider...' + 'consult a clinician'",
+    "  over directive statements.",
     "Weekly Exercise Goals Guidance:",
     "- Evaluate the user's weekly exercise progress: Aerobic goal is 150+ minutes (vital for visceral fat reduction), and Strength/Resistance goal is at least 2 workouts.",
     "- If the weekly aerobic minutes are low, gently encourage cardiorespiratory activity (e.g. fast walking, cycling, running).",
@@ -156,6 +162,14 @@ export function buildInsightsUserPrompt(day: DayData): string {
   const profileLine = p
     ? `Profile: gender ${p.gender ?? "?"}, age ${p.age ?? "?"}, weight ${p.weightKg ?? "?"} kg, height ${p.heightCm ?? "?"} cm.`
     : "Profile: not available.";
+
+  // Self-declared context. primaryGoal is always meaningful; the focus-areas line
+  // is only emitted when the user actually declared one (never inferred from age/gender).
+  const goalLine = p?.primaryGoal ? `Declared goal: ${p.primaryGoal}.` : "Declared goal: not specified.";
+  const focusLine =
+    p?.focusAreas && p.focusAreas.length > 0
+      ? `Declared focus areas: ${p.focusAreas.join(", ")}.`
+      : null;
 
   const workoutLine =
     day.workouts.length > 0
@@ -173,6 +187,8 @@ export function buildInsightsUserPrompt(day: DayData): string {
   return [
     `Date: ${day.date}.`,
     profileLine,
+    goalLine,
+    ...(focusLine ? [focusLine] : []),
     `Activity: ${day.steps} steps. Workouts: ${workoutLine}.`,
     weeklyLine,
     `Sleep: ${day.sleepMinutes} minutes${day.sleepMinutes === 0 ? " (no sleep data)" : ""}.`,

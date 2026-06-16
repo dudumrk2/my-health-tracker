@@ -2,7 +2,11 @@ package com.myhealthtracker.app.ui.food
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.myhealthtracker.app.data.goals.GoalCalculator
+import com.myhealthtracker.app.data.goals.HealthGoals
 import com.myhealthtracker.app.data.meal.MealRepository
+import com.myhealthtracker.app.data.profile.ProfileRepository
+import com.myhealthtracker.app.data.profile.UserProfile
 import com.myhealthtracker.app.data.water.WaterRepository
 import com.myhealthtracker.app.data.insights.InsightCategory
 import com.myhealthtracker.app.data.insights.InsightsRefresher
@@ -16,6 +20,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -34,7 +40,9 @@ class FoodViewModel(
     private val mealRepository: MealRepository = AppContainer.mealRepository,
     private val waterRepository: WaterRepository = AppContainer.waterRepository,
     private val insightsRepository: InsightsRepository = AppContainer.insightsRepository,
-    private val insightsRefresher: InsightsRefresher = AppContainer.insightsRefresher
+    private val insightsRefresher: InsightsRefresher = AppContainer.insightsRefresher,
+    private val profileRepository: ProfileRepository = AppContainer.profileRepository,
+    private val uidProvider: () -> String? = { AppContainer.currentUid() }
 ) : ViewModel() {
 
     private val _selectedDate = MutableStateFlow(LocalDate.now())
@@ -42,6 +50,13 @@ class FoodViewModel(
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    /** Daily goals computed from the profile (safe generic fallback when incomplete). */
+    val goals: StateFlow<HealthGoals> = run {
+        val uid = uidProvider()
+        if (uid == null) flowOf(GoalCalculator.compute(UserProfile()))
+        else profileRepository.getUserProfile(uid).map { GoalCalculator.compute(it.getOrNull() ?: UserProfile()) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GoalCalculator.compute(UserProfile()))
 
     val state: StateFlow<FoodState> = combine(
         _selectedDate,

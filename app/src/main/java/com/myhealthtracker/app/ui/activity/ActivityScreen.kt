@@ -123,6 +123,7 @@ fun ActivityScreen(
     val context = LocalContext.current
     val state by viewModel.state.collectAsState()
     val needsPermissions by viewModel.needsPermissions.collectAsState()
+    val goals by viewModel.goals.collectAsState()
 
     // Health Connect permission flow: check on entry, and request only when the SDK is
     // present but permissions are missing. Granting triggers an immediate + periodic sync.
@@ -140,6 +141,7 @@ fun ActivityScreen(
 
     ActivityContent(
         state = state,
+        stepGoal = goals.steps.toLong(),
         onDateSelect = { viewModel.changeDate(it) },
         onRefreshClick = { viewModel.refreshData() },
         onAddWorkoutClick = onNavigateToAddWorkout,
@@ -150,6 +152,7 @@ fun ActivityScreen(
 @Composable
 private fun ActivityContent(
     state: ActivityState,
+    stepGoal: Long = DAILY_STEP_GOAL,
     onDateSelect: (LocalDate) -> Unit,
     onRefreshClick: () -> Unit,
     onAddWorkoutClick: () -> Unit,
@@ -307,7 +310,7 @@ private fun ActivityContent(
 
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            val progress = (state.steps.toFloat() / DAILY_STEP_GOAL.toFloat()).coerceIn(0f, 1f)
+                            val progress = (state.steps.toFloat() / stepGoal.toFloat()).coerceIn(0f, 1f)
 
                             Box(
                                 modifier = Modifier.size(170.dp),
@@ -330,7 +333,7 @@ private fun ActivityContent(
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
-                                        text = "מתוך 10,000",
+                                        text = "מתוך ${NumberFormat.getNumberInstance(Locale.US).format(stepGoal)}",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )

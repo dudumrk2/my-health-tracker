@@ -38,6 +38,7 @@
 
     profile (document):
       birthYear: number
+      gender: string              ("male" | "female")  // required
       weightKg: number
       heightCm: number
       createdAt: timestamp
@@ -48,9 +49,9 @@
       steps: number
       sleepMinutes: number
       sleepSessions: [{ start: timestamp, end: timestamp }]
-      workouts: [{ type: string, durationMin: number, startTime: timestamp }]
+      workouts: [{ type: string, durationMin: number, startTime: timestamp, source: "health_connect"|"manual" }]
       syncedAt: timestamp
-      source: "health_connect"
+      source: "health_connect" | "mixed"
 
     Firestore Security Rules: משתמש קורא/כותב רק תחת users/{uid} שלו.
   </input_context>
@@ -69,24 +70,28 @@
 
     דרישות מימוש:
     1. Google Sign-In דרך Firebase Auth; שמירת מצב התחברות; מסך התחברות + logout.
-    2. מסך פרופיל ראשוני: שנת לידה, משקל (ק"ג), גובה (ס"מ). ולידציה בסיסית
+    2. מסך פרופיל ראשוני: שנת לידה, מין (Male/Female), משקל (ק"ג), גובה (ס"מ). ולידציה בסיסית
        (טווחים סבירים). כתיבה ל-users/{uid}/profile. הגיל מחושב משנת הלידה בצד הלקוח.
+       מין ופרופיל פיזי מועברים ל-Gemini כהקשר — לשמור ב-Firestore.
     3. HealthConnectManager: בדיקת זמינות Health Connect (מותקן/לא מותקן/לא נתמך),
        בקשת הרשאות קריאה ל-Steps, SleepSession, ExerciseSession, וטיפול בדחייה.
     4. קריאת נתוני היום (ובאופן כללי לפי טווח תאריכים): צעדים מצטברים, משך שינה
-       וסשנים, אימונים (סוג/משך/זמן התחלה).
-    5. מיפוי ל-healthDaily/{date} וכתיבה ל-Firestore (idempotent — עדכון לפי מפתח תאריך).
-    6. HealthSyncWorker: סנכרון תקופתי (פעם ב-~6 שעות) + טריגר בפתיחת אפליקציה.
+       וסשנים, אימונים (סוג/משך/זמן התחלה). כל workout מ-Health Connect מקבל `source: "health_connect"`.
+    5. הוספת אימון ידנית: מסך/דיאלוג לבחירת סוג אימון, משך, ותאריך/שעה. נשמר ל-healthDaily/{date}
+       עם `source: "manual"`. אם ביום יש גם Health Connect וגם ידני — `healthDaily.source = "mixed"`.
+    6. מיפוי ל-healthDaily/{date} וכתיבה ל-Firestore (idempotent — עדכון לפי מפתח תאריך).
+    7. HealthSyncWorker (WorkManager): סנכרון תקופתי (~6 שעות) + טריגר בפתיחת אפליקציה.
        טיפול במצב ללא הרשאות / ללא רשת (לדחות, לא לקרוס).
-    7. מסך Dashboard: הצגת צעדים/שינה/אימונים של היום + מצב סנכרון אחרון.
+    8. מסך Dashboard: הצגת צעדים/שינה/אימונים (כולל ידניים) של היום + מצב סנכרון אחרון.
   </task_directive>
 
   <test_requirements>
     Unit tests:
     - חישוב גיל משנת לידה
-    - ולידציית פרופיל (טווחים, ערכים חסרים)
+    - ולידציית פרופיל (טווחים, ערכים חסרים, ערכי gender תקינים)
     - מיפוי רשומות Health Connect → מודל healthDaily (כולל יום ריק / ללא נתונים)
     - אגרגציית משך שינה ממספר סשנים
+    - מיזוג workouts ידניים עם workouts מ-Health Connect באותו יום (source נכון, ללא כפילויות)
 
     Instrumented / repository tests:
     - ProfileRepository: כתיבה וקריאה (Firestore emulator)
@@ -98,9 +103,10 @@
 
   <acceptance_criteria>
     ✓ Google Sign-In עובד; מצב התחברות נשמר בין הפעלות
-    ✓ פרופיל נשמר ונקרא נכון מ-users/{uid}/profile
+    ✓ פרופיל (כולל gender) נשמר ונקרא נכון מ-users/{uid}/profile
     ✓ זרימת הרשאות Health Connect מטופלת: ניתנו / נדחו / Health Connect לא מותקן
     ✓ צעדים, שינה ואימונים של היום נקראים ומוצגים ב-Dashboard
+    ✓ אימון ידני נשמר עם source="manual" ומופיע ב-Dashboard לצד אימוני Health Connect
     ✓ כתיבה ל-healthDaily/{date} idempotent (אין כפילויות בכתיבה חוזרת)
     ✓ HealthSyncWorker רץ תקופתית ולא קורס ללא רשת/הרשאות
     ✓ כל הטסטים עוברים

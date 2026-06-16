@@ -38,10 +38,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.myhealthtracker.app.data.goals.GoalCalculator
+import com.myhealthtracker.app.data.goals.HealthGoals
 import com.myhealthtracker.app.data.model.MealEntry
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
 import com.myhealthtracker.app.data.model.MealQuality
+import com.myhealthtracker.app.data.profile.UserProfile
 import com.myhealthtracker.app.ui.meal.MealQualityCard
 import com.myhealthtracker.app.ui.meal.MealRecommendationCard
 import java.time.Instant
@@ -104,9 +107,11 @@ fun FoodScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.state.collectAsState()
+    val goals by viewModel.goals.collectAsState()
 
     FoodContent(
         state = state,
+        goals = goals,
         onDateSelect = { viewModel.changeDate(it) },
         onRefreshClick = { viewModel.refreshAdvice() },
         onQuickAddWaterClick = { viewModel.quickAddWater(it) },
@@ -119,6 +124,7 @@ fun FoodScreen(
 @Composable
 private fun FoodContent(
     state: FoodState,
+    goals: HealthGoals = GoalCalculator.compute(UserProfile()),
     onDateSelect: (LocalDate) -> Unit,
     onRefreshClick: () -> Unit,
     onQuickAddWaterClick: (Int) -> Unit,
@@ -315,7 +321,8 @@ private fun FoodContent(
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
                                 val consumedCal = state.totals.calories
-                                val remainingCal = (DAILY_CALORIE_TARGET - consumedCal).coerceAtLeast(0)
+                                val calorieTarget = goals.caloriesKcal
+                                val remainingCal = (calorieTarget - consumedCal).coerceAtLeast(0)
                                 
                                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     Text(
@@ -340,7 +347,7 @@ private fun FoodContent(
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
-                                            text = "מתוך $DAILY_CALORIE_TARGET",
+                                            text = "מתוך $calorieTarget",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.padding(bottom = 4.dp)
@@ -357,7 +364,7 @@ private fun FoodContent(
                                         MacroProgressBarHorizontal(
                                             name = "חלבון",
                                             value = state.totals.proteinG,
-                                            target = 150,
+                                            target = goals.proteinG,
                                             color = ProteinColor
                                         )
                                     }
@@ -365,7 +372,7 @@ private fun FoodContent(
                                         MacroProgressBarHorizontal(
                                             name = "פחמימות",
                                             value = state.totals.carbsG,
-                                            target = 250,
+                                            target = goals.carbsG,
                                             color = CarbsColor
                                         )
                                     }
@@ -373,7 +380,7 @@ private fun FoodContent(
                                         MacroProgressBarHorizontal(
                                             name = "שומן",
                                             value = state.totals.fatG,
-                                            target = 70,
+                                            target = goals.fatG,
                                             color = FatColor
                                         )
                                     }

@@ -35,7 +35,7 @@
 
 ```
 users/{uid}
-├── profile           : { birthYear, gender, weightKg, heightCm, createdAt, updatedAt }
+├── profile           : { birthYear, gender, weightKg, heightCm, primaryGoal, activityLevel, focusAreas?, goalOverrides?, themePreference, createdAt, updatedAt }
 ├── healthDaily/{date}: { date, steps, sleepMinutes, sleepSessions[{start,end,stages?}], workouts[{type,durationMin,startTime,source}], syncedAt, source }
 ├── meals/{mealId}    : { date, loggedAt, inputType, description, items[], totals, aiModel }
 ├── water/{date}      : { date, amountMl, updatedAt }   (כמות מצטברת במ"ל, idempotent — הגדלה ב-FieldValue.increment)
@@ -45,6 +45,9 @@ users/{uid}
 - `sleepSessions[].stages`: אופציונלי — `[{ stage: "awake"|"light"|"deep"|"rem", start, end }]`, תלוי במקור הסנכרון.
 - `workout.source`: `"health_connect"` | `"manual"`. `healthDaily.source`: `"health_connect"` | `"mixed"`.
 - `gender`: `"male"` | `"female"` | `"other"` — מועבר ל-Gemini כהקשר בניתוח ארוחות ובתובנות.
+- `primaryGoal`: `"lose"|"maintain"|"gain"`; `activityLevel`: `"sedentary"|"light"|"moderate"|"very"|"extra"` (מקדם TDEE). שניהם נבחרים ע"י המשתמש בהרשמה.
+- `focusAreas`: מערך הצהרה-עצמית אופציונלי (למשל `"menopause"`) — **לעולם לא מוסק מגיל/מין**, רק קלט ישיר. נכלל ב-prompt רק אם הוצהר.
+- `goalOverrides`: דריסה ידנית אופציונלית של יעדים מחושבים `{ caloriesKcal?, steps?, proteinG?, sleepHours?, waterMl? }` — גוברת על החישוב ב-`GoalCalculator`.
 - `bodyMeasurements`: מעקב עצמי בלבד. **אינו** נכלל ב-prompt-ים ל-Gemini (Contracts A/B) בשלב זה.
 - `insights`: קריאת AI מאוחדת אחת (`generateInsights`), פלט מפוצל. trigger ערב כותב today+tomorrow; 15:00/ידני מעדכנים today בלבד.
 - `{date}` בפורמט `yyyy-MM-dd`. מסמכים ממופתחי-תאריך → כתיבה idempotent (עדכון, לא הכפלה).

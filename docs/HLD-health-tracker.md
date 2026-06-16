@@ -16,18 +16,22 @@
 
 **MVP (נכלל):**
 1. הרשמה והתחברות עם Google (Firebase Auth).
-2. הגדרת פרופיל אישי ראשוני — שנת לידה, משקל, גובה (ובהמשך מין/יעד אם תרצה). הגיל מחושב משנת הלידה.
-3. קריאת נתוני בריאות בסיסיים מ-Health Connect — צעדים, שינה, אימונים.
-4. סנכרון נתוני הבריאות ל-Firestore לצורך איגוד וסיכום.
-5. רישום ארוחה בטקסט חופשי → ניתוח AI → תוצאה מובנית (מנה, קלוריות, מאקרו).
-6. רישום ארוחה בתמונה → Gemini vision → אותה תוצאה מובנית. **התמונה לא נשמרת.**
-7. סיכום יומי אוטומטי בערב (Cloud Scheduler) עם משוב "טוב/לשפר" + דיסקליימר רפואי.
+2. הגדרת פרופיל אישי ראשוני — שנת לידה, מין, משקל, גובה. הגיל מחושב משנת הלידה. מין ומשקל/גובה משמשים כהקשר לניתוח AI.
+2a. בחירת **מטרת שימוש** (ירידה / שמירה / עלייה במשקל) ושדה **הצהרה-עצמית** אופציונלי (תחומים שהמשתמש מסמן בעצמו). היעדים מחושבים מהפרופיל וניתנים לדריסה ידנית. **האפליקציה לעולם לא מסיקה מצב רפואי מגיל/מין — רק מהצהרת המשתמש.**
+3. קריאת נתוני בריאות בסיסיים מ-Health Connect — צעדים, שינה (כולל שלבי שינה אופציונליים: עמוקה/קלה/REM אם המקור מסנכרן), אימונים.
+4. הוספת אימון ידנית (סוג, משך, תאריך/שעה) — בנוסף לקריאה אוטומטית מ-Health Connect.
+5. סנכרון נתוני הבריאות ל-Firestore לצורך איגוד וסיכום.
+6. רישום ארוחה בטקסט חופשי → ניתוח AI → תוצאה מובנית (מנה, קלוריות, מאקרו).
+7. רישום ארוחה בתמונה → Gemini vision → אותה תוצאה מובנית. **התמונה לא נשמרת.**
+8. סיכום יומי אוטומטי בערב (Cloud Scheduler) עם משוב "טוב/לשפר" + דיסקליימר רפואי.
+9. מעקב מדדי גוף — רישום ידני תקופתי (משקל / היקף מותן / היקף ירכיים), עם תצוגת מגמה לאורך זמן. **מעקב עצמי בלבד — אינו מוזן ל-AI ואינו חלק מהסיכום היומי.**
 
 **Nice-to-have (מחוץ ל-MVP, לשלבים הבאים):**
 - סוגי בריאות נוספים (דופק, קלוריות שריפה, חמצן בדם).
-- מגמות שבועיות/חודשיות וגרפים.
+- גרפי מגמה למדדי גוף (מעבר לתצוגה בסיסית).
 - יעדים אישיים והתראות.
 - עריכה ידנית של תוצאת ניתוח AI לפני שמירה.
+- שילוב מגמת מדדי גוף בסיכום היומי (הרחבה עתידית — דורשת החלטה מודעת מראש).
 
 ### 3. Non-Functional Requirements
 
@@ -94,8 +98,15 @@
 users/{uid}
 ├── profile (document)
 │   ├── birthYear: number
+│   ├── gender: string              ("male" | "female")  2014 05e905d305d4 05d705d505d105d4
 │   ├── weightKg: number
 │   ├── heightCm: number
+│   ├── primaryGoal: string         ("lose" | "maintain" | "gain") — מטרת שימוש, נבחרת ע"י המשתמש
+│   ├── activityLevel: string       ("sedentary"|"light"|"moderate"|"very"|"extra") — נבחר ע"י המשתמש; מקדם TDEE
+│   ├── focusAreas: [string]?       — שדה הצהרה-עצמית אופציונלי שהמשתמש מסמן בעצמו
+│   │                                 (למשל "menopause", "muscle_gain"). לעולם לא מוסק אוטומטית.
+│   ├── goalOverrides: {            — דריסה ידנית של יעדים מחושבים (כל שדה אופציונלי)
+│   │       caloriesKcal?, steps?, proteinG?, sleepHours?, waterMl? }
 │   ├── createdAt: timestamp
 │   └── updatedAt: timestamp
 │
@@ -103,10 +114,10 @@ users/{uid}
 │   ├── date: string (yyyy-MM-dd)
 │   ├── steps: number
 │   ├── sleepMinutes: number
-│   ├── sleepSessions: [{ start, end, stages? }]
-│   ├── workouts: [{ type, durationMin, startTime }]
+│   ├── sleepSessions: [{ start, end, stages?: [{ stage: "awake"|"light"|"deep"|"rem", start, end }] }]
+│   ├── workouts: [{ type, durationMin, startTime, source }]  ("health_connect" | "manual")
 │   ├── syncedAt: timestamp
-│   └── source: "health_connect"
+│   └── source: "health_connect" | "mixed"                   ("mixed" אם יש גם ידני)
 │
 ├── meals/{mealId} (document per meal)
 │   ├── date: string (yyyy-MM-dd)
@@ -117,17 +128,29 @@ users/{uid}
 │   ├── totals: { calories, proteinG, carbsG, fatG }
 │   └── aiModel: string            (לתיעוד גרסת מודל)
 │
-└── summaries/{yyyy-MM-dd} (document per day)
+├── bodyMeasurements/{yyyy-MM-dd} (document per entry — מעקב עצמי, ידני)
+│   ├── date: string (yyyy-MM-dd)
+│   ├── weightKg: number?
+│   ├── waistCm: number?
+│   ├── hipCm: number?
+│   ├── notes: string?
+│   └── loggedAt: timestamp
+│
+├── water/{yyyy-MM-dd} (document per day)
+│   ├── date: string (yyyy-MM-dd)
+│   ├── cups: number               (מונה כוסות; כל "+ מים" מגדיל ב-1)
+│   └── updatedAt: timestamp
+│
+└── insights/{yyyy-MM-dd} (document per day — תובנות AI מאוחדות)
     ├── date: string
-    ├── generatedAt: timestamp
-    ├── highlights: [string]       ("מה טוב")
-    ├── improvements: [string]     ("מה לשפר")
-    ├── narrative: string          (פסקת סיכום קצרה)
+    ├── today: { general, nutrition, activity, sleep }    (משפט אחד לכל שדה)
+    ├── tomorrow: { nutrition, activity, sleep }           (דגשים, נוצרים בערב)
     ├── disclaimer: string
-    └── inputsSnapshot: { steps, sleepMinutes, mealTotals }
+    ├── trigger: "evening" | "afternoon" | "manual"
+    └── generatedAt: timestamp
 ```
 
-הערה: `healthDaily` ו-`summaries` ממופתחים לפי תאריך → idempotent (כתיבה חוזרת מעדכנת ולא מכפילה).
+הערה: `healthDaily`, `water` ו-`insights` ממופתחים לפי תאריך → idempotent (כתיבה חוזרת מעדכנת ולא מכפילה). ב-`insights`: trigger ערב כותב today+tomorrow; 15:00/ידני מעדכנים today בלבד.
 
 ### 3. Function Contracts
 
@@ -161,16 +184,42 @@ users/{uid}
 
 **הנחיה ל-Gemini:** להחזיר JSON בלבד לפי הסכמה, ללא טקסט עוטף. אם זיהוי לא ודאי — להחזיר אומדן עם דגל `lowConfidence`.
 
-#### generateDailySummary
-**Trigger:** Pub/Sub message מ-Cloud Scheduler (ערב, שעה קבועה).
+#### generateInsights (קריאת AI מאוחדת)
+**Triggers (שלושה, אותה לוגיקה ואותו prompt בכולם):**
+1. **ערב** (Cloud Scheduler) — מייצר תובנות סיום-יום + דגשים למחר. הדגשים מוצגים בבוקר.
+2. **15:00** (Cloud Scheduler) — אם הוכנסו נתונים באותו יום, מרענן את תובנות ה-`today`.
+3. **רענון ידני** (HTTPS Callable) — כפתור בכל דף; מפעיל את אותה לוגיקה on-demand.
 
 **Logic:**
-1. לכל משתמש פעיל — לקרוא `profile`, `healthDaily/{today}`, ולאגד את `meals` של היום.
-2. לבנות prompt עם הנתונים + הוראת ניסוח (מפורט + דיסקליימר, ללא טון רפואי קובע).
-3. לקרוא ל-Gemini, לפרסר את הפלט ל-`highlights` / `improvements` / `narrative`.
-4. לכתוב ל-`summaries/{today}` (idempotent).
+1. לקרוא `profile` (כולל מין/משקל/גובה), `healthDaily/{today}`, לאגד `meals` ו-`water` של היום.
+2. לבנות prompt אחיד עם *כל* הנתונים שנאספו עד כה, ולבקש פלט מפוצל (today + tomorrow).
+3. לקרוא ל-Gemini, לפרסר, ולכתוב ל-`insights/{today}` (idempotent).
 
-**אין request/response ללקוח** — הלקוח קורא את `summaries/{today}` מ-Firestore.
+**פלט מפוצל (נשמר ב-`insights/{date}`):**
+```json
+{
+  "today": {
+    "general":   "string",
+    "nutrition": "string",
+    "activity":  "string",
+    "sleep":     "string"
+  },
+  "tomorrow": {
+    "nutrition": "string",
+    "activity":  "string",
+    "sleep":     "string"
+  },
+  "disclaimer": "string",
+  "generatedAt": "timestamp",
+  "trigger": "evening | afternoon | manual"
+}
+```
+
+**עדכון חלקי — חשוב:** trigger של ערב כותב את *שני* הבלוקים (today + tomorrow). triggers של 15:00 ורענון ידני מעדכנים **רק את `today`** ומשאירים את `tomorrow` שנוצר בערב הקודם ללא שינוי — כדי שהדגשים-להיום שמוצגים בבוקר לא יידרסו.
+
+**תצוגה בלקוח:** בבוקר הדפים מציגים את `tomorrow` (שנוצר אמש = "הדגשים שלך להיום"). מ-15:00 ואילך / אחרי רענון, מוצג גם `today` המעודכן ליד כל מדד. הלקוח קורא `insights/{today}` מ-Firestore.
+
+**Callable (רענון ידני) — Request:** `{ "date": "yyyy-MM-dd" }`. **Response:** אובייקט ה-insights המעודכן (בלוק today).
 
 ### 4. Error Handling
 
@@ -189,14 +238,14 @@ users/{uid}
 | **Timeout** | קריאת Vertex AI: 15s. Function כולה: 60s. |
 | **Retry** | Exponential backoff, max 2 ניסיונות, רק על 429/503/timeout. לא על שגיאות קלט. |
 | **Fallback (analyzeMeal)** | כשל ניתוח → להחזיר שגיאה ידידותית; לאפשר למשתמש להזין ערכים ידנית. |
-| **Fallback (summary)** | כשל ל-Gemini → לדלג על היום, לסמן לריטריי בריצה הבאה; לא להשאיר מסמך חלקי. |
+| **Fallback (insights)** | כשל ל-Gemini → לא לדרוס insights קיים; לסמן לריטריי בריצה הבאה. |
 | **App Check** | קריאות ללא טוקן App Check תקף נדחות. |
 
 ### 6. Observability
 
 - **Logging:** Cloud Functions → Cloud Logging מובנה (JSON). כל קריאה עם requestId, uid, durationMs, מודל. ללא PII רגיש.
 - **Metrics:** מוני הצלחה/כשל לכל Function, latency ניתוח, שימוש במכסת Gemini.
-- **Alerting (אופציונלי):** התראה אם generateDailySummary נכשל יותר מ-N ימים רצופים.
+- **Alerting (אופציונלי):** התראה אם generateInsights נכשל יותר מ-N ימים רצופים.
 
 ### 7. Prompt Contracts
 
@@ -207,22 +256,23 @@ users/{uid}
 | היבט | הגדרה |
 |------|-------|
 | **Role** | מנתח תזונה שמזהה פריטי מזון ומעריך ערכים תזונתיים |
-| **Input** | תיאור טקסט *או* תמונה + פרופיל (משקל/גובה לאומדן מנות) |
+| **Input** | תיאור טקסט *או* תמונה + פרופיל (מין/משקל/גובה לאומדן מנות) |
 | **Output format** | JSON בלבד לפי סכמת `items[]` + `totals`. ללא טקסט עוטף, ללא Markdown |
 | **Constraints** | אומדן כשאין ודאות; דגל `lowConfidence: true` כשהזיהוי לא בטוח; יחידות מטריות; אם אין מזון בתמונה — להחזיר `items: []` |
 | **Safety** | לא לאבחן, לא להמליץ על דיאטה; רק זיהוי ואומדן |
 | **On failure** | פלט לא-תקין/לא-JSON → הפונקציה דוחה ומחזירה שגיאה ידידותית; המשתמש יכול להזין ידנית |
 
-#### Contract B — סיכום יומי (generateDailySummary)
+#### Contract B — תובנות מאוחדות (generateInsights)
 
 | היבט | הגדרה |
 |------|-------|
-| **Role** | מאמן בריאות תומך שנותן משוב יומי כללי |
-| **Input** | פרופיל + `healthDaily/{today}` (צעדים/שינה/אימונים) + איגוד `meals` של היום |
-| **Output format** | JSON: `highlights[]` (מה טוב), `improvements[]` (מה לשפר), `narrative` (פסקה קצרה) |
-| **Constraints** | טון תומך ולא שיפוטי; מבוסס רק על נתוני היום; ללא יעדים מספריים קשיחים שלא נמסרו |
-| **Safety** | **לא ייעוץ רפואי/תזונתי מותאם**; כולל `disclaimer` קבוע; להימנע מטון קובע ("אתה חייב"), להעדיף הצעות ("כדאי לשקול") |
-| **On failure** | כשל/פלט לא-תקין → לא לכתוב מסמך חלקי; לסמן לריטריי בריצה הבאה |
+| **Role** | מאמן בריאות תומך שנותן משפטי תובנה ממוקדים, אחד לכל תחום |
+| **Input** | פרופיל (מין/גיל/משקל/גובה) + `healthDaily/{today}` (צעדים/שינה/אימונים כולל ידניים) + איגוד `meals` + `water` של היום. **כל הנתונים שנאספו עד כה.** |
+| **Output format** | JSON מפוצל: `today` { general, nutrition, activity, sleep } + `tomorrow` { nutrition, activity, sleep } + `disclaimer`. כל שדה = משפט אחד ממוקד. ללא טקסט עוטף |
+| **Constraints** | טון תומך ולא שיפוטי; משפט אחד קצר לכל שדה; מבוסס על הנתונים שנמסרו בלבד; ללא יעדים מספריים קשיחים שלא נמסרו |
+| **Safety** | **לא ייעוץ רפואי/תזונתי מותאם**; `disclaimer` קבוע; טון מציע ("כדאי לשקול") ולא קובע; ללא קידום "ספוט רדקשן" |
+| **On failure** | כשל/פלט לא-תקין → לא לדרוס insights קיים; לסמן לריטריי בריצה הבאה |
+| **עדכון בלוקים** | trigger ערב כותב today+tomorrow; triggers 15:00/ידני מעדכנים today בלבד |
 
 ---
 
@@ -230,9 +280,9 @@ users/{uid}
 
 | פייז | תוכן | מה רץ בסוף |
 |------|------|-----------|
-| **פייז 1** (ממוזג 0+1) | פרויקט Kotlin + Compose, Firebase Auth (Google), מסך פרופיל (שנת לידה/משקל/גובה) ל-Firestore, הרשאות Health Connect, קריאת צעדים/שינה/אימונים, סנכרון ל-Firestore (WorkManager), מסך תצוגה | אפליקציה שמתחברת, שומרת פרופיל, ומציגה נתוני בריאות יומיים |
+| **פייז 1** (ממוזג 0+1) | פרויקט Kotlin + Compose, Firebase Auth (Google), מסך פרופיל (שנת לידה/מין/משקל/גובה) ל-Firestore, הרשאות Health Connect, קריאת צעדים/שינה/אימונים, הוספת אימון ידנית, סנכרון ל-Firestore (WorkManager), מסך תצוגה | אפליקציה שמתחברת, שומרת פרופיל, ומציגה נתוני בריאות יומיים כולל אימון ידני |
 | **פייז 2** | מסך רישום ארוחה (טקסט + מצלמה), פונקציית `analyzeMeal`, אינטגרציית Gemini vision, שמירת תוצאה מובנית ל-`meals`, App Check | אפשר לרשום ארוחה ולראות פירוק תזונתי |
-| **פייז 3** | פונקציית `generateDailySummary`, Cloud Scheduler + Pub/Sub, prompt הסיכום, מסך סיכום יומי | סיכום ערב אוטומטי "טוב/לשפר" מופיע בכל בוקר |
+| **פייז 3** | פונקציית `generateInsights` (קריאה מאוחדת, פלט מפוצל today/tomorrow), Cloud Scheduler (ערב + 15:00) + רענון ידני (callable + כפתור), prompt התובנות, הצגת משפט ממוקד ליד כל מדד בדפים | תובנות AI ממוקדות בכל דף, דגשים בבוקר, רענון אוטומטי ב-15:00 וידני |
 
 **עקרון הפירוק:** כל פייז משאיר אפליקציה שרצה. פייז 1 הוא היסוד הטכני (הרשאות + מכשיר) ולכן ראשון. פייז 3 צורך את הפלט של 1+2 ולכן אחרון.
 

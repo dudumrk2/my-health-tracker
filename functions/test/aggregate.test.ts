@@ -37,6 +37,29 @@ describe("buildDayData", () => {
     expect(d.isEmpty).toBe(false);
   });
 
+  it("carries self-declared primaryGoal and focusAreas onto the profile", () => {
+    const d = buildDayData({
+      date: "2026-06-13",
+      currentYear: 2026,
+      userDoc: {
+        profile: {
+          birthYear: 1976,
+          gender: "female",
+          weightKg: 65,
+          heightCm: 165,
+          primaryGoal: "lose",
+          focusAreas: ["menopause", "heart_health"],
+        },
+      },
+      healthDaily: null,
+      meals: [],
+      water: null,
+    });
+
+    expect(d.profile?.primaryGoal).toBe("lose");
+    expect(d.profile?.focusAreas).toEqual(["menopause", "heart_health"]);
+  });
+
   it("handles a partial day (meals only, no health/water/profile)", () => {
     const d = buildDayData({
       date: "2026-06-13",

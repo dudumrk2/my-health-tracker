@@ -8,7 +8,11 @@ import com.myhealthtracker.app.data.health.HealthConnectManager
 import com.myhealthtracker.app.data.health.HealthRepository
 import com.myhealthtracker.app.data.health.ExerciseSessionInfo
 import com.myhealthtracker.app.data.health.DailyHealthData
+import com.myhealthtracker.app.data.goals.GoalCalculator
+import com.myhealthtracker.app.data.goals.HealthGoals
 import com.myhealthtracker.app.data.insights.InsightsRefresher
+import com.myhealthtracker.app.data.profile.ProfileRepository
+import com.myhealthtracker.app.data.profile.UserProfile
 import com.myhealthtracker.app.di.AppContainer
 import com.myhealthtracker.app.sync.HealthSyncScheduler
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -19,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -36,8 +41,16 @@ data class ActivityState(
 class ActivityViewModel(
     private val healthRepository: HealthRepository = AppContainer.healthRepository,
     private val insightsRefresher: InsightsRefresher = AppContainer.insightsRefresher,
+    private val profileRepository: ProfileRepository = AppContainer.profileRepository,
     private val uidProvider: () -> String? = { AppContainer.currentUid() }
 ) : ViewModel() {
+
+    /** Daily step goal computed from the profile (safe generic fallback when incomplete). */
+    val goals: StateFlow<HealthGoals> = run {
+        val uid = uidProvider()
+        if (uid == null) flowOf(GoalCalculator.compute(UserProfile()))
+        else profileRepository.getUserProfile(uid).map { GoalCalculator.compute(it.getOrNull() ?: UserProfile()) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GoalCalculator.compute(UserProfile()))
 
     // True only when the SDK is available but permissions are not yet granted — the
     // signal the screen uses to launch the permission request (minimum-permission rule).
