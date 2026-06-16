@@ -426,7 +426,7 @@ private fun FoodContent(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     // 10 Water Drops
-                                    val filledDropsCount = (state.waterIntakeMl / 300).coerceIn(0, 10)
+                                    val filledDropsCount = (state.waterIntakeMl / 250).coerceIn(0, 10)
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                                         modifier = Modifier.weight(1f)
@@ -451,7 +451,7 @@ private fun FoodContent(
                                     // Quick Add Button
                                     if (isToday) {
                                         Button(
-                                            onClick = { onQuickAddWaterClick(300) },
+                                            onClick = { onQuickAddWaterClick(250) },
                                             colors = ButtonDefaults.buttonColors(
                                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
