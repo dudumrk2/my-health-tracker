@@ -20,16 +20,34 @@ import com.myhealthtracker.app.ui.main.MainScreen
 import com.myhealthtracker.app.ui.workout.AddWorkoutScreen
 import com.myhealthtracker.app.ui.meal.AddMealScreen
 import com.myhealthtracker.app.ui.body.AddBodyMeasurementScreen
+import android.content.Intent
+import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
-fun MainNavigation() {
+fun MainNavigation(
+  intent: Intent? = null,
+  onIntentHandled: () -> Unit = {}
+) {
   // Cold-start straight into the app if a session already exists; otherwise show Auth.
   // The post-auth profile check (below) still decides Profile-setup vs Dashboard.
   val startKey = if (AppContainer.currentUid() != null) Dashboard else Auth
   val backStack = rememberNavBackStack(startKey)
   val scope = rememberCoroutineScope()
+
+  LaunchedEffect(intent) {
+    val destination = intent?.getStringExtra("EXTRA_NAVIGATE_TO")
+    if (destination != null && AppContainer.currentUid() != null) {
+      if (destination == "add_meal") {
+        backStack.add(AddMeal)
+        onIntentHandled()
+      } else if (destination == "add_workout") {
+        backStack.add(AddWorkout)
+        onIntentHandled()
+      }
+    }
+  }
 
   val authViewModel: AuthViewModel = viewModel()
   val profileViewModel: ProfileViewModel = viewModel()
