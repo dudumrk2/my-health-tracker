@@ -20,16 +20,50 @@ import com.myhealthtracker.app.ui.main.MainScreen
 import com.myhealthtracker.app.ui.workout.AddWorkoutScreen
 import com.myhealthtracker.app.ui.meal.AddMealScreen
 import com.myhealthtracker.app.ui.body.AddBodyMeasurementScreen
+import android.content.Intent
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.myhealthtracker.app.notification.QuickActionsNotificationManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
-fun MainNavigation() {
+fun MainNavigation(
+  intent: Intent? = null,
+  onIntentHandled: () -> Unit = {}
+) {
   // Cold-start straight into the app if a session already exists; otherwise show Auth.
   // The post-auth profile check (below) still decides Profile-setup vs Dashboard.
   val startKey = if (AppContainer.currentUid() != null) Dashboard else Auth
   val backStack = rememberNavBackStack(startKey)
   val scope = rememberCoroutineScope()
+
+  // Deep-link target carried by a notification action. Applied immediately when a
+  // session already exists, otherwise it's held until sign-in completes (see
+  // routeAfterAuth) so a tap from the lock/signed-out state isn't lost.
+  var pendingDestination by remember { mutableStateOf<String?>(null) }
+
+  fun applyPendingDestination() {
+    when (pendingDestination) {
+      QuickActionsNotificationManager.DEST_ADD_MEAL -> backStack.add(AddMeal)
+      QuickActionsNotificationManager.DEST_ADD_WORKOUT -> backStack.add(AddWorkout)
+    }
+    pendingDestination = null
+  }
+
+  LaunchedEffect(intent) {
+    val destination = intent?.getStringExtra(QuickActionsNotificationManager.EXTRA_NAVIGATE_TO)
+    if (destination != null) {
+      pendingDestination = destination
+      onIntentHandled()
+      if (AppContainer.currentUid() != null) {
+        applyPendingDestination()
+      }
+    }
+  }
 
   val authViewModel: AuthViewModel = viewModel()
   val profileViewModel: ProfileViewModel = viewModel()
@@ -43,6 +77,9 @@ fun MainNavigation() {
       val profile = AppContainer.profileRepository.getUserProfile(uid).first().getOrNull()
       backStack.clear()
       backStack.add(if (profile == null) Profile else Dashboard)
+      // A notification tap that arrived while signed out is honored now that we have
+      // a session and a Dashboard to layer the target screen on top of.
+      if (profile != null) applyPendingDestination()
     }
   }
 

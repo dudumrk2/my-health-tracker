@@ -412,7 +412,7 @@ private fun FoodContent(
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
-                                        text = "${String.format(Locale.US, "%.1f", state.waterIntakeMl / 1000f)} / 3.0 ליטר",
+                                        text = "${String.format(Locale.US, "%.1f", state.waterIntakeMl / 1000f)} / ${String.format(Locale.US, "%.1f", goals.waterMl / 1000f)} ליטר",
                                         style = MaterialTheme.typography.bodyMedium.copy(
                                             fontWeight = FontWeight.Bold,
                                             color = WaterColor
@@ -425,8 +425,10 @@ private fun FoodContent(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // 10 Water Drops
-                                    val filledDropsCount = (state.waterIntakeMl / 300).coerceIn(0, 10)
+                                    // 10 Water Drops, proportional to the daily goal so the
+                                    // last drop fills exactly at the target regardless of step size.
+                                    val waterTarget = goals.waterMl.coerceAtLeast(1)
+                                    val filledDropsCount = (state.waterIntakeMl * 10 / waterTarget).coerceIn(0, 10)
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                                         modifier = Modifier.weight(1f)
@@ -451,7 +453,7 @@ private fun FoodContent(
                                     // Quick Add Button
                                     if (isToday) {
                                         Button(
-                                            onClick = { onQuickAddWaterClick(300) },
+                                            onClick = { onQuickAddWaterClick(250) },
                                             colors = ButtonDefaults.buttonColors(
                                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer

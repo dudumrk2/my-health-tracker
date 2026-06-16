@@ -10,6 +10,9 @@
     <uses-permission android:name="android.permission.health.READ_SLEEP" />
     <uses-permission android:name="android.permission.health.READ_EXERCISE" />
 
+    <!-- Notification Permission -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- Health Connect package visibility (required on Android 13 and below) -->
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
@@ -37,6 +40,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -69,6 +73,10 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- Triggered only via an explicit PendingIntent from our own notification,
+             so no intent-filter is needed and it stays unexported. -->
+        <receiver android:name=".notification.WaterLoggingReceiver" android:exported="false" />
         
     </application>
 

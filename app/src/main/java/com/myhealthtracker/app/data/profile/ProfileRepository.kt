@@ -34,6 +34,7 @@ data class UserProfile(
     val focusAreas: List<String> = emptyList(),
     // Optional manual overrides of computed goals.
     val goalOverrides: GoalOverrides? = null,
+    val quickActionsEnabled: Boolean = true,
     val createdAt: Instant? = null,
     val updatedAt: Instant? = null
 )
@@ -51,6 +52,34 @@ private fun parseGoalOverrides(map: Map<*, *>): GoalOverrides? {
     val isEmpty = overrides.caloriesKcal == null && overrides.steps == null &&
         overrides.proteinG == null && overrides.sleepHours == null && overrides.waterMl == null
     return if (isEmpty) null else overrides
+}
+
+/**
+ * Maps a Firestore `profile` map into a [UserProfile]. Numbers arrive as Long/Double and
+ * missing fields fall back to the data-class defaults. Pure and side-effect free so it can
+ * be unit tested without the Firestore SDK.
+ */
+fun mapProfile(profileMap: Map<*, *>): UserProfile {
+    val createdAtTimestamp = profileMap["createdAt"] as? Timestamp
+    val updatedAtTimestamp = profileMap["updatedAt"] as? Timestamp
+    val focusAreas = (profileMap["focusAreas"] as? List<*>)
+        ?.filterIsInstance<String>() ?: emptyList()
+    val overridesMap = profileMap["goalOverrides"] as? Map<*, *>
+    val goalOverrides = overridesMap?.let { parseGoalOverrides(it) }
+    return UserProfile(
+        birthYear = (profileMap["birthYear"] as? Long)?.toInt() ?: 0,
+        weightKg = (profileMap["weightKg"] as? Double) ?: ((profileMap["weightKg"] as? Long)?.toDouble() ?: 0.0),
+        heightCm = (profileMap["heightCm"] as? Double) ?: ((profileMap["heightCm"] as? Long)?.toDouble() ?: 0.0),
+        gender = (profileMap["gender"] as? String) ?: "",
+        themePreference = (profileMap["themePreference"] as? String) ?: "system",
+        primaryGoal = (profileMap["primaryGoal"] as? String) ?: "maintain",
+        activityLevel = (profileMap["activityLevel"] as? String) ?: "moderate",
+        focusAreas = focusAreas,
+        goalOverrides = goalOverrides,
+        quickActionsEnabled = (profileMap["quickActionsEnabled"] as? Boolean) ?: true,
+        createdAt = createdAtTimestamp?.toDate()?.toInstant(),
+        updatedAt = updatedAtTimestamp?.toDate()?.toInstant()
+    )
 }
 
 fun genderToHebrew(gender: String): String {
@@ -81,26 +110,7 @@ class FirestoreProfileRepository(private val firestore: FirebaseFirestore = Fire
             if (snapshot != null && snapshot.exists()) {
                 val profileMap = snapshot.get("profile") as? Map<*, *>
                 if (profileMap != null) {
-                    val createdAtTimestamp = profileMap["createdAt"] as? Timestamp
-                    val updatedAtTimestamp = profileMap["updatedAt"] as? Timestamp
-                    val focusAreas = (profileMap["focusAreas"] as? List<*>)
-                        ?.filterIsInstance<String>() ?: emptyList()
-                    val overridesMap = profileMap["goalOverrides"] as? Map<*, *>
-                    val goalOverrides = overridesMap?.let { parseGoalOverrides(it) }
-                    val profile = UserProfile(
-                        birthYear = (profileMap["birthYear"] as? Long)?.toInt() ?: 0,
-                        weightKg = (profileMap["weightKg"] as? Double) ?: ((profileMap["weightKg"] as? Long)?.toDouble() ?: 0.0),
-                        heightCm = (profileMap["heightCm"] as? Double) ?: ((profileMap["heightCm"] as? Long)?.toDouble() ?: 0.0),
-                        gender = (profileMap["gender"] as? String) ?: "",
-                        themePreference = (profileMap["themePreference"] as? String) ?: "system",
-                        primaryGoal = (profileMap["primaryGoal"] as? String) ?: "maintain",
-                        activityLevel = (profileMap["activityLevel"] as? String) ?: "moderate",
-                        focusAreas = focusAreas,
-                        goalOverrides = goalOverrides,
-                        createdAt = createdAtTimestamp?.toDate()?.toInstant(),
-                        updatedAt = updatedAtTimestamp?.toDate()?.toInstant()
-                    )
-                    trySend(Result.success(profile))
+                    trySend(Result.success(mapProfile(profileMap)))
                 } else {
                     trySend(Result.success(null))
                 }
@@ -137,6 +147,7 @@ class FirestoreProfileRepository(private val firestore: FirebaseFirestore = Fire
                         "primaryGoal" to profile.primaryGoal,
                         "activityLevel" to profile.activityLevel,
                         "focusAreas" to profile.focusAreas,
+                        "quickActionsEnabled" to profile.quickActionsEnabled,
                         "createdAt" to finalCreatedAt,
                         "updatedAt" to Timestamp.now()
                     )

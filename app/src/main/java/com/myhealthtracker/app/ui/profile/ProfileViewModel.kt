@@ -114,7 +114,8 @@ class ProfileViewModel(
         primaryGoal: String = "maintain",
         activityLevel: String = "moderate",
         focusAreas: List<String> = emptyList(),
-        goalOverrides: GoalOverrides? = null
+        goalOverrides: GoalOverrides? = null,
+        quickActionsEnabled: Boolean = true
     ) {
         viewModelScope.launch {
             _uiState.value = ProfileUiState.Loading
@@ -166,7 +167,8 @@ class ProfileViewModel(
                 primaryGoal = primaryGoal,
                 activityLevel = activityLevel,
                 focusAreas = focusAreas,
-                goalOverrides = goalOverrides
+                goalOverrides = goalOverrides,
+                quickActionsEnabled = quickActionsEnabled
             )
 
             val uid = uidProvider() ?: run {

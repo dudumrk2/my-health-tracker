@@ -17,7 +17,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import android.os.Build
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
 import com.myhealthtracker.app.data.goals.ACTIVITY_LEVEL_OPTIONS
 import com.myhealthtracker.app.data.goals.FOCUS_AREA_OPTIONS
 import com.myhealthtracker.app.data.goals.GoalCalculator
@@ -45,6 +50,7 @@ fun ProfileScreen(
     var primaryGoal by remember { mutableStateOf("maintain") }
     var activityLevel by remember { mutableStateOf("moderate") }
     var focusAreas by remember { mutableStateOf(setOf<String>()) }
+    var quickActionsEnabled by remember { mutableStateOf(true) }
     // Manual goal overrides (blank = use computed value).
     var caloriesOverride by remember { mutableStateOf("") }
     var stepsOverride by remember { mutableStateOf("") }
@@ -63,6 +69,7 @@ fun ProfileScreen(
             primaryGoal = profile.primaryGoal
             activityLevel = profile.activityLevel
             focusAreas = profile.focusAreas.toSet()
+            quickActionsEnabled = profile.quickActionsEnabled
             profile.goalOverrides?.let { o ->
                 caloriesOverride = o.caloriesKcal?.toString() ?: ""
                 stepsOverride = o.steps?.toString() ?: ""
@@ -132,13 +139,16 @@ fun ProfileScreen(
         onSaveClick = {
             viewModel.saveProfile(
                 birthYearStr, weightStr, heightStr, selectedGender, themePreference,
-                primaryGoal, activityLevel, focusAreas.toList(), buildOverrides()
+                primaryGoal, activityLevel, focusAreas.toList(), buildOverrides(),
+                quickActionsEnabled
             )
         },
         onBackClick = {
             viewModel.resetState()
             onSaveSuccess()
         },
+        quickActionsEnabled = quickActionsEnabled,
+        onQuickActionsEnabledChange = { quickActionsEnabled = it },
         modifier = modifier
     )
 }
@@ -224,6 +234,8 @@ private fun ProfileScreenContent(
     onSleepOverrideChange: (String) -> Unit,
     onSaveClick: () -> Unit,
     onBackClick: () -> Unit,
+    quickActionsEnabled: Boolean,
+    onQuickActionsEnabledChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -335,6 +347,55 @@ private fun ProfileScreenContent(
                             options = listOf("system" to "מערכת", "light" to "בהירה", "dark" to "כהה"),
                             selectedValue = themePreference,
                             onSelect = onThemeSelect
+                        )
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                    val context = LocalContext.current
+                    val permissionLauncher = rememberLauncherForActivityResult(
+                        contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+                    ) { isGranted ->
+                        onQuickActionsEnabledChange(isGranted)
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "התראת פעולות מהירות",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "הצגת התראה קבועה להוספה מהירה של ארוחה, אימון ומים",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = quickActionsEnabled,
+                            onCheckedChange = { checked ->
+                                if (checked) {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        val hasPermission = ContextCompat.checkSelfPermission(
+                                            context, android.Manifest.permission.POST_NOTIFICATIONS
+                                        ) == PackageManager.PERMISSION_GRANTED
+                                        if (hasPermission) {
+                                            onQuickActionsEnabledChange(true)
+                                        } else {
+                                            permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                        }
+                                    } else {
+                                        onQuickActionsEnabledChange(true)
+                                    }
+                                } else {
+                                    onQuickActionsEnabledChange(false)
+                                }
+                            }
                         )
                     }
                 }
@@ -536,7 +597,8 @@ fun ProfileScreenPreviewLight() {
             onBirthYearChange = {}, onWeightChange = {}, onHeightChange = {}, onGenderSelect = {},
             onThemeSelect = {}, onPrimaryGoalSelect = {}, onActivityLevelSelect = {}, onFocusAreaToggle = {},
             onCaloriesOverrideChange = {}, onStepsOverrideChange = {}, onProteinOverrideChange = {},
-            onWaterOverrideChange = {}, onSleepOverrideChange = {}, onSaveClick = {}, onBackClick = {}
+            onWaterOverrideChange = {}, onSleepOverrideChange = {}, onSaveClick = {}, onBackClick = {},
+            quickActionsEnabled = true, onQuickActionsEnabledChange = {}
         )
     }
 }
