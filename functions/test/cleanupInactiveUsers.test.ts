@@ -40,4 +40,13 @@ describe("isInactive", () => {
     const a: UserActivity = { createdAt: now - 2 * DAY };
     expect(isInactive(a, now, 30)).toBe(false);
   });
+
+  it("never deletes a user with no known signals", () => {
+    expect(isInactive({}, now, 30)).toBe(false);
+  });
+
+  it("is active when the signal is exactly 30 days old (strict boundary)", () => {
+    const a: UserActivity = { lastActiveAt: now - 30 * DAY };
+    expect(isInactive(a, now, 30)).toBe(false);
+  });
 });

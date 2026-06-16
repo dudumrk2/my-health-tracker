@@ -25,7 +25,10 @@ export function lastActivitySignal(a: UserActivity): number {
   return Math.max(base, a.lastMealAt ?? 0);
 }
 
+/** True only when we have at least one signal AND the newest is older than the threshold. */
 export function isInactive(a: UserActivity, nowMs: number, inactiveDays: number): boolean {
+  const hasSignal = a.lastActiveAt !== undefined || a.createdAt !== undefined || a.lastMealAt !== undefined;
+  if (!hasSignal) return false; // never delete without positive evidence of inactivity
   const cutoff = nowMs - inactiveDays * 24 * 60 * 60 * 1000;
   return lastActivitySignal(a) < cutoff;
 }
@@ -37,13 +40,11 @@ function toMillis(v: unknown): number | undefined {
 /** Reads the activity signals for one user from Firestore. */
 async function readUserActivity(uid: string): Promise<UserActivity> {
   const db = getFirestore();
-  const userSnap = await db.doc(`users/${uid}`).get();
+  const [userSnap, mealSnap] = await Promise.all([
+    db.doc(`users/${uid}`).get(),
+    db.collection(`users/${uid}/meals`).orderBy("loggedAt", "desc").limit(1).get(),
+  ]);
   const profile = userSnap.get("profile") as Record<string, unknown> | undefined;
-  const mealSnap = await db
-    .collection(`users/${uid}/meals`)
-    .orderBy("loggedAt", "desc")
-    .limit(1)
-    .get();
   const lastMealAt = mealSnap.empty ? undefined : toMillis(mealSnap.docs[0].get("loggedAt"));
   return {
     lastActiveAt: toMillis(userSnap.get("lastActiveAt")),
@@ -59,11 +60,12 @@ async function readUserActivity(uid: string): Promise<UserActivity> {
 async function runCleanup(nowMs: number): Promise<void> {
   const users = await getFirestore().collection("users").get();
   let deleted = 0, kept = 0, failed = 0;
+  const purgeDeps = prodPurgeDeps();
   for (const userDoc of users.docs) {
     try {
       const activity = await readUserActivity(userDoc.id);
       if (isInactive(activity, nowMs, INACTIVE_DAYS)) {
-        await purgeUser(userDoc.id, prodPurgeDeps());
+        await purgeUser(userDoc.id, purgeDeps);
         deleted++;
         logger.info("cleanup purged inactive user", {
           uid: userDoc.id, signal: lastActivitySignal(activity), nowMs,
