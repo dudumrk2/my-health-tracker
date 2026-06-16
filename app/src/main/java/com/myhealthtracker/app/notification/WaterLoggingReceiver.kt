@@ -10,10 +10,21 @@ import java.time.format.DateTimeFormatter
 
 class WaterLoggingReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == "com.myhealthtracker.app.ACTION_ADD_WATER") {
-            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-            AppContainer.waterRepository.addWater(today, 250)
-            Toast.makeText(context, "נוספו 250 מ״ל מים 💧", Toast.LENGTH_SHORT).show()
+        if (intent.action != QuickActionsNotificationManager.ACTION_ADD_WATER) return
+
+        // The receiver can fire in a fresh process (e.g. after the app was killed). If
+        // there is no signed-in user, addWater() silently no-ops, so don't claim success.
+        if (AppContainer.currentUid() == null) {
+            Toast.makeText(context, "יש להתחבר כדי לרשום מים", Toast.LENGTH_SHORT).show()
+            return
         }
+
+        val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+        AppContainer.waterRepository.addWater(today, QuickActionsNotificationManager.WATER_STEP_ML)
+        Toast.makeText(
+            context,
+            "נוספו ${QuickActionsNotificationManager.WATER_STEP_ML} מ״ל מים 💧",
+            Toast.LENGTH_SHORT
+        ).show()
     }
 }

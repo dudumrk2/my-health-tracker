@@ -18,7 +18,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.myhealthtracker.app.di.AppContainer
 import com.myhealthtracker.app.notification.QuickActionsNotificationManager
@@ -55,20 +54,17 @@ class MainActivity : ComponentActivity() {
 
             val context = LocalContext.current
             LaunchedEffect(authUser, quickActionsEnabled) {
-                if (authUser != null && quickActionsEnabled) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
-                            QuickActionsNotificationManager.start(context)
-                        } else {
-                            ActivityCompat.requestPermissions(
-                                this@MainActivity,
-                                arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
-                                1001
-                            )
-                        }
-                    } else {
-                        QuickActionsNotificationManager.start(context)
-                    }
+                // Start only when the preference is on AND we may post notifications.
+                // The POST_NOTIFICATIONS permission is requested from the Profile toggle
+                // (the explicit consent surface), never silently prompted on launch —
+                // that kept the toggle and the actual notification state in sync.
+                val canPost = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                    ContextCompat.checkSelfPermission(
+                        context, android.Manifest.permission.POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED
+
+                if (authUser != null && quickActionsEnabled && canPost) {
+                    QuickActionsNotificationManager.start(context)
                 } else {
                     QuickActionsNotificationManager.stop(context)
                 }
@@ -79,7 +75,13 @@ class MainActivity : ComponentActivity() {
                     val currentIntent by intentState
                     MainNavigation(
                         intent = currentIntent,
-                        onIntentHandled = { intentState.value = null }
+                        onIntentHandled = {
+                            intentState.value = null
+                            // Replace the launching intent so a configuration-change
+                            // recreation (e.g. rotation) doesn't re-deliver the deep link
+                            // and navigate a second time.
+                            setIntent(Intent())
+                        }
                     )
                 }
             }
@@ -88,13 +90,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         intentState.value = intent
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 1001 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            QuickActionsNotificationManager.start(this)
-        }
     }
 }
