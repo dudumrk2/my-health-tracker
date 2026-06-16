@@ -1,4 +1,11 @@
-import { buildMealSystemInstruction, MEAL_RESPONSE_SCHEMA, ProfileContext } from "../src/prompts";
+import {
+  buildMealSystemInstruction,
+  MEAL_RESPONSE_SCHEMA,
+  ProfileContext,
+  buildInsightsSystemInstruction,
+  buildInsightsUserPrompt,
+} from "../src/prompts";
+import { DayData } from "../src/insights/aggregate";
 
 describe("buildMealSystemInstruction", () => {
   it("includes Contract A safety constraints", () => {
@@ -21,5 +28,60 @@ describe("MEAL_RESPONSE_SCHEMA", () => {
   it("requires items array and lowConfidence", () => {
     expect(MEAL_RESPONSE_SCHEMA.properties.items).toBeDefined();
     expect(MEAL_RESPONSE_SCHEMA.properties.lowConfidence).toBeDefined();
+  });
+});
+
+describe("buildInsightsSystemInstruction (self-declared focus, no auto-demographics)", () => {
+  const s = buildInsightsSystemInstruction();
+
+  it("never infers a medical state from age or gender", () => {
+    expect(s).not.toMatch(/aged 40/i);
+    expect(s).not.toMatch(/40 or older/i);
+    expect(s.toLowerCase()).not.toContain("pre-menopause");
+    expect(s.toLowerCase()).toContain("never infer");
+  });
+
+  it("treats focusAreas as the only trigger for sensitive content", () => {
+    expect(s).toMatch(/focusAreas/);
+    expect(s.toLowerCase()).toContain("self-declared");
+  });
+
+  it("only references menopause conditionally and always points to a clinician", () => {
+    expect(s.toLowerCase()).toContain("menopause");
+    expect(s.toLowerCase()).toContain("consult");
+    // Conditional phrasing, not an automatic assertion about the user.
+    expect(s).toMatch(/if focusAreas includes 'menopause'/i);
+  });
+});
+
+function emptyDay(profile: DayData["profile"]): DayData {
+  return {
+    date: "2026-06-13",
+    profile,
+    steps: 0,
+    sleepMinutes: 0,
+    workouts: [],
+    meals: { count: 0, totals: { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 } },
+    waterMl: 0,
+    hasHealthData: false,
+    hasMeals: false,
+    isEmpty: true,
+    weeklyAerobicMinutes: 0,
+    weeklyStrengthWorkouts: 0,
+  };
+}
+
+describe("buildInsightsUserPrompt (goal + declared focus)", () => {
+  it("includes primaryGoal and declared focusAreas as context", () => {
+    const p = buildInsightsUserPrompt(
+      emptyDay({ gender: "female", age: 50, primaryGoal: "lose", focusAreas: ["menopause"] })
+    );
+    expect(p).toMatch(/lose/);
+    expect(p).toMatch(/menopause/);
+  });
+
+  it("omits the focus-areas line when none were declared", () => {
+    const p = buildInsightsUserPrompt(emptyDay({ gender: "female", age: 50, primaryGoal: "maintain" }));
+    expect(p.toLowerCase()).not.toContain("focus areas");
   });
 });

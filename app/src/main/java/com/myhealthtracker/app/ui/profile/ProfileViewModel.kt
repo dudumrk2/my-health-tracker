@@ -2,6 +2,9 @@ package com.myhealthtracker.app.ui.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.myhealthtracker.app.data.goals.GoalCalculator
+import com.myhealthtracker.app.data.goals.HealthGoals
+import com.myhealthtracker.app.data.profile.GoalOverrides
 import com.myhealthtracker.app.data.profile.ProfileRepository
 import com.myhealthtracker.app.data.profile.UserProfile
 import com.myhealthtracker.app.data.profile.genderToHebrew
@@ -71,14 +74,55 @@ class ProfileViewModel(
         _calculatedAge.value = if (age >= 0) age else 0
     }
 
-    fun saveProfile(birthYearStr: String, weightStr: String, heightStr: String, gender: String, themePreference: String = "system") {
+    /**
+     * Live preview of the goals computed from the current form inputs. Falls back to
+     * safe generic defaults when inputs are incomplete (never crashes). Manual overrides win.
+     */
+    fun previewGoals(
+        birthYearStr: String,
+        weightStr: String,
+        heightStr: String,
+        gender: String,
+        primaryGoal: String,
+        activityLevel: String,
+        goalOverrides: GoalOverrides? = null
+    ): HealthGoals {
+        val profile = UserProfile(
+            birthYear = birthYearStr.toIntOrNull() ?: 0,
+            weightKg = weightStr.toDoubleOrNull() ?: 0.0,
+            heightCm = heightStr.toDoubleOrNull() ?: 0.0,
+            gender = toEnglishGender(gender),
+            primaryGoal = primaryGoal,
+            activityLevel = activityLevel,
+            goalOverrides = goalOverrides
+        )
+        return GoalCalculator.compute(profile)
+    }
+
+    private fun toEnglishGender(gender: String): String = when (gender) {
+        "זכר" -> "male"
+        "נקבה" -> "female"
+        else -> gender
+    }
+
+    fun saveProfile(
+        birthYearStr: String,
+        weightStr: String,
+        heightStr: String,
+        gender: String,
+        themePreference: String = "system",
+        primaryGoal: String = "maintain",
+        activityLevel: String = "moderate",
+        focusAreas: List<String> = emptyList(),
+        goalOverrides: GoalOverrides? = null
+    ) {
         viewModelScope.launch {
             _uiState.value = ProfileUiState.Loading
-            
+
             val birthYear = birthYearStr.toIntOrNull() ?: 0
             val weight = weightStr.toDoubleOrNull() ?: 0.0
             val height = heightStr.toDoubleOrNull() ?: 0.0
-            
+
             val currentYear = Calendar.getInstance().get(Calendar.YEAR)
             if (birthYear < 1900 || birthYear > currentYear) {
                 _uiState.value = ProfileUiState.Error("שנת הלידה חייבת להיות בין 1900 ל-$currentYear")
@@ -97,18 +141,18 @@ class ProfileViewModel(
                 return@launch
             }
 
-            val englishGender = when (gender) {
-                "זכר" -> "male"
-                "נקבה" -> "female"
-                else -> gender
-            }
+            val englishGender = toEnglishGender(gender)
 
             val profile = UserProfile(
                 birthYear = birthYear,
                 weightKg = weight,
                 heightCm = height,
                 gender = englishGender,
-                themePreference = themePreference
+                themePreference = themePreference,
+                primaryGoal = primaryGoal,
+                activityLevel = activityLevel,
+                focusAreas = focusAreas,
+                goalOverrides = goalOverrides
             )
 
             val uid = uidProvider() ?: run {
