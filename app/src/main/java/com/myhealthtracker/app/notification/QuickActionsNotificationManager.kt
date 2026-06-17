@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.myhealthtracker.app.MainActivity
 import com.myhealthtracker.app.R
@@ -107,16 +108,24 @@ object QuickActionsNotificationManager {
             context, 103, waterIntent, PENDING_FLAGS
         )
 
+        // Custom layout so each action is a readable two-line button (emoji over label)
+        // instead of a single, system-truncated action row. The water cell shows only an
+        // enlarged drop; the daily-water progress sits above the buttons.
+        val content = RemoteViews(context.packageName, R.layout.notification_quick_actions).apply {
+            setTextViewText(R.id.notification_water_status, "שתית היום: $waterMl / $targetMl מ״ל 💧")
+            setOnClickPendingIntent(R.id.action_meal, mealPendingIntent)
+            setOnClickPendingIntent(R.id.action_workout, workoutPendingIntent)
+            setOnClickPendingIntent(R.id.action_water, waterPendingIntent)
+        }
+
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("מעקב בריאות מהיר")
-            .setContentText("שתית היום: $waterMl / $targetMl מ״ל 💧")
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .setContentIntent(appPendingIntent)
-            .addAction(R.drawable.ic_launcher_foreground, "🥗 ארוחה", mealPendingIntent)
-            .addAction(R.drawable.ic_launcher_foreground, "💪 אימון", workoutPendingIntent)
-            .addAction(R.drawable.ic_launcher_foreground, "💧 +$WATER_STEP_ML מ״ל", waterPendingIntent)
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+            .setCustomContentView(content)
+            .setCustomBigContentView(content)
             .build()
 
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
