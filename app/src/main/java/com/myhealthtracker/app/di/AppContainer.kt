@@ -1,5 +1,9 @@
 package com.myhealthtracker.app.di
 
+import com.myhealthtracker.app.data.account.AccountRepository
+import com.myhealthtracker.app.data.account.FunctionsAccountRepository
+import com.myhealthtracker.app.data.activity.ActivityRepository
+import com.myhealthtracker.app.data.activity.FirestoreActivityRepository
 import com.myhealthtracker.app.data.auth.AuthManager
 import com.myhealthtracker.app.data.body.BodyMeasurementRepository
 import com.myhealthtracker.app.data.body.FirestoreBodyMeasurementRepository
@@ -37,6 +41,9 @@ object AppContainer {
 
     val insightsRepository: InsightsRepository by lazy { FirestoreInsightsRepository() }
     val insightsRefresher: InsightsRefresher by lazy { FunctionsInsightsRefresher() }
+
+    val accountRepository: AccountRepository by lazy { FunctionsAccountRepository() }
+    val activityRepository: ActivityRepository by lazy { FirestoreActivityRepository() }
 
     /** Current authenticated user id, or null when signed out. */
     fun currentUid(): String? = authManager.currentUser?.uid
