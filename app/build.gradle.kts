@@ -41,6 +41,9 @@ android {
 
     testOptions {
         unitTests {
+            // Required: FirebaseFunctionsException.Code's static init touches android.util.SparseArray,
+            // which throws "not mocked" in plain JVM unit tests. This lets such classes load without
+            // Robolectric. Keep it — removing it breaks tests that reference Firebase exception codes.
             isReturnDefaultValues = true
         }
     }
