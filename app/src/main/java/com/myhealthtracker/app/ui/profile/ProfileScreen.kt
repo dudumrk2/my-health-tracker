@@ -254,6 +254,7 @@ private fun ProfileScreenContent(
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
+    var showDeleteDialog by remember { mutableStateOf(false) }
     val gradientColors = listOf(
         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
         MaterialTheme.colorScheme.background
@@ -556,7 +557,6 @@ private fun ProfileScreenContent(
             }
 
             // ── Account: logout + delete ───────────────────────────────────
-            var showDeleteDialog by remember { mutableStateOf(false) }
             val isDeleting = accountState is AccountState.Deleting
 
             Card(
