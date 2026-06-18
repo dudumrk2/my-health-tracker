@@ -19,11 +19,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.myhealthtracker.app.di.AppContainer
 import com.myhealthtracker.app.notification.QuickActionsNotificationManager
 import com.myhealthtracker.app.theme.MyHealthTrackerTheme
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val intentState = mutableStateOf<Intent?>(null)
@@ -85,6 +87,16 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Record an app-foreground heartbeat so the server-side inactivity cleanup can
+        // distinguish a live install from an abandoned one. No-op when signed out.
+        val uid = AppContainer.currentUid() ?: return
+        lifecycleScope.launch {
+            runCatching { AppContainer.activityRepository.touchLastActive(uid) }
         }
     }
 
