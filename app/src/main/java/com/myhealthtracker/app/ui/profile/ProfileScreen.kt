@@ -255,6 +255,10 @@ private fun ProfileScreenContent(
 ) {
     val scrollState = rememberScrollState()
     var showDeleteDialog by remember { mutableStateOf(false) }
+    // Account deletion runs in the background; while it does, the form's cancel/save actions are
+    // locked so the user can't navigate away (losing the completion callback) or write the profile
+    // back concurrently with the delete.
+    val isDeleting = accountState is AccountState.Deleting
     val gradientColors = listOf(
         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
         MaterialTheme.colorScheme.background
@@ -274,7 +278,11 @@ private fun ProfileScreenContent(
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             Box(modifier = Modifier.fillMaxWidth()) {
-                TextButton(onClick = onBackClick, modifier = Modifier.align(Alignment.CenterStart)) {
+                TextButton(
+                    onClick = onBackClick,
+                    enabled = !isDeleting,
+                    modifier = Modifier.align(Alignment.CenterStart)
+                ) {
                     Text("ביטול", color = MaterialTheme.colorScheme.primary)
                 }
             }
@@ -540,6 +548,7 @@ private fun ProfileScreenContent(
             } else {
                 Button(
                     onClick = onSaveClick,
+                    enabled = !isDeleting,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
@@ -557,8 +566,6 @@ private fun ProfileScreenContent(
             }
 
             // ── Account: logout + delete ───────────────────────────────────
-            val isDeleting = accountState is AccountState.Deleting
-
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
