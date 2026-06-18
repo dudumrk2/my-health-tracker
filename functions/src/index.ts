@@ -4,3 +4,5 @@ export {
   generateInsightsMidday,
   generateInsightsManual,
 } from "./generateInsights";
+export { deleteUserData } from "./deleteUserData";
+export { cleanupInactiveUsers } from "./cleanupInactiveUsers";

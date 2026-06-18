@@ -37,10 +37,13 @@ import com.myhealthtracker.app.theme.MyHealthTrackerTheme
 fun ProfileScreen(
     viewModel: ProfileViewModel,
     onSaveSuccess: () -> Unit,
+    onLogout: () -> Unit,
+    onAccountDeleted: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val calculatedAge by viewModel.calculatedAge.collectAsState()
+    val accountState by viewModel.accountState.collectAsState()
 
     var birthYearStr by remember { mutableStateOf("") }
     var weightStr by remember { mutableStateOf("") }
@@ -81,6 +84,12 @@ fun ProfileScreen(
         } else if (uiState is ProfileUiState.Saved) {
             viewModel.resetState()
             onSaveSuccess()
+        }
+    }
+
+    LaunchedEffect(accountState) {
+        if (accountState is AccountState.Deleted) {
+            onAccountDeleted()
         }
     }
 
@@ -149,6 +158,9 @@ fun ProfileScreen(
         },
         quickActionsEnabled = quickActionsEnabled,
         onQuickActionsEnabledChange = { quickActionsEnabled = it },
+        accountState = accountState,
+        onLogoutClick = onLogout,
+        onDeleteAccountConfirm = { viewModel.deleteAccount() },
         modifier = modifier
     )
 }
@@ -236,9 +248,17 @@ private fun ProfileScreenContent(
     onBackClick: () -> Unit,
     quickActionsEnabled: Boolean,
     onQuickActionsEnabledChange: (Boolean) -> Unit,
+    accountState: AccountState,
+    onLogoutClick: () -> Unit,
+    onDeleteAccountConfirm: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    // Account deletion runs in the background; while it does, the form's cancel/save actions are
+    // locked so the user can't navigate away (losing the completion callback) or write the profile
+    // back concurrently with the delete.
+    val isDeleting = accountState is AccountState.Deleting
     val gradientColors = listOf(
         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
         MaterialTheme.colorScheme.background
@@ -258,7 +278,11 @@ private fun ProfileScreenContent(
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             Box(modifier = Modifier.fillMaxWidth()) {
-                TextButton(onClick = onBackClick, modifier = Modifier.align(Alignment.CenterStart)) {
+                TextButton(
+                    onClick = onBackClick,
+                    enabled = !isDeleting,
+                    modifier = Modifier.align(Alignment.CenterStart)
+                ) {
                     Text("ביטול", color = MaterialTheme.colorScheme.primary)
                 }
             }
@@ -524,6 +548,7 @@ private fun ProfileScreenContent(
             } else {
                 Button(
                     onClick = onSaveClick,
+                    enabled = !isDeleting,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
@@ -538,6 +563,85 @@ private fun ProfileScreenContent(
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                 }
+            }
+
+            // ── Account: logout + delete ───────────────────────────────────
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    FieldLabel("חשבון")
+
+                    OutlinedButton(
+                        onClick = onLogoutClick,
+                        enabled = !isDeleting,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().height(52.dp)
+                    ) {
+                        Text("התנתקות")
+                    }
+
+                    OutlinedButton(
+                        onClick = { showDeleteDialog = true },
+                        enabled = !isDeleting,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        ),
+                        modifier = Modifier.fillMaxWidth().height(52.dp)
+                    ) {
+                        Text("מחיקת חשבון ונתונים")
+                    }
+
+                    if (isDeleting) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
+                    }
+                    if (accountState is AccountState.Error) {
+                        Text(
+                            text = accountState.message,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+
+            if (showDeleteDialog) {
+                AlertDialog(
+                    onDismissRequest = { if (!isDeleting) showDeleteDialog = false },
+                    title = { Text("מחיקת חשבון ונתונים") },
+                    text = {
+                        Text(
+                            "פעולה זו תמחק לצמיתות את כל הנתונים שלך — ארוחות, נתוני בריאות, " +
+                                "תובנות והפרופיל — וגם את החשבון. לא ניתן לבטל פעולה זו."
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showDeleteDialog = false
+                                onDeleteAccountConfirm()
+                            },
+                            enabled = !isDeleting
+                        ) {
+                            Text("מחק לצמיתות", color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteDialog = false }, enabled = !isDeleting) {
+                            Text("ביטול")
+                        }
+                    }
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -598,7 +702,9 @@ fun ProfileScreenPreviewLight() {
             onThemeSelect = {}, onPrimaryGoalSelect = {}, onActivityLevelSelect = {}, onFocusAreaToggle = {},
             onCaloriesOverrideChange = {}, onStepsOverrideChange = {}, onProteinOverrideChange = {},
             onWaterOverrideChange = {}, onSleepOverrideChange = {}, onSaveClick = {}, onBackClick = {},
-            quickActionsEnabled = true, onQuickActionsEnabledChange = {}
+            quickActionsEnabled = true, onQuickActionsEnabledChange = {},
+            accountState = AccountState.Idle,
+            onLogoutClick = {}, onDeleteAccountConfirm = {}
         )
     }
 }

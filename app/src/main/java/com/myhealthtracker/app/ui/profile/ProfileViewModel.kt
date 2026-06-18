@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.myhealthtracker.app.data.goals.GoalCalculator
 import com.myhealthtracker.app.data.goals.HealthGoals
 import com.myhealthtracker.app.data.profile.GoalOverrides
+import com.myhealthtracker.app.data.account.AccountDeletionException
+import com.myhealthtracker.app.data.account.AccountRepository
 import com.myhealthtracker.app.data.profile.ProfileRepository
 import com.myhealthtracker.app.data.profile.UserProfile
 import com.myhealthtracker.app.data.profile.genderToHebrew
@@ -24,9 +26,17 @@ sealed class ProfileUiState {
     data class Error(val message: String) : ProfileUiState()
 }
 
+sealed class AccountState {
+    object Idle : AccountState()
+    object Deleting : AccountState()
+    object Deleted : AccountState()
+    data class Error(val message: String) : AccountState()
+}
+
 class ProfileViewModel(
     private val profileRepository: ProfileRepository = AppContainer.profileRepository,
-    private val uidProvider: () -> String? = { AppContainer.currentUid() }
+    private val uidProvider: () -> String? = { AppContainer.currentUid() },
+    private val accountRepository: AccountRepository = AppContainer.accountRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Idle)
@@ -34,6 +44,9 @@ class ProfileViewModel(
 
     private val _calculatedAge = MutableStateFlow(0)
     val calculatedAge: StateFlow<Int> = _calculatedAge.asStateFlow()
+
+    private val _accountState = MutableStateFlow<AccountState>(AccountState.Idle)
+    val accountState: StateFlow<AccountState> = _accountState.asStateFlow()
 
     init {
         loadProfile()
@@ -182,6 +195,19 @@ class ProfileViewModel(
                 } else {
                     _uiState.value = ProfileUiState.Error(result.exceptionOrNull()?.message ?: "שגיאה בשמירה")
                 }
+            }
+        }
+    }
+
+    /** Permanently deletes the account + all data via the Cloud Function. Local sign-out is handled by the caller. */
+    fun deleteAccount() {
+        viewModelScope.launch {
+            _accountState.value = AccountState.Deleting
+            try {
+                accountRepository.deleteAccount()
+                _accountState.value = AccountState.Deleted
+            } catch (e: AccountDeletionException) {
+                _accountState.value = AccountState.Error(e.message ?: "שגיאה במחיקת החשבון")
             }
         }
     }
