@@ -102,6 +102,8 @@ fun MainNavigation(
               backStack.clear()
               backStack.add(Dashboard)
             },
+            onLogout = {},
+            onAccountDeleted = {},
             modifier = Modifier.safeDrawingPadding().padding(16.dp)
           )
         }
