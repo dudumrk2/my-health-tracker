@@ -8,9 +8,17 @@ if (getApps().length === 0) initializeApp();
 
 const FUNCTION_REGION = process.env.FUNCTION_REGION || "us-central1";
 const TZ = process.env.INSIGHTS_TZ || "Asia/Jerusalem";
-// Monthly, 03:00 on the 1st by default.
-const CLEANUP_SCHEDULE = process.env.CLEANUP_SCHEDULE || "0 3 1 * *";
-const INACTIVE_DAYS = Number(process.env.CLEANUP_INACTIVE_DAYS || "30");
+// Daily, 03:00 by default. Daily (vs monthly) keeps the actual deletion close to the
+// INACTIVE_DAYS threshold instead of letting an inactive account linger up to a month longer.
+const CLEANUP_SCHEDULE = process.env.CLEANUP_SCHEDULE || "0 3 * * *";
+
+/** Parses the inactivity threshold from env, ignoring blank/non-numeric/non-positive values. */
+export function parseInactiveDays(raw: string | undefined, fallback = 30): number {
+  const n = Number(raw);
+  return raw !== undefined && raw.trim() !== "" && Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+const INACTIVE_DAYS = parseInactiveDays(process.env.CLEANUP_INACTIVE_DAYS);
 
 /** Activity signals in epoch milliseconds. Any field may be absent. */
 export interface UserActivity {
@@ -37,33 +45,54 @@ function toMillis(v: unknown): number | undefined {
   return v instanceof Timestamp ? v.toMillis() : undefined;
 }
 
-/** Reads the activity signals for one user from Firestore. */
-async function readUserActivity(uid: string): Promise<UserActivity> {
-  const db = getFirestore();
-  const [userSnap, mealSnap] = await Promise.all([
-    db.doc(`users/${uid}`).get(),
-    db.collection(`users/${uid}/meals`).orderBy("loggedAt", "desc").limit(1).get(),
-  ]);
-  const profile = userSnap.get("profile") as Record<string, unknown> | undefined;
-  const lastMealAt = mealSnap.empty ? undefined : toMillis(mealSnap.docs[0].get("loggedAt"));
-  return {
-    lastActiveAt: toMillis(userSnap.get("lastActiveAt")),
-    createdAt: profile ? toMillis(profile.createdAt) : undefined,
-    lastMealAt,
-  };
+/**
+ * True when the non-meal signals (app-open heartbeat, or profile creation as fallback) already
+ * prove the user is active. Lets the caller skip the per-user meals query for active users, since
+ * a meal can only push the signal more recent — never make an already-recent user inactive.
+ */
+export function activeByBaseSignal(
+  base: { lastActiveAt?: number; createdAt?: number },
+  nowMs: number,
+  inactiveDays: number
+): boolean {
+  const signal = base.lastActiveAt ?? base.createdAt;
+  if (signal === undefined) return false;
+  return signal >= nowMs - inactiveDays * 24 * 60 * 60 * 1000;
 }
 
 /**
  * Iterates the `users` collection and purges anyone inactive for INACTIVE_DAYS.
  * A failure for one user is logged and skipped — never fatal for the rest.
+ *
+ * The user docs from the collection scan are reused directly (no per-user re-read), and the
+ * meals subcollection is queried only for users the heartbeat/createdAt didn't already clear.
  */
 async function runCleanup(nowMs: number): Promise<void> {
-  const users = await getFirestore().collection("users").get();
+  const db = getFirestore();
+  const users = await db.collection("users").get();
   let deleted = 0, kept = 0, failed = 0;
   const purgeDeps = prodPurgeDeps();
   for (const userDoc of users.docs) {
     try {
-      const activity = await readUserActivity(userDoc.id);
+      const lastActiveAt = toMillis(userDoc.get("lastActiveAt"));
+      const profile = userDoc.get("profile") as Record<string, unknown> | undefined;
+      const createdAt = profile ? toMillis(profile.createdAt) : undefined;
+
+      // Fast path: a recent heartbeat (or recent creation) proves activity without touching meals.
+      if (activeByBaseSignal({ lastActiveAt, createdAt }, nowMs, INACTIVE_DAYS)) {
+        kept++;
+        continue;
+      }
+
+      // Otherwise a recent meal could still be the only sign of life.
+      const mealSnap = await db
+        .collection(`users/${userDoc.id}/meals`)
+        .orderBy("loggedAt", "desc")
+        .limit(1)
+        .get();
+      const lastMealAt = mealSnap.empty ? undefined : toMillis(mealSnap.docs[0].get("loggedAt"));
+      const activity: UserActivity = { lastActiveAt, createdAt, lastMealAt };
+
       if (isInactive(activity, nowMs, INACTIVE_DAYS)) {
         await purgeUser(userDoc.id, purgeDeps);
         deleted++;

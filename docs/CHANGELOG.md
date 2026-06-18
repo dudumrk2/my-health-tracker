@@ -11,8 +11,9 @@
 - Added `deleteUserData` Cloud Function (callable, App Check enforced): deletes all Firestore data
   under `users/{uid}` (recursive) **and** the Firebase Auth account, via a shared `purgeUser` helper
   (Firestore first, then Auth, so a failure stays retryable).
-- Added `cleanupInactiveUsers` scheduled function (monthly): purges accounts inactive for 30 days —
+- Added `cleanupInactiveUsers` scheduled function (daily): purges accounts inactive for 30 days —
   signal = `max(lastActiveAt ?? createdAt, latest meal loggedAt)`; never deletes without a signal.
+  Skips the per-user meals read when the heartbeat already proves activity.
   Backed by a new `lastActiveAt` heartbeat written on app foreground (`ActivityRepository`).
 - **Why:** users need a way to leave and erase their data; Android gives no uninstall hook, so the
   cron approximates "data gone after the app is removed" (app-open + meals only — health sync excluded).
