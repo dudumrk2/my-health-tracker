@@ -96,14 +96,23 @@ fun MainNavigation(
           )
         }
         entry<Profile> {
+          val context = LocalContext.current
           ProfileScreen(
             viewModel = profileViewModel,
             onSaveSuccess = {
               backStack.clear()
               backStack.add(Dashboard)
             },
-            onLogout = {},
-            onAccountDeleted = {},
+            onLogout = {
+              authViewModel.signOut(context)
+              backStack.clear()
+              backStack.add(Auth)
+            },
+            onAccountDeleted = {
+              authViewModel.signOut(context)
+              backStack.clear()
+              backStack.add(Auth)
+            },
             modifier = Modifier.safeDrawingPadding().padding(16.dp)
           )
         }
