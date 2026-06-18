@@ -22,6 +22,10 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Undo
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -92,6 +96,7 @@ fun AddMealScreen(
     val lowConfidence by viewModel.lowConfidence.collectAsState()
     val recommendation by viewModel.recommendation.collectAsState()
     val quality by viewModel.quality.collectAsState()
+    val excludedIndices by viewModel.excludedIndices.collectAsState()
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
@@ -225,11 +230,14 @@ fun AddMealScreen(
             AddMealStep.ResultState -> {
                 ResultStateContent(
                     recognizedItems = recognizedItems,
+                    excludedIndices = excludedIndices,
                     lowConfidence = lowConfidence,
                     recommendation = recommendation,
                     quality = quality,
                     errorMessage = errorMessage,
                     onItemUpdate = { index, item -> viewModel.updateItem(index, item) },
+                    onToggleRemoved = { index -> viewModel.toggleItemRemoved(index) },
+                    onItemAdd = { item -> viewModel.addItem(item) },
                     onSaveClick = { viewModel.saveMeal() },
                     onManualClick = { viewModel.switchToManualFallback() },
                     modifier = contentModifier
@@ -439,25 +447,27 @@ private fun LoadingContent(
 @Composable
 private fun ResultStateContent(
     recognizedItems: List<MealItem>,
+    excludedIndices: Set<Int>,
     lowConfidence: Boolean,
     recommendation: String?,
     quality: MealQuality?,
     errorMessage: String?,
     onItemUpdate: (Int, MealItem) -> Unit,
+    onToggleRemoved: (Int) -> Unit,
+    onItemAdd: (MealItem) -> Int,
     onSaveClick: () -> Unit,
     onManualClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Mutable items state to support adding items dynamically
-    var itemsList by remember(recognizedItems) { mutableStateOf(recognizedItems) }
     var editingIndex by remember { mutableStateOf<Int?>(null) }
 
-    // Calculate totals
+    // Active items = not marked removed. Totals derive from these only.
+    val activeItems = recognizedItems.filterIndexed { i, _ -> i !in excludedIndices }
     val totals = MealTotals(
-        calories = itemsList.sumOf { it.calories },
-        proteinG = itemsList.sumOf { it.proteinG },
-        carbsG = itemsList.sumOf { it.carbsG },
-        fatG = itemsList.sumOf { it.fatG }
+        calories = activeItems.sumOf { it.calories },
+        proteinG = activeItems.sumOf { it.proteinG },
+        carbsG = activeItems.sumOf { it.carbsG },
+        fatG = activeItems.sumOf { it.fatG }
     )
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
@@ -665,12 +675,15 @@ private fun ResultStateContent(
         }
 
         // List of items
-        itemsIndexed(itemsList) { index, item ->
+        itemsIndexed(recognizedItems) { index, item ->
+            val isRemoved = index in excludedIndices
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(if (isRemoved) Modifier.alpha(0.5f) else Modifier)
             ) {
                 if (editingIndex == index) {
                     // Item Editor View
@@ -823,7 +836,10 @@ private fun ResultStateContent(
                                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     Text(
                                         text = item.name.ifEmpty { "פריט ללא שם" },
-                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                        style = MaterialTheme.typography.bodyLarge.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            textDecoration = if (isRemoved) TextDecoration.LineThrough else null
+                                        ),
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
@@ -834,15 +850,33 @@ private fun ResultStateContent(
                                 }
                             }
 
-                            IconButton(
-                                onClick = { editingIndex = index },
-                                modifier = Modifier.size(36.dp)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "ערוך",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                if (!isRemoved) {
+                                    IconButton(
+                                        onClick = { editingIndex = index },
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = "ערוך",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                IconButton(
+                                    onClick = { onToggleRemoved(index) },
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isRemoved) Icons.Default.Undo else Icons.Default.Delete,
+                                        contentDescription = if (isRemoved) "שחזר" else "הסר",
+                                        tint = if (isRemoved) MaterialTheme.colorScheme.primary
+                                               else MaterialTheme.colorScheme.error
+                                    )
+                                }
                             }
                         }
 
@@ -911,8 +945,8 @@ private fun ResultStateContent(
                     .dashedBorder(color = MaterialTheme.colorScheme.primary, strokeWidth = 2f, cornerRadius = 12f)
                     .clickable {
                         val newItem = MealItem("", "100 גרם", 0, 0, 0, 0)
-                        onItemUpdate(itemsList.size, newItem)
-                        editingIndex = itemsList.size
+                        val newIndex = onItemAdd(newItem)
+                        editingIndex = newIndex
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -945,6 +979,7 @@ private fun ResultStateContent(
             ) {
                 Button(
                     onClick = onSaveClick,
+                    enabled = activeItems.isNotEmpty(),
                     shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
@@ -957,6 +992,14 @@ private fun ResultStateContent(
                     Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("שמירה", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+
+                if (recognizedItems.isNotEmpty() && activeItems.isEmpty()) {
+                    Text(
+                        text = "כל הפריטים הוסרו",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
 
                 TextButton(
@@ -1159,11 +1202,14 @@ fun AddMealScreenPreviewResult() {
                 MealItem("חזה עוף", "150 גרם", 250, 46, 0, 5),
                 MealItem("שמן זית", "1 כף", 120, 0, 0, 14)
             ),
+            excludedIndices = setOf(1),
             lowConfidence = false,
             recommendation = null,
             quality = null,
             errorMessage = null,
             onItemUpdate = { _, _ -> },
+            onToggleRemoved = {},
+            onItemAdd = { 0 },
             onSaveClick = {},
             onManualClick = {}
         )
