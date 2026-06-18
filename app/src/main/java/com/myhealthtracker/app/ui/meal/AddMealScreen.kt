@@ -23,7 +23,7 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Undo
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.material3.*
@@ -871,7 +871,7 @@ private fun ResultStateContent(
                                     modifier = Modifier.size(36.dp)
                                 ) {
                                     Icon(
-                                        imageVector = if (isRemoved) Icons.Default.Undo else Icons.Default.Delete,
+                                        imageVector = if (isRemoved) Icons.AutoMirrored.Filled.Undo else Icons.Default.Delete,
                                         contentDescription = if (isRemoved) "שחזר" else "הסר",
                                         tint = if (isRemoved) MaterialTheme.colorScheme.primary
                                                else MaterialTheme.colorScheme.error
