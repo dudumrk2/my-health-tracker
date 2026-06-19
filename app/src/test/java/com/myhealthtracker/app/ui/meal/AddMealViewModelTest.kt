@@ -156,4 +156,88 @@ class AddMealViewModelTest {
         assertEquals(1, vm.recognizedItems.value.size)
         assertEquals("Apple", vm.recognizedItems.value.first().name)
     }
+
+    private fun vmInResultState(
+        repo: FakeMealRepo = FakeMealRepo(),
+        items: List<MealItem>
+    ): AddMealViewModel {
+        val analyzer = FakeAnalyzer(
+            result = MealAnalysisResult(
+                items = items,
+                totals = MealTotals(
+                    items.sumOf { it.calories },
+                    items.sumOf { it.proteinG },
+                    items.sumOf { it.carbsG },
+                    items.sumOf { it.fatG }
+                ),
+                lowConfidence = false
+            )
+        )
+        val vm = AddMealViewModel(repo, analyzer)
+        vm.onDescriptionChange("meal")
+        vm.analyzeText()
+        return vm
+    }
+
+    @Test
+    fun `toggleItemRemoved adds then removes index`() = runTest(dispatcher) {
+        val vm = vmInResultState(items = listOf(MealItem("A", "1", 100, 1, 2, 3)))
+        advanceUntilIdle()
+        vm.toggleItemRemoved(0)
+        assertEquals(setOf(0), vm.excludedIndices.value)
+        vm.toggleItemRemoved(0)
+        assertEquals(emptySet<Int>(), vm.excludedIndices.value)
+    }
+
+    @Test
+    fun `toggleItemRemoved ignores out-of-range index`() = runTest(dispatcher) {
+        val vm = vmInResultState(items = listOf(MealItem("A", "1", 100, 1, 2, 3)))
+        advanceUntilIdle()
+        vm.toggleItemRemoved(5)
+        assertEquals(emptySet<Int>(), vm.excludedIndices.value)
+    }
+
+    @Test
+    fun `addItem appends and returns new index`() = runTest(dispatcher) {
+        val vm = vmInResultState(items = listOf(MealItem("A", "1", 100, 1, 2, 3)))
+        advanceUntilIdle()
+        val newIndex = vm.addItem(MealItem("B", "1", 50, 0, 0, 0))
+        assertEquals(1, newIndex)
+        assertEquals(2, vm.recognizedItems.value.size)
+        assertEquals("B", vm.recognizedItems.value[1].name)
+    }
+
+    @Test
+    fun `saveMeal skips excluded items and recomputes totals`() = runTest(dispatcher) {
+        val repo = FakeMealRepo()
+        val vm = vmInResultState(
+            repo = repo,
+            items = listOf(
+                MealItem("A", "1", 100, 10, 5, 2),
+                MealItem("B", "1", 250, 20, 30, 8)
+            )
+        )
+        advanceUntilIdle()
+        vm.toggleItemRemoved(1) // remove B
+        vm.saveMeal()
+        advanceUntilIdle()
+        assertEquals(1, repo.saved.size)
+        val saved = repo.saved.first()
+        assertEquals(1, saved.items.size)
+        assertEquals("A", saved.items.first().name)
+        assertEquals(100, saved.totals.calories)
+        assertEquals(10, saved.totals.proteinG)
+    }
+
+    @Test
+    fun `saveMeal does not save when all items excluded`() = runTest(dispatcher) {
+        val repo = FakeMealRepo()
+        val vm = vmInResultState(repo = repo, items = listOf(MealItem("A", "1", 100, 1, 2, 3)))
+        advanceUntilIdle()
+        vm.toggleItemRemoved(0)
+        vm.saveMeal()
+        advanceUntilIdle()
+        assertEquals(0, repo.saved.size)
+        assertEquals("כל הפריטים הוסרו", vm.errorMessage.value)
+    }
 }

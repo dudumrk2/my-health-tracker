@@ -41,6 +41,9 @@ class AddMealViewModel(
     private val _recognizedItems = MutableStateFlow<List<MealItem>>(emptyList())
     val recognizedItems: StateFlow<List<MealItem>> = _recognizedItems.asStateFlow()
 
+    private val _excludedIndices = MutableStateFlow<Set<Int>>(emptySet())
+    val excludedIndices: StateFlow<Set<Int>> = _excludedIndices.asStateFlow()
+
     private val _lowConfidence = MutableStateFlow(false)
     val lowConfidence: StateFlow<Boolean> = _lowConfidence.asStateFlow()
 
@@ -109,6 +112,7 @@ class AddMealViewModel(
                 val result = analyzer.analyze("image", null, base64, today())
                 lastInputType = "image"
                 _recognizedItems.value = result.items
+                _excludedIndices.value = emptySet()
                 _lowConfidence.value = result.lowConfidence
                 _recommendation.value = result.recommendation
                 _quality.value = result.quality
@@ -128,6 +132,7 @@ class AddMealViewModel(
                 val result = analyzer.analyze(inputType, text, imageBase64, today())
                 lastInputType = inputType
                 _recognizedItems.value = result.items
+                _excludedIndices.value = emptySet()
                 _lowConfidence.value = result.lowConfidence
                 _recommendation.value = result.recommendation
                 _quality.value = result.quality
@@ -145,6 +150,19 @@ class AddMealViewModel(
             list[index] = updatedItem
             _recognizedItems.value = list
         }
+    }
+
+    fun toggleItemRemoved(index: Int) {
+        if (index !in _recognizedItems.value.indices) return
+        val current = _excludedIndices.value
+        _excludedIndices.value = if (index in current) current - index else current + index
+    }
+
+    fun addItem(item: MealItem): Int {
+        val list = _recognizedItems.value.toMutableList()
+        list.add(item)
+        _recognizedItems.value = list
+        return list.size - 1
     }
 
     fun saveMeal() {
@@ -170,16 +188,18 @@ class AddMealViewModel(
                 items = listOf(MealItem(description, "1 מנה", cal, protein, carbs, fat))
                 totals = MealTotals(cal, protein, carbs, fat)
             } else {
-                if (_recognizedItems.value.isEmpty()) {
-                    _errorMessage.value = "אין פריטים לשמירה"
+                val activeItems = _recognizedItems.value
+                    .filterIndexed { i, _ -> i !in _excludedIndices.value }
+                if (activeItems.isEmpty()) {
+                    _errorMessage.value = "כל הפריטים הוסרו"
                     return@launch
                 }
-                items = _recognizedItems.value
+                items = activeItems
                 totals = MealTotals(
-                    calories = items.sumOf { it.calories },
-                    proteinG = items.sumOf { it.proteinG },
-                    carbsG = items.sumOf { it.carbsG },
-                    fatG = items.sumOf { it.fatG }
+                    calories = activeItems.sumOf { it.calories },
+                    proteinG = activeItems.sumOf { it.proteinG },
+                    carbsG = activeItems.sumOf { it.carbsG },
+                    fatG = activeItems.sumOf { it.fatG }
                 )
             }
 
@@ -201,6 +221,7 @@ class AddMealViewModel(
         _step.value = AddMealStep.ManualFallback
         _recommendation.value = null
         _quality.value = null
+        _excludedIndices.value = emptySet()
     }
 
     fun resetToInput() {
@@ -208,5 +229,6 @@ class AddMealViewModel(
         _step.value = AddMealStep.InputSelection
         _recommendation.value = null
         _quality.value = null
+        _excludedIndices.value = emptySet()
     }
 }
