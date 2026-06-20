@@ -267,11 +267,11 @@ private fun FoodContent(
                 }
 
                 Crossfade(
-                    targetState = state,
+                    targetState = state.selectedDate,
                     animationSpec = tween(durationMillis = 300),
                     label = "FoodDateTransition",
                     modifier = Modifier.weight(1f)
-                ) { currentState ->
+                ) { _ ->
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
@@ -314,7 +314,7 @@ private fun FoodContent(
                                             color = MaterialTheme.colorScheme.onPrimaryContainer
                                         )
                                         Text(
-                                            text = if (currentState.isRefreshing) "מחשב המלצות..." else currentState.aiAdvice,
+                                            text = if (state.isRefreshing) "מחשב המלצות..." else state.aiAdvice,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                                             lineHeight = 18.sp
@@ -336,7 +336,7 @@ private fun FoodContent(
                                     modifier = Modifier.padding(16.dp),
                                     verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
-                                    val consumedCal = currentState.totals.calories
+                                    val consumedCal = state.totals.calories
                                     val calorieTarget = goals.caloriesKcal
                                     val remainingCal = (calorieTarget - consumedCal).coerceAtLeast(0)
                                     
@@ -379,7 +379,7 @@ private fun FoodContent(
                                         Box(modifier = Modifier.weight(1f)) {
                                             MacroProgressBarHorizontal(
                                                 name = "חלבון",
-                                                value = currentState.totals.proteinG,
+                                                value = state.totals.proteinG,
                                                 target = goals.proteinG,
                                                 color = ProteinColor
                                             )
@@ -387,7 +387,7 @@ private fun FoodContent(
                                         Box(modifier = Modifier.weight(1f)) {
                                             MacroProgressBarHorizontal(
                                                 name = "פחמימות",
-                                                value = currentState.totals.carbsG,
+                                                value = state.totals.carbsG,
                                                 target = goals.carbsG,
                                                 color = CarbsColor
                                             )
@@ -395,7 +395,7 @@ private fun FoodContent(
                                         Box(modifier = Modifier.weight(1f)) {
                                             MacroProgressBarHorizontal(
                                                 name = "שומן",
-                                                value = currentState.totals.fatG,
+                                                value = state.totals.fatG,
                                                 target = goals.fatG,
                                                 color = FatColor
                                             )
@@ -428,7 +428,7 @@ private fun FoodContent(
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
-                                            text = "${String.format(Locale.US, "%.1f", currentState.waterIntakeMl / 1000f)} / ${String.format(Locale.US, "%.1f", goals.waterMl / 1000f)} ליטר",
+                                            text = "${String.format(Locale.US, "%.1f", state.waterIntakeMl / 1000f)} / ${String.format(Locale.US, "%.1f", goals.waterMl / 1000f)} ליטר",
                                             style = MaterialTheme.typography.bodyMedium.copy(
                                                 fontWeight = FontWeight.Bold,
                                                 color = WaterColor
@@ -444,7 +444,7 @@ private fun FoodContent(
                                         // 10 Water Drops, proportional to the daily goal so the
                                         // last drop fills exactly at the target regardless of step size.
                                         val waterTarget = goals.waterMl.coerceAtLeast(1)
-                                        val filledDropsCount = (currentState.waterIntakeMl * 10 / waterTarget).coerceIn(0, 10)
+                                        val filledDropsCount = (state.waterIntakeMl * 10 / waterTarget).coerceIn(0, 10)
                                         Row(
                                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                                             modifier = Modifier.weight(1f)
@@ -499,7 +499,7 @@ private fun FoodContent(
                         }
 
                         // Meal items
-                        if (currentState.meals.isEmpty()) {
+                        if (state.meals.isEmpty()) {
                             item {
                                 Card(
                                     shape = RoundedCornerShape(16.dp),
@@ -519,7 +519,7 @@ private fun FoodContent(
                                 }
                             }
                         } else {
-                            itemsIndexed(currentState.meals) { index, meal ->
+                            itemsIndexed(state.meals) { index, meal ->
                                 val mealTitle = getMealTitle(meal.description, index)
                                 Card(
                                     shape = RoundedCornerShape(16.dp),

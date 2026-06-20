@@ -288,11 +288,11 @@ private fun ActivityContent(
             }
 
             Crossfade(
-                targetState = state,
+                targetState = state.selectedDate,
                 animationSpec = tween(durationMillis = 300),
                 label = "ActivityDateTransition",
                 modifier = Modifier.weight(1f)
-            ) { currentState ->
+            ) { _ ->
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -327,7 +327,7 @@ private fun ActivityContent(
 
                                 Spacer(modifier = Modifier.height(12.dp))
 
-                                val progress = (currentState.steps.toFloat() / stepGoal.toFloat()).coerceIn(0f, 1f)
+                                val progress = (state.steps.toFloat() / stepGoal.toFloat()).coerceIn(0f, 1f)
 
                                 Box(
                                     modifier = Modifier.size(170.dp),
@@ -341,7 +341,7 @@ private fun ActivityContent(
                                         modifier = Modifier.fillMaxSize()
                                     )
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        val formattedSteps = NumberFormat.getNumberInstance(Locale.US).format(currentState.steps)
+                                        val formattedSteps = NumberFormat.getNumberInstance(Locale.US).format(state.steps)
                                         Text(
                                             text = formattedSteps,
                                             style = MaterialTheme.typography.headlineMedium.copy(
@@ -382,7 +382,7 @@ private fun ActivityContent(
                                         Text(text = "ק״מ", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text(
-                                            text = String.format(Locale.US, "%.1f", currentState.steps * 0.0007f),
+                                            text = String.format(Locale.US, "%.1f", state.steps * 0.0007f),
                                             fontSize = 16.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.onSurface
@@ -393,7 +393,7 @@ private fun ActivityContent(
                                         Text(text = "קלוריות", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text(
-                                            text = "${(currentState.steps * 0.05f).toInt()}",
+                                            text = "${(state.steps * 0.05f).toInt()}",
                                             fontSize = 16.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.onSurface
@@ -404,7 +404,7 @@ private fun ActivityContent(
                                         Text(text = "דקות", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text(
-                                            text = "${(currentState.steps / 130).toInt()}",
+                                            text = "${(state.steps / 130).toInt()}",
                                             fontSize = 16.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.onSurface
@@ -417,8 +417,8 @@ private fun ActivityContent(
 
                     // 2. Sleep Card
                     item {
-                        val hours = currentState.sleepMinutes / 60
-                        val mins = currentState.sleepMinutes % 60
+                        val hours = state.sleepMinutes / 60
+                        val mins = state.sleepMinutes % 60
                         Card(
                             shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -517,7 +517,7 @@ private fun ActivityContent(
                     }
 
                     // Workouts list
-                    if (currentState.workouts.isEmpty()) {
+                    if (state.workouts.isEmpty()) {
                         item {
                             Card(
                                 shape = RoundedCornerShape(16.dp),
@@ -535,7 +535,7 @@ private fun ActivityContent(
                             }
                         }
                     } else {
-                        items(currentState.workouts) { workout ->
+                        items(state.workouts) { workout ->
                             val info = getDisplayWorkoutInfo(workout)
                             Card(
                                 shape = RoundedCornerShape(16.dp),
