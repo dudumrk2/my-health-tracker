@@ -98,6 +98,8 @@ fun AddMealScreen(
     val recommendation by viewModel.recommendation.collectAsState()
     val quality by viewModel.quality.collectAsState()
     val excludedIndices by viewModel.excludedIndices.collectAsState()
+    val pendingImageUri by viewModel.pendingImageUri.collectAsState()
+    val imageNote by viewModel.imageNote.collectAsState()
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
@@ -191,8 +193,15 @@ fun AddMealScreen(
 
         when (step) {
             AddMealStep.ImagePreview -> {
-                // Placeholder: Task 4 will replace this with the full ImagePreviewContent composable.
-                LoadingContent(modifier = contentModifier)
+                ImagePreviewContent(
+                    imageUri = pendingImageUri,
+                    note = imageNote,
+                    errorMessage = errorMessage,
+                    onNoteChange = { viewModel.onImageNoteChange(it) },
+                    onSendClick = { viewModel.sendImageForAnalysis() },
+                    onCancelClick = { viewModel.cancelImagePreview() },
+                    modifier = contentModifier
+                )
             }
             AddMealStep.InputSelection -> {
                 InputSelectionContent(
