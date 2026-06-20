@@ -111,7 +111,7 @@ fun AddMealScreen(
         val uri = pendingCameraUri
         try {
             if (success && uri != null) {
-                viewModel.analyzeImageUri(context.applicationContext, uri)
+                viewModel.prepareImage(context.applicationContext, uri)
             }
         } finally {
             if (!success) {
@@ -144,7 +144,7 @@ fun AddMealScreen(
         androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri != null) {
-            viewModel.analyzeImageUri(context, uri)
+            viewModel.prepareImage(context, uri)
         }
     }
 
@@ -189,6 +189,10 @@ fun AddMealScreen(
             .background(MaterialTheme.colorScheme.background)
 
         when (step) {
+            AddMealStep.ImagePreview -> {
+                // Placeholder: Task 4 will replace this with the full ImagePreviewContent composable.
+                LoadingContent(modifier = contentModifier)
+            }
             AddMealStep.InputSelection -> {
                 InputSelectionContent(
                     mealDescription = mealDescription,
