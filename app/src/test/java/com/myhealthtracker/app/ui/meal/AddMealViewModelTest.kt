@@ -32,10 +32,12 @@ class AddMealViewModelTest {
         var result: MealAnalysisResult? = null,
         var error: String? = null
     ) : MealAnalyzer {
+        var callCount = 0
         var lastInputType: String? = null
         var lastText: String? = null
         var lastImageBase64: String? = null
         override suspend fun analyze(inputType: String, text: String?, imageBase64: String?, date: String): MealAnalysisResult {
+            callCount++
             lastInputType = inputType
             lastText = text
             lastImageBase64 = imageBase64
@@ -299,5 +301,21 @@ class AddMealViewModelTest {
         vm.cancelImagePreview()
         assertEquals(AddMealStep.InputSelection, vm.step.value)
         assertEquals("", vm.imageNote.value)
+    }
+
+    @Test
+    fun `image analysis failure clears pending image so a second send is a no-op`() = runTest(dispatcher) {
+        val analyzer = FakeAnalyzer(error = "boom")
+        val vm = AddMealViewModel(FakeMealRepo(), analyzer)
+        vm.seedPendingImageForTest("base64data")
+        vm.sendImageForAnalysis()
+        advanceUntilIdle()
+        assertEquals(AddMealStep.InputSelection, vm.step.value)
+        assertEquals(null, vm.pendingImageUri.value)
+        assertEquals(1, analyzer.callCount)
+        // base64 was cleared on failure, so a second send does nothing
+        vm.sendImageForAnalysis()
+        advanceUntilIdle()
+        assertEquals(1, analyzer.callCount)
     }
 }

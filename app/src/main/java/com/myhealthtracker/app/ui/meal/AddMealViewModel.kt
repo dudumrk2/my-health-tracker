@@ -167,6 +167,8 @@ class AddMealViewModel(
                 _step.value = AddMealStep.ResultState
             } catch (e: MealAnalysisException) {
                 _errorMessage.value = e.message
+                pendingImageBase64 = null
+                _pendingImageUri.value = null
                 _step.value = AddMealStep.InputSelection
             }
         }
