@@ -220,20 +220,22 @@ private fun FoodContent(
                     ) {
                         items(dateList) { date ->
                             val isSelected = date == state.selectedDate
+                            val isCurrentDay = date == LocalDate.now()
                             val dayName = getHebrewDayName(date)
                             val dayNumber = date.dayOfMonth.toString()
+
+                            // White reads better than the theme's onPrimary on the slate
+                            // background (onPrimary defaults to a dark hue in dark mode).
+                            val selectedContentColor =
+                                if (isCurrentDay) MaterialTheme.colorScheme.onPrimary else Color.White
 
                             Card(
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = if (isSelected) {
-                                        if (date == LocalDate.now()) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            if (isSystemInDarkTheme()) SlateSelectedDark else SlateSelectedLight
-                                        }
-                                    } else {
-                                        MaterialTheme.colorScheme.surface
+                                    containerColor = when {
+                                        isSelected && isCurrentDay -> MaterialTheme.colorScheme.primary
+                                        isSelected -> if (isSystemInDarkTheme()) SlateSelectedDark else SlateSelectedLight
+                                        else -> MaterialTheme.colorScheme.surface
                                     }
                                 ),
                                 border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
@@ -251,14 +253,14 @@ private fun FoodContent(
                                         text = dayName,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Medium,
-                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = if (isSelected) selectedContentColor else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = dayNumber,
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                                        color = if (isSelected) selectedContentColor else MaterialTheme.colorScheme.onSurface
                                     )
                                 }
                             }
