@@ -33,4 +33,26 @@ describe("validateRequest", () => {
   it("rejects a null payload", () => {
     expect(() => validateRequest(null)).toThrow(ValidationError);
   });
+
+  it("keeps a trimmed note on an image request", () => {
+    const r = validateRequest({ inputType: "image", imageBase64: "abc", text: "  עם רוטב טחינה  ", date: "2026-06-13" });
+    expect(r.inputType).toBe("image");
+    expect(r.imageBase64).toBe("abc");
+    expect(r.text).toBe("עם רוטב טחינה");
+  });
+
+  it("omits the note on an image request when it is blank", () => {
+    const r = validateRequest({ inputType: "image", imageBase64: "abc", text: "   ", date: "2026-06-13" });
+    expect(r.text).toBeUndefined();
+  });
+
+  it("omits the note on an image request when it is absent", () => {
+    const r = validateRequest({ inputType: "image", imageBase64: "abc", date: "2026-06-13" });
+    expect(r.text).toBeUndefined();
+  });
+
+  it("rejects an image note longer than 500 characters", () => {
+    const long = "a".repeat(501);
+    expect(() => validateRequest({ inputType: "image", imageBase64: "abc", text: long, date: "2026-06-13" })).toThrow(ValidationError);
+  });
 });
