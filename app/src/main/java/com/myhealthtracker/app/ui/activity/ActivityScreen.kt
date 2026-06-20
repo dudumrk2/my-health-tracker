@@ -4,7 +4,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.ui.platform.LocalContext
 import androidx.health.connect.client.PermissionController
 import com.myhealthtracker.app.data.health.HealthConnectManager
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.BorderStroke
@@ -289,9 +293,19 @@ private fun ActivityContent(
                 }
             }
 
-            Crossfade(
+            AnimatedContent(
                 targetState = state.selectedDate,
-                animationSpec = tween(durationMillis = 300),
+                transitionSpec = {
+                    // Later day → slide in from the right (toward the tapped card);
+                    // earlier day → slide in from the left. Strip is forced LTR.
+                    val direction = if (targetState.isAfter(initialState)) {
+                        AnimatedContentTransitionScope.SlideDirection.Left
+                    } else {
+                        AnimatedContentTransitionScope.SlideDirection.Right
+                    }
+                    (slideIntoContainer(direction, tween(300)) + fadeIn(tween(300))) togetherWith
+                        (slideOutOfContainer(direction, tween(300)) + fadeOut(tween(300)))
+                },
                 label = "ActivityDateTransition",
                 modifier = Modifier.weight(1f)
             ) { _ ->

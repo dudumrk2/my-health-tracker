@@ -2,7 +2,11 @@ package com.myhealthtracker.app.ui.food
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -268,9 +272,19 @@ private fun FoodContent(
                     }
                 }
 
-                Crossfade(
+                AnimatedContent(
                     targetState = state.selectedDate,
-                    animationSpec = tween(durationMillis = 300),
+                    transitionSpec = {
+                        // Later day → slide in from the right (toward the tapped card);
+                        // earlier day → slide in from the left. Strip is forced LTR.
+                        val direction = if (targetState.isAfter(initialState)) {
+                            AnimatedContentTransitionScope.SlideDirection.Left
+                        } else {
+                            AnimatedContentTransitionScope.SlideDirection.Right
+                        }
+                        (slideIntoContainer(direction, tween(300)) + fadeIn(tween(300))) togetherWith
+                            (slideOutOfContainer(direction, tween(300)) + fadeOut(tween(300)))
+                    },
                     label = "FoodDateTransition",
                     modifier = Modifier.weight(1f)
                 ) { _ ->
