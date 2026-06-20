@@ -4,6 +4,7 @@ import {
   ProfileContext,
   buildInsightsSystemInstruction,
   buildInsightsUserPrompt,
+  mealImagePrompt,
 } from "../src/prompts";
 import { DayData } from "../src/insights/aggregate";
 
@@ -83,5 +84,21 @@ describe("buildInsightsUserPrompt (goal + declared focus)", () => {
   it("omits the focus-areas line when none were declared", () => {
     const p = buildInsightsUserPrompt(emptyDay({ gender: "female", age: 50, primaryGoal: "maintain" }));
     expect(p.toLowerCase()).not.toContain("focus areas");
+  });
+});
+
+describe("mealImagePrompt", () => {
+  it("returns the fixed instruction when no note is given", () => {
+    expect(mealImagePrompt()).toBe("Analyze the food in this image.");
+  });
+
+  it("includes the note and keeps the image as the primary source", () => {
+    const p = mealImagePrompt("עם רוטב טחינה");
+    expect(p).toContain("עם רוטב טחינה");
+    expect(p.toLowerCase()).toContain("primary source");
+  });
+
+  it("treats a blank note as no note", () => {
+    expect(mealImagePrompt("   ")).toBe("Analyze the food in this image.");
   });
 });

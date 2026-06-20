@@ -50,7 +50,7 @@ async function runGemini(req: AnalyzeMealRequest, profile: ProfileContext | null
   const parts =
     req.inputType === "image"
       ? [
-          { text: mealImagePrompt() },
+          { text: mealImagePrompt(req.text) },
           { inlineData: { mimeType: "image/jpeg", data: req.imageBase64! } },
         ]
       : [{ text: mealTextPrompt(req.text!) }];

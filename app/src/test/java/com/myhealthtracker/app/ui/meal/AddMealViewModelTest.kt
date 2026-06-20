@@ -32,7 +32,15 @@ class AddMealViewModelTest {
         var result: MealAnalysisResult? = null,
         var error: String? = null
     ) : MealAnalyzer {
+        var callCount = 0
+        var lastInputType: String? = null
+        var lastText: String? = null
+        var lastImageBase64: String? = null
         override suspend fun analyze(inputType: String, text: String?, imageBase64: String?, date: String): MealAnalysisResult {
+            callCount++
+            lastInputType = inputType
+            lastText = text
+            lastImageBase64 = imageBase64
             error?.let { throw MealAnalysisException(it) }
             return result!!
         }
@@ -239,5 +247,75 @@ class AddMealViewModelTest {
         advanceUntilIdle()
         assertEquals(0, repo.saved.size)
         assertEquals("כל הפריטים הוסרו", vm.errorMessage.value)
+    }
+
+    @Test
+    fun `sendImageForAnalysis passes the note as text and saves it as description`() = runTest(dispatcher) {
+        val repo = FakeMealRepo()
+        val analyzer = FakeAnalyzer(
+            result = MealAnalysisResult(
+                items = listOf(MealItem("Apple", "1", 95, 0, 25, 0)),
+                totals = MealTotals(95, 0, 25, 0),
+                lowConfidence = false
+            )
+        )
+        val vm = AddMealViewModel(repo, analyzer)
+        vm.seedPendingImageForTest("base64data")
+        vm.onImageNoteChange("תפוח אורגני")
+        vm.sendImageForAnalysis()
+        advanceUntilIdle()
+        assertEquals(AddMealStep.ResultState, vm.step.value)
+        assertEquals("image", analyzer.lastInputType)
+        assertEquals("תפוח אורגני", analyzer.lastText)
+        assertEquals("base64data", analyzer.lastImageBase64)
+        vm.saveMeal()
+        advanceUntilIdle()
+        assertEquals("תפוח אורגני", repo.saved.first().description)
+    }
+
+    @Test
+    fun `sendImageForAnalysis with blank note passes null text and keeps default description`() = runTest(dispatcher) {
+        val repo = FakeMealRepo()
+        val analyzer = FakeAnalyzer(
+            result = MealAnalysisResult(
+                items = listOf(MealItem("Apple", "1", 95, 0, 25, 0)),
+                totals = MealTotals(95, 0, 25, 0),
+                lowConfidence = false
+            )
+        )
+        val vm = AddMealViewModel(repo, analyzer)
+        vm.seedPendingImageForTest("base64data")
+        vm.sendImageForAnalysis()
+        advanceUntilIdle()
+        assertEquals(null, analyzer.lastText)
+        vm.saveMeal()
+        advanceUntilIdle()
+        assertEquals("ארוחה מנותחת AI", repo.saved.first().description)
+    }
+
+    @Test
+    fun `cancelImagePreview clears note and returns to input`() = runTest(dispatcher) {
+        val vm = AddMealViewModel(FakeMealRepo(), FakeAnalyzer())
+        vm.seedPendingImageForTest("base64data")
+        vm.onImageNoteChange("something")
+        vm.cancelImagePreview()
+        assertEquals(AddMealStep.InputSelection, vm.step.value)
+        assertEquals("", vm.imageNote.value)
+    }
+
+    @Test
+    fun `image analysis failure clears pending image so a second send is a no-op`() = runTest(dispatcher) {
+        val analyzer = FakeAnalyzer(error = "boom")
+        val vm = AddMealViewModel(FakeMealRepo(), analyzer)
+        vm.seedPendingImageForTest("base64data")
+        vm.sendImageForAnalysis()
+        advanceUntilIdle()
+        assertEquals(AddMealStep.InputSelection, vm.step.value)
+        assertEquals(null, vm.pendingImageUri.value)
+        assertEquals(1, analyzer.callCount)
+        // base64 was cleared on failure, so a second send does nothing
+        vm.sendImageForAnalysis()
+        advanceUntilIdle()
+        assertEquals(1, analyzer.callCount)
     }
 }

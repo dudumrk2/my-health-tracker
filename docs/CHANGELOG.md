@@ -4,6 +4,12 @@
 
 ---
 
+## Meal Photo Preview + Optional Note · 2026-06-21
+
+- feat(meal): optional note on a meal photo — a preview step lets the user add a few words before the image is sent to the AI; the note is used as analysis context and (if provided) saved as the meal description.
+
+---
+
 ## Account: logout + deletion + inactivity cleanup · 2026-06-18
 
 - Profile screen: added an "חשבון" section with logout and permanent **account + data deletion**,

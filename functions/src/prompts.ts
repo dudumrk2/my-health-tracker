@@ -85,9 +85,12 @@ export function mealTextPrompt(text: string): string {
   return `Analyze this meal description: ${text}`;
 }
 
-/** User-turn text accompanying an inline meal image. */
-export function mealImagePrompt(): string {
-  return "Analyze the food in this image.";
+/** User-turn text accompanying an inline meal image, optionally with a user note. */
+export function mealImagePrompt(note?: string): string {
+  const base = "Analyze the food in this image.";
+  const trimmed = note?.trim();
+  if (!trimmed) return base;
+  return `${base} The user added this note: "${trimmed}". Use it as context (e.g. ingredients, portion, preparation) but rely on the image as the primary source.`;
 }
 
 // ──────────────────────────── Contract B — insights (generateInsights) ──────────────────────

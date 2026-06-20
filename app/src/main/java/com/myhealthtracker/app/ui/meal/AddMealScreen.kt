@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
+import coil.compose.AsyncImage
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
 import com.myhealthtracker.app.data.model.MealQuality
@@ -97,6 +98,8 @@ fun AddMealScreen(
     val recommendation by viewModel.recommendation.collectAsState()
     val quality by viewModel.quality.collectAsState()
     val excludedIndices by viewModel.excludedIndices.collectAsState()
+    val pendingImageUri by viewModel.pendingImageUri.collectAsState()
+    val imageNote by viewModel.imageNote.collectAsState()
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
@@ -111,7 +114,7 @@ fun AddMealScreen(
         val uri = pendingCameraUri
         try {
             if (success && uri != null) {
-                viewModel.analyzeImageUri(context.applicationContext, uri)
+                viewModel.prepareImage(context.applicationContext, uri)
             }
         } finally {
             if (!success) {
@@ -144,7 +147,7 @@ fun AddMealScreen(
         androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri != null) {
-            viewModel.analyzeImageUri(context, uri)
+            viewModel.prepareImage(context, uri)
         }
     }
 
@@ -189,6 +192,17 @@ fun AddMealScreen(
             .background(MaterialTheme.colorScheme.background)
 
         when (step) {
+            AddMealStep.ImagePreview -> {
+                ImagePreviewContent(
+                    imageUri = pendingImageUri,
+                    note = imageNote,
+                    errorMessage = errorMessage,
+                    onNoteChange = { viewModel.onImageNoteChange(it) },
+                    onSendClick = { viewModel.sendImageForAnalysis() },
+                    onCancelClick = { viewModel.cancelImagePreview() },
+                    modifier = contentModifier
+                )
+            }
             AddMealStep.InputSelection -> {
                 InputSelectionContent(
                     mealDescription = mealDescription,
@@ -403,6 +417,93 @@ private fun InputSelectionContent(
                         .clickable { onManualClick() }
                         .padding(8.dp)
                 )
+            }
+        }
+    }
+}
+
+// 1b. Image Preview Step — show the chosen photo + optional note before AI analysis
+@Composable
+private fun ImagePreviewContent(
+    imageUri: android.net.Uri?,
+    note: String,
+    errorMessage: String?,
+    onNoteChange: (String) -> Unit,
+    onSendClick: () -> Unit,
+    onCancelClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "תצוגה מקדימה",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            if (imageUri != null) {
+                AsyncImage(
+                    model = imageUri,
+                    contentDescription = "תצוגה מקדימה של הארוחה",
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(240.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                )
+            }
+
+            OutlinedTextField(
+                value = note,
+                onValueChange = { if (it.length <= 500) onNoteChange(it) },
+                placeholder = { Text("משהו שכדאי לדעת על המנה? (אופציונלי)") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                ),
+                maxLines = 5,
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Button(
+                onClick = onSendClick,
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                modifier = Modifier.fillMaxWidth().height(50.dp)
+            ) {
+                Text("שלח לניתוח AI 🚀", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
+
+            TextButton(
+                onClick = onCancelClick,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text("חזרה", fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -1181,6 +1282,21 @@ fun AddMealScreenPreviewInput() {
             onPickImageClick = {},
             onCameraClick = {},
             onManualClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Image Preview Step")
+@Composable
+fun AddMealScreenPreviewImagePreview() {
+    MyHealthTrackerTheme {
+        ImagePreviewContent(
+            imageUri = null,
+            note = "עם רוטב טחינה",
+            errorMessage = null,
+            onNoteChange = {},
+            onSendClick = {},
+            onCancelClick = {}
         )
     }
 }

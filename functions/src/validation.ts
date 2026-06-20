@@ -8,6 +8,7 @@ export interface AnalyzeMealRequest {
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_NOTE_LENGTH = 500;
 
 export function validateRequest(data: unknown): AnalyzeMealRequest {
   if (typeof data !== "object" || data === null) {
@@ -36,6 +37,18 @@ export function validateRequest(data: unknown): AnalyzeMealRequest {
   const imageBase64 = d.imageBase64;
   if (typeof imageBase64 !== "string" || imageBase64.trim().length === 0) {
     throw new ValidationError("imageBase64 is required for image input.");
+  }
+
+  // Optional free-text note accompanying the image.
+  const note = d.text;
+  if (typeof note === "string") {
+    const trimmed = note.trim();
+    if (trimmed.length > MAX_NOTE_LENGTH) {
+      throw new ValidationError(`note must be at most ${MAX_NOTE_LENGTH} characters.`);
+    }
+    if (trimmed.length > 0) {
+      return { inputType, imageBase64, text: trimmed, date };
+    }
   }
   return { inputType, imageBase64, date };
 }
