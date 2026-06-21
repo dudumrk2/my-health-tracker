@@ -49,7 +49,7 @@ describe("buildFallbackInsights", () => {
     expect(r.today.activity).toContain("9000");
     expect(r.today.activity).toContain("8000"); // default steps goal
     expect(r.today.activity).toContain("150");  // weekly aerobic goal
-    expect(r.today.activity).toContain("2");    // weekly strength goal
+    expect(r.today.activity).toContain("מתוך 2 אימוני כוח");    // weekly strength goal
   });
 
   it("activity line nudges toward goals when no activity logged", () => {

@@ -1,6 +1,5 @@
 import { DayData } from "./aggregate";
-import { ParsedInsights } from "./insightsParse";
-import { DISCLAIMER_HE } from "./insightsParse";
+import { ParsedInsights, DISCLAIMER_HE } from "./insightsParse";
 import { WEEKLY_AEROBIC_GOAL_MIN, WEEKLY_STRENGTH_GOAL, dailyStepsGoal } from "./goals";
 
 /**

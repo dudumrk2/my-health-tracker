@@ -131,7 +131,7 @@ describe("runInsightsForUser", () => {
     expect(r.status).toBe("fallback");
     expect(generated).toBe(false);
     expect(writes).toHaveLength(1);
-    const [, , parsed, mode] = writes[0] as [string, string, { today: { activity: string } }, string];
+    const [, , parsed, mode] = writes[0] as [string, string, { today: { activity: string } }, string, string];
     expect(mode).toBe("evening");
     expect(parsed.today.activity).toContain("9000"); // goal-linked activity from the day
   });
