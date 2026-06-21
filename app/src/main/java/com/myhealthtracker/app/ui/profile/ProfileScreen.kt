@@ -258,10 +258,15 @@ private fun ProfileScreenContent(
     val scrollState = rememberScrollState()
     var showDeleteDialog by remember { mutableStateOf(false) }
     var editingGoal by remember { mutableStateOf<EditableGoal?>(null) }
+    var isSaving by remember { mutableStateOf(false) }
     // Account deletion runs in the background; while it does, the form's cancel/save actions are
     // locked so the user can't navigate away (losing the completion callback) or write the profile
     // back concurrently with the delete.
     val isDeleting = accountState is AccountState.Deleting
+
+    LaunchedEffect(uiState) {
+        if (uiState !is ProfileUiState.Loading) isSaving = false
+    }
     val gradientColors = listOf(
         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
         MaterialTheme.colorScheme.background
@@ -482,14 +487,17 @@ private fun ProfileScreenContent(
                 )
             }
 
-            if (uiState is ProfileUiState.Loading) {
+            if (isSaving) {
                 CircularProgressIndicator(
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
             } else {
                 Button(
-                    onClick = onSaveClick,
+                    onClick = {
+                        isSaving = true
+                        onSaveClick()
+                    },
                     enabled = !isDeleting,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
