@@ -7,6 +7,7 @@ import com.myhealthtracker.app.data.goals.HealthGoals
 import com.myhealthtracker.app.data.profile.GoalOverrides
 import com.myhealthtracker.app.data.account.AccountDeletionException
 import com.myhealthtracker.app.data.account.AccountRepository
+import com.myhealthtracker.app.data.body.BodyMeasurementRepository
 import com.myhealthtracker.app.data.profile.ProfileRepository
 import com.myhealthtracker.app.data.profile.UserProfile
 import com.myhealthtracker.app.data.profile.genderToHebrew
@@ -16,6 +17,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
 
 sealed class ProfileUiState {
@@ -36,7 +39,8 @@ sealed class AccountState {
 class ProfileViewModel(
     private val profileRepository: ProfileRepository = AppContainer.profileRepository,
     private val uidProvider: () -> String? = { AppContainer.currentUid() },
-    private val accountRepository: AccountRepository = AppContainer.accountRepository
+    private val accountRepository: AccountRepository = AppContainer.accountRepository,
+    private val bodyMeasurementRepository: BodyMeasurementRepository = AppContainer.bodyMeasurementRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Idle)
@@ -191,6 +195,10 @@ class ProfileViewModel(
 
             profileRepository.saveUserProfile(uid, profile).collect { result ->
                 if (result.isSuccess) {
+                    // Mirror the setup/edit weight into the body-measurement history
+                    // for today so the dashboard's "מדדי גוף" section reflects it.
+                    val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+                    bodyMeasurementRepository.seedWeight(today, weight)
                     _uiState.value = ProfileUiState.Saved
                 } else {
                     _uiState.value = ProfileUiState.Error(result.exceptionOrNull()?.message ?: "שגיאה בשמירה")

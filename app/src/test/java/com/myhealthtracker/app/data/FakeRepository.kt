@@ -293,6 +293,14 @@ object FakeRepository : ProfileRepository, HealthRepository, MealRepository, Wat
         }
     }
 
+    override fun seedWeight(date: String, weight: Double) {
+        val existing = _bodyMeasurements.value.firstOrNull { it.date == date }
+        // Merge: keep any existing waist/hips/note for the same day.
+        val merged = existing?.copy(weightKg = weight)
+            ?: BodyMeasurement(date, weight, null, null, "")
+        _bodyMeasurements.value = _bodyMeasurements.value.filter { it.date != date } + merged
+    }
+
     // --- WaterRepository Implementation ---
 
     override fun addWater(date: String, amountMl: Int) {
