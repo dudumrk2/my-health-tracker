@@ -4,6 +4,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.ui.platform.LocalContext
 import androidx.health.connect.client.PermissionController
 import com.myhealthtracker.app.data.health.HealthConnectManager
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -239,13 +246,23 @@ private fun ActivityContent(
             ) {
                 items(dateList) { date ->
                     val isSelected = date == state.selectedDate
+                    val isCurrentDay = date == LocalDate.now()
                     val dayName = getHebrewDayName(date)
                     val dayNumber = date.dayOfMonth.toString()
+
+                    // White reads better than the theme's onPrimary on the slate
+                    // background (onPrimary defaults to a dark hue in dark mode).
+                    val selectedContentColor =
+                        if (isCurrentDay) MaterialTheme.colorScheme.onPrimary else Color.White
 
                     Card(
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+                            containerColor = when {
+                                isSelected && isCurrentDay -> MaterialTheme.colorScheme.primary
+                                isSelected -> if (isSystemInDarkTheme()) SlateSelectedDark else SlateSelectedLight
+                                else -> MaterialTheme.colorScheme.surface
+                            }
                         ),
                         border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                         modifier = Modifier
@@ -262,245 +279,44 @@ private fun ActivityContent(
                                 text = dayName,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                color = if (isSelected) selectedContentColor else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = dayNumber,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                                color = if (isSelected) selectedContentColor else MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
                 }
             }
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(bottom = 80.dp, top = 8.dp)
-            ) {
-                // 1. Steps Card
-                item {
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(20.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "צעדים",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text("👣", fontSize = 20.sp)
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            val progress = (state.steps.toFloat() / stepGoal.toFloat()).coerceIn(0f, 1f)
-
-                            Box(
-                                modifier = Modifier.size(170.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    progress = { progress },
-                                    color = MaterialTheme.colorScheme.primary,
-                                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                                    strokeWidth = 13.dp,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    val formattedSteps = NumberFormat.getNumberInstance(Locale.US).format(state.steps)
-                                    Text(
-                                        text = formattedSteps,
-                                        style = MaterialTheme.typography.headlineMedium.copy(
-                                            fontWeight = FontWeight.Bold
-                                        ),
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = "מתוך ${NumberFormat.getNumberInstance(Locale.US).format(stepGoal)}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Box(
-                                        modifier = Modifier
-                                            .background(MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(10.dp))
-                                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                                    ) {
-                                        Text(
-                                            text = "${(progress * 100).toInt()}%",
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(20.dp))
-
-                            // Stats row
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(text = "ק״מ", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = String.format(Locale.US, "%.1f", state.steps * 0.0007f),
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                                Box(modifier = Modifier.width(1.dp).height(24.dp).background(MaterialTheme.colorScheme.outlineVariant))
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(text = "קלוריות", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = "${(state.steps * 0.05f).toInt()}",
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                                Box(modifier = Modifier.width(1.dp).height(24.dp).background(MaterialTheme.colorScheme.outlineVariant))
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(text = "דקות", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = "${(state.steps / 130).toInt()}",
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
-                        }
+            AnimatedContent(
+                targetState = state.selectedDate,
+                transitionSpec = {
+                    // Later day → slide in from the right (toward the tapped card);
+                    // earlier day → slide in from the left. Strip is forced LTR.
+                    val direction = if (targetState.isAfter(initialState)) {
+                        AnimatedContentTransitionScope.SlideDirection.Left
+                    } else {
+                        AnimatedContentTransitionScope.SlideDirection.Right
                     }
-                }
-
-                // 2. Sleep Card
-                item {
-                    val hours = state.sleepMinutes / 60
-                    val mins = state.sleepMinutes % 60
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Text("🌙", fontSize = 20.sp)
-                                    Text(
-                                        text = "שינת הלילה",
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                                Text(
-                                    text = "${hours}ש׳ ${mins}ד׳",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = WaterColor
-                                    )
-                                )
-                            }
-
-                            // Segmented Sleep Stages Bar
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(16.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                            ) {
-                                Box(modifier = Modifier.fillMaxHeight().weight(0.22f).background(MaterialTheme.colorScheme.primary)) // Deep
-                                Box(modifier = Modifier.fillMaxHeight().weight(0.54f).background(WaterColor)) // Light
-                                Box(modifier = Modifier.fillMaxHeight().weight(0.20f).background(CarbsColor)) // REM
-                                Box(modifier = Modifier.fillMaxHeight().weight(0.04f).background(ProteinColor.copy(alpha = 0.5f))) // Awake
-                            }
-
-                            // Legend Row
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                @Composable
-                                fun LegendItem(label: String, color: Color) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(color))
-                                        Text(text = label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                }
-
-                                LegendItem(label = "עמוקה", color = MaterialTheme.colorScheme.primary)
-                                LegendItem(label = "קלה", color = WaterColor)
-                                LegendItem(label = "REM", color = CarbsColor)
-                                LegendItem(label = "ערות", color = ProteinColor.copy(alpha = 0.5f))
-                            }
-                        }
-                    }
-                }
-
-                // 3. Workouts Header
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "אימונים אחרונים",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "הצג הכל",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.clickable { /* Handle click */ }
-                        )
-                    }
-                }
-
-                // Workouts list
-                if (state.workouts.isEmpty()) {
+                    (slideIntoContainer(direction, tween(300)) + fadeIn(tween(300))) togetherWith
+                        (slideOutOfContainer(direction, tween(300)) + fadeOut(tween(300)))
+                },
+                label = "ActivityDateTransition",
+                modifier = Modifier.weight(1f)
+            ) { _ ->
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp, top = 8.dp)
+                ) {
+                    // 1. Steps Card
                     item {
                         Card(
                             shape = RoundedCornerShape(16.dp),
@@ -508,97 +324,315 @@ private fun ActivityContent(
                             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(
-                                text = "אין אימונים רשומים ליום זה",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            Column(
                                 modifier = Modifier.padding(20.dp),
-                                textAlign = TextAlign.Center
-                            )
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "צעדים",
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text("👣", fontSize = 20.sp)
+                                }
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                val progress = (state.steps.toFloat() / stepGoal.toFloat()).coerceIn(0f, 1f)
+
+                                Box(
+                                    modifier = Modifier.size(170.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        progress = { progress },
+                                        color = MaterialTheme.colorScheme.primary,
+                                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        strokeWidth = 13.dp,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        val formattedSteps = NumberFormat.getNumberInstance(Locale.US).format(state.steps)
+                                        Text(
+                                            text = formattedSteps,
+                                            style = MaterialTheme.typography.headlineMedium.copy(
+                                                fontWeight = FontWeight.Bold
+                                            ),
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "מתוך ${NumberFormat.getNumberInstance(Locale.US).format(stepGoal)}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .background(MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(10.dp))
+                                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = "${(progress * 100).toInt()}%",
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(20.dp))
+
+                                // Stats row
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(text = "ק״מ", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = String.format(Locale.US, "%.1f", state.steps * 0.0007f),
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                    Box(modifier = Modifier.width(1.dp).height(24.dp).background(MaterialTheme.colorScheme.outlineVariant))
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(text = "קלוריות", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = "${(state.steps * 0.05f).toInt()}",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                    Box(modifier = Modifier.width(1.dp).height(24.dp).background(MaterialTheme.colorScheme.outlineVariant))
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(text = "דקות", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = "${(state.steps / 130).toInt()}",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
-                } else {
-                    items(state.workouts) { workout ->
-                        val info = getDisplayWorkoutInfo(workout)
+
+                    // 2. Sleep Card
+                    item {
+                        val hours = state.sleepMinutes / 60
+                        val mins = state.sleepMinutes % 60
                         Card(
                             shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(
+                            Column(
                                 modifier = Modifier.padding(16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 Row(
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(44.dp)
-                                            .clip(CircleShape)
-                                            .background(info.iconBgColor.copy(alpha = 0.2f)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(info.icon, fontSize = 22.sp)
-                                    }
-                                    Column {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                        ) {
-                                            Text(
-                                                text = info.title,
-                                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
-                                            if (info.isManual) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .background(MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(6.dp))
-                                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                                                ) {
-                                                    Text(
-                                                        text = "ידני",
-                                                        fontSize = 10.sp,
-                                                        color = MaterialTheme.colorScheme.primary,
-                                                        fontWeight = FontWeight.Bold
-                                                    )
-                                                }
-                                            }
-                                        }
-                                        Text(
-                                            text = info.subtitle,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Text(
-                                        text = info.durationText,
-                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        if (info.hasGps) {
-                                            Icon(
-                                                imageVector = Icons.Default.Place,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.size(12.dp)
+                                        Text("🌙", fontSize = 20.sp)
+                                        Text(
+                                            text = "שינת הלילה",
+                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                    Text(
+                                        text = "${hours}ש׳ ${mins}ד׳",
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = WaterColor
+                                        )
+                                    )
+                                }
+
+                                // Segmented Sleep Stages Bar
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(16.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                ) {
+                                    Box(modifier = Modifier.fillMaxHeight().weight(0.22f).background(MaterialTheme.colorScheme.primary)) // Deep
+                                    Box(modifier = Modifier.fillMaxHeight().weight(0.54f).background(WaterColor)) // Light
+                                    Box(modifier = Modifier.fillMaxHeight().weight(0.20f).background(CarbsColor)) // REM
+                                    Box(modifier = Modifier.fillMaxHeight().weight(0.04f).background(ProteinColor.copy(alpha = 0.5f))) // Awake
+                                }
+
+                                // Legend Row
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    @Composable
+                                    fun LegendItem(label: String, color: Color) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(color))
+                                            Text(text = label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    }
+
+                                    LegendItem(label = "עמוקה", color = MaterialTheme.colorScheme.primary)
+                                    LegendItem(label = "קלה", color = WaterColor)
+                                    LegendItem(label = "REM", color = CarbsColor)
+                                    LegendItem(label = "ערות", color = ProteinColor.copy(alpha = 0.5f))
+                                }
+                            }
+                        }
+                    }
+
+                    // 3. Workouts Header
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "אימונים אחרונים",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "הצג הכל",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clickable { /* Handle click */ }
+                            )
+                        }
+                    }
+
+                    // Workouts list
+                    if (state.workouts.isEmpty()) {
+                        item {
+                            Card(
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "אין אימונים רשומים ליום זה",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(20.dp),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    } else {
+                        items(state.workouts) { workout ->
+                            val info = getDisplayWorkoutInfo(workout)
+                            Card(
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(44.dp)
+                                                .clip(CircleShape)
+                                                .background(info.iconBgColor.copy(alpha = 0.2f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(info.icon, fontSize = 22.sp)
+                                        }
+                                        Column {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                Text(
+                                                    text = info.title,
+                                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                if (info.isManual) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .background(MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(6.dp))
+                                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    ) {
+                                                        Text(
+                                                            text = "ידני",
+                                                            fontSize = 10.sp,
+                                                            color = MaterialTheme.colorScheme.primary,
+                                                            fontWeight = FontWeight.Bold
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                            Text(
+                                                text = info.subtitle,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
+                                    }
+                                    Column(horizontalAlignment = Alignment.End) {
                                         Text(
-                                            text = info.detailText,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            text = info.durationText,
+                                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            if (info.hasGps) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Place,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.size(12.dp)
+                                                )
+                                            }
+                                            Text(
+                                                text = info.detailText,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                     }
                                 }
                             }

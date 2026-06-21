@@ -18,3 +18,6 @@ val LightSurface = Color(0xFFFFFFFF)
 val DarkBackground = Color(0xFF121212)
 val DarkSurface = Color(0xFF1E1E1E)
 
+// Slate colors for non-today selected dates
+val SlateSelectedLight = Color(0xFF546E7A)
+val SlateSelectedDark = Color(0xFF78909C)
