@@ -60,6 +60,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
+import com.myhealthtracker.app.notification.QuickActionsNotificationManager.WATER_STEP_ML
 
 private const val DAILY_CALORIE_TARGET = 2500
 private const val DAILY_WATER_TARGET_ML = 3000 // 3.0L
@@ -472,7 +473,7 @@ private fun FoodContent(
                                     ) {
                                         // 10 Water Drops, proportional to the daily goal so the
                                         // last drop fills exactly at the target regardless of step size.
-                                        val dropStep = 250
+                                        val dropStep = WATER_STEP_ML
                                         val totalDrops = (goals.waterMl.toFloat() / dropStep.toFloat()).roundToInt().coerceAtLeast(1)
                                         val filledDropsCount = (state.waterIntakeMl.toFloat() / dropStep.toFloat()).roundToInt().coerceIn(0, totalDrops)
                                         FlowRow(
@@ -500,7 +501,7 @@ private fun FoodContent(
                                         // Quick Add Button
                                         if (isToday) {
                                             Button(
-                                                onClick = { onQuickAddWaterClick(250) },
+                                                onClick = { onQuickAddWaterClick(WATER_STEP_ML) },
                                                 colors = ButtonDefaults.buttonColors(
                                                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
