@@ -7,6 +7,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -255,6 +257,7 @@ private fun ProfileScreenContent(
 ) {
     val scrollState = rememberScrollState()
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var editingGoal by remember { mutableStateOf<EditableGoal?>(null) }
     // Account deletion runs in the background; while it does, the form's cancel/save actions are
     // locked so the user can't navigate away (losing the completion callback) or write the profile
     // back concurrently with the delete.
@@ -505,21 +508,18 @@ private fun ProfileScreenContent(
                             color = MaterialTheme.colorScheme.error
                         )
                     }
-                    GoalLine("קלוריות", "${goals.caloriesKcal} קק\"ל" + if (goals.tdee > 0) "  (TDEE ${goals.tdee})" else "")
-                    GoalLine("חלבון", "${goals.proteinG} ג")
+                    GoalLine(
+                        label = "קלוריות",
+                        value = "${goals.caloriesKcal} קק\"ל",
+                        caption = if (goals.tdee > 0) "הוצאה יומית מוערכת (TDEE): ${goals.tdee} קק\"ל" else null,
+                        onEdit = { editingGoal = EditableGoal.CALORIES }
+                    )
+                    GoalLine("חלבון", "${goals.proteinG} ג", onEdit = { editingGoal = EditableGoal.PROTEIN })
                     GoalLine("שומן", "${goals.fatG} ג")
                     GoalLine("פחמימות", "${goals.carbsG} ג")
-                    GoalLine("צעדים", "${goals.steps}")
-                    GoalLine("שינה", "${goals.sleepHoursMin}-${goals.sleepHoursMax} שעות")
-                    GoalLine("מים", "${goals.waterMl} מ\"ל")
-
-                    Spacer(modifier = Modifier.height(4.dp))
-                    FieldLabel("דריסה ידנית (אופציונלי)")
-                    OverrideField(caloriesOverride, onCaloriesOverrideChange, "קלוריות")
-                    OverrideField(stepsOverride, onStepsOverrideChange, "צעדים")
-                    OverrideField(proteinOverride, onProteinOverrideChange, "חלבון (ג)")
-                    OverrideField(waterOverride, onWaterOverrideChange, "מים (מ\"ל)")
-                    OverrideField(sleepOverride, onSleepOverrideChange, "שינה (שעות)")
+                    GoalLine("צעדים", "${goals.steps}", onEdit = { editingGoal = EditableGoal.STEPS })
+                    GoalLine("שינה", formatSleepGoal(goals.sleepHoursMin, goals.sleepHoursMax), onEdit = { editingGoal = EditableGoal.SLEEP })
+                    GoalLine("מים", "${goals.waterMl} מ\"ל", onEdit = { editingGoal = EditableGoal.WATER })
 
                     Text(
                         text = HEALTH_DISCLAIMER_HE,
@@ -615,6 +615,32 @@ private fun ProfileScreenContent(
                 }
             }
 
+            editingGoal?.let { goal ->
+                val current = when (goal) {
+                    EditableGoal.CALORIES -> caloriesOverride.ifBlank { goals.caloriesKcal.toString() }
+                    EditableGoal.PROTEIN -> proteinOverride.ifBlank { goals.proteinG.toString() }
+                    EditableGoal.STEPS -> stepsOverride.ifBlank { goals.steps.toString() }
+                    EditableGoal.SLEEP -> sleepOverride.ifBlank { goals.sleepHoursMin.toString() }
+                    EditableGoal.WATER -> waterOverride.ifBlank { goals.waterMl.toString() }
+                }
+                val onApply: (String) -> Unit = { v ->
+                    when (goal) {
+                        EditableGoal.CALORIES -> onCaloriesOverrideChange(v)
+                        EditableGoal.PROTEIN -> onProteinOverrideChange(v)
+                        EditableGoal.STEPS -> onStepsOverrideChange(v)
+                        EditableGoal.SLEEP -> onSleepOverrideChange(v)
+                        EditableGoal.WATER -> onWaterOverrideChange(v)
+                    }
+                }
+                GoalEditDialog(
+                    goal = goal,
+                    initialValue = current,
+                    onApply = onApply,
+                    onReset = { onApply("") },
+                    onDismiss = { editingGoal = null }
+                )
+            }
+
             if (showDeleteDialog) {
                 AlertDialog(
                     onDismissRequest = { if (!isDeleting) showDeleteDialog = false },
@@ -649,33 +675,98 @@ private fun ProfileScreenContent(
     }
 }
 
+/** Goals that map to a GoalOverrides field and can be edited via the pencil dialog. */
+private enum class EditableGoal(val title: String) {
+    CALORIES("עריכת יעד קלוריות"),
+    PROTEIN("עריכת יעד חלבון (ג)"),
+    STEPS("עריכת יעד צעדים"),
+    SLEEP("עריכת יעד שינה (שעות)"),
+    WATER("עריכת יעד מים (מ\"ל)")
+}
+
+/**
+ * Edit dialog for a single goal. [initialValue] pre-fills the field with the current effective
+ * value; [onApply] sets the override (empty string clears it), [onReset] clears it to the
+ * computed value. Both close the dialog via [onDismiss].
+ */
 @Composable
-private fun GoalLine(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(
-            value,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
+private fun GoalEditDialog(
+    goal: EditableGoal,
+    initialValue: String,
+    onApply: (String) -> Unit,
+    onReset: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var draft by remember(goal) { mutableStateOf(initialValue) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(goal.title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it.filter { c -> c.isDigit() } },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                TextButton(onClick = { onReset(); onDismiss() }) {
+                    Text("אפס לערך המחושב")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onApply(draft); onDismiss() }) { Text("שמירה") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("ביטול") }
+        }
+    )
 }
 
 @Composable
-private fun OverrideField(value: String, onChange: (String) -> Unit, label: String) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onChange,
-        label = { Text(label) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp)
-    )
+private fun GoalLine(
+    label: String,
+    value: String,
+    caption: String? = null,
+    onEdit: (() -> Unit)? = null
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    value,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (onEdit != null) {
+                    IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "עריכה",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+        }
+        if (caption != null) {
+            Text(
+                text = caption,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }
+
 
 @Preview(showBackground = true, name = "Light Theme")
 @Composable
