@@ -9,6 +9,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -69,7 +70,7 @@ fun CelebrationOverlay(
         vibrate(context)
     }
 
-    androidx.compose.foundation.layout.Box(
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.35f))
@@ -86,7 +87,7 @@ fun CelebrationOverlay(
                     modifier = Modifier.size(220.dp)
                 )
                 LaunchedEffect(progress) {
-                    if (progress >= 1f) current = null
+                    if (composition != null && progress >= 1f) current = null
                 }
             } else {
                 // No asset bundled yet — show text only and auto-dismiss.
