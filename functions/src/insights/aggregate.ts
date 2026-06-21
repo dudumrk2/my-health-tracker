@@ -9,6 +9,8 @@ export interface DayProfile {
   primaryGoal?: string;
   /** Self-declared focus areas (e.g. "menopause"). Direct user input only — never derived from age/gender. */
   focusAreas?: string[];
+  /** User's manual daily steps goal from profile.goalOverrides.steps; undefined when not customized. */
+  stepsGoalOverride?: number;
 }
 
 export interface DayWorkout {
@@ -63,6 +65,8 @@ function buildProfile(userDoc: Record<string, unknown> | null, currentYear: numb
   const focusAreas = Array.isArray(profile.focusAreas)
     ? (profile.focusAreas as unknown[]).filter((f): f is string => typeof f === "string")
     : undefined;
+  const goalOverrides = (profile.goalOverrides ?? null) as Record<string, unknown> | null;
+  const stepsGoalOverride = optNum(goalOverrides?.steps);
   return {
     gender: typeof profile.gender === "string" ? profile.gender : undefined,
     weightKg: optNum(profile.weightKg),
@@ -70,6 +74,7 @@ function buildProfile(userDoc: Record<string, unknown> | null, currentYear: numb
     age: birthYear !== undefined ? currentYear - birthYear : undefined,
     primaryGoal: typeof profile.primaryGoal === "string" ? profile.primaryGoal : undefined,
     focusAreas: focusAreas && focusAreas.length > 0 ? focusAreas : undefined,
+    stepsGoalOverride,
   };
 }
 
