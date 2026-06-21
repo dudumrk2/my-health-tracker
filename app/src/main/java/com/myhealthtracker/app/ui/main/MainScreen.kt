@@ -99,6 +99,7 @@ fun MainScreen(
                         FoodScreen(
                             viewModel = foodViewModel,
                             onNavigateToAddMeal = onNavigateToAddMeal,
+                            onNavigateToProfile = onNavigateToProfile,
                             modifier = Modifier.fillMaxSize()
                         )
                     }

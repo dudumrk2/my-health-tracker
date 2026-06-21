@@ -154,6 +154,9 @@ fun AddMealScreen(
     LaunchedEffect(isSaved) {
         if (isSaved) {
             onDismiss()
+            // The VM isn't scoped per nav entry, so clear it now; otherwise the stale
+            // isSaved=true would dismiss the screen instantly the next time it's opened.
+            viewModel.reset()
         }
     }
 
