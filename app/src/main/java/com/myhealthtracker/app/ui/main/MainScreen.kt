@@ -92,6 +92,7 @@ fun MainScreen(
                         ActivityScreen(
                             viewModel = activityViewModel,
                             onNavigateToAddWorkout = onNavigateToAddWorkout,
+                            onNavigateToProfile = onNavigateToProfile,
                             modifier = Modifier.fillMaxSize()
                         )
                     }

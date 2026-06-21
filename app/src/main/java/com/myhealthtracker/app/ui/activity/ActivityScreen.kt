@@ -118,6 +118,7 @@ fun getHebrewDayName(date: LocalDate): String {
 fun ActivityScreen(
     viewModel: ActivityViewModel,
     onNavigateToAddWorkout: () -> Unit,
+    onNavigateToProfile: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -145,6 +146,7 @@ fun ActivityScreen(
         onDateSelect = { viewModel.changeDate(it) },
         onRefreshClick = { viewModel.refreshData() },
         onAddWorkoutClick = onNavigateToAddWorkout,
+        onProfileClick = onNavigateToProfile,
         modifier = modifier
     )
 }
@@ -156,6 +158,7 @@ private fun ActivityContent(
     onDateSelect: (LocalDate) -> Unit,
     onRefreshClick: () -> Unit,
     onAddWorkoutClick: () -> Unit,
+    onProfileClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val dateList = remember(state.selectedDate) {
@@ -219,7 +222,7 @@ private fun ActivityContent(
                     textAlign = TextAlign.Center
                 )
 
-                IconButton(onClick = {}) {
+                IconButton(onClick = onProfileClick) {
                     Icon(
                         imageVector = Icons.Default.AccountCircle,
                         contentDescription = "פרופיל הגדרות",
