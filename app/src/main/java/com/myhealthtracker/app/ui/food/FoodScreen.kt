@@ -59,6 +59,8 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.roundToInt
+import com.myhealthtracker.app.notification.QuickActionsNotificationManager.WATER_STEP_ML
 
 private const val DAILY_CALORIE_TARGET = 2500
 private const val DAILY_WATER_TARGET_ML = 3000 // 3.0L
@@ -79,6 +81,15 @@ private fun getHebrewDayName(date: LocalDate): String {
 private fun formatInstantToTime(instant: Instant): String {
     val formatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
     return formatter.format(instant)
+}
+
+private fun formatLiters(ml: Int): String {
+    val liters = ml / 1000f
+    return when {
+        ml % 1000 == 0 -> String.format(Locale.US, "%.0f", liters)
+        ml % 100 == 0 -> String.format(Locale.US, "%.1f", liters)
+        else -> String.format(Locale.US, "%.2f", liters)
+    }
 }
 
 private fun getMealTitle(description: String, index: Int): String {
@@ -447,7 +458,7 @@ private fun FoodContent(
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
-                                            text = "${String.format(Locale.US, "%.1f", state.waterIntakeMl / 1000f)} / ${String.format(Locale.US, "%.1f", goals.waterMl / 1000f)} ליטר",
+                                            text = "${formatLiters(state.waterIntakeMl)} / ${formatLiters(goals.waterMl)} ליטר",
                                             style = MaterialTheme.typography.bodyMedium.copy(
                                                 fontWeight = FontWeight.Bold,
                                                 color = WaterColor
@@ -462,13 +473,15 @@ private fun FoodContent(
                                     ) {
                                         // 10 Water Drops, proportional to the daily goal so the
                                         // last drop fills exactly at the target regardless of step size.
-                                        val waterTarget = goals.waterMl.coerceAtLeast(1)
-                                        val filledDropsCount = (state.waterIntakeMl * 10 / waterTarget).coerceIn(0, 10)
-                                        Row(
+                                        val dropStep = WATER_STEP_ML
+                                        val totalDrops = (goals.waterMl.toFloat() / dropStep.toFloat()).roundToInt().coerceAtLeast(1)
+                                        val filledDropsCount = (state.waterIntakeMl.toFloat() / dropStep.toFloat()).roundToInt().coerceIn(0, totalDrops)
+                                        FlowRow(
                                             horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp),
                                             modifier = Modifier.weight(1f)
                                         ) {
-                                            for (i in 0 until 10) {
+                                            for (i in 0 until totalDrops) {
                                                 val isFilled = i < filledDropsCount
                                                 val alpha by animateFloatAsState(
                                                     targetValue = if (isFilled) 1f else 0.2f,
@@ -488,7 +501,7 @@ private fun FoodContent(
                                         // Quick Add Button
                                         if (isToday) {
                                             Button(
-                                                onClick = { onQuickAddWaterClick(250) },
+                                                onClick = { onQuickAddWaterClick(WATER_STEP_ML) },
                                                 colors = ButtonDefaults.buttonColors(
                                                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
