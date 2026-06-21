@@ -4,6 +4,13 @@
 
 ---
 
+## Dashboard body metrics reflect setup weight · 2026-06-21
+
+- fix(dashboard): the "מדדי גוף" card showed hardcoded mockup placeholders (74.2 kg / 88 / 102 / "ירידה של 0.8 ק״ג") instead of the user's data. Saving the profile now seeds today's weight into `bodyMeasurements` (merge — keeps a same-day manual waist/hips), the weight badge falls back to `profile.weightKg`, waist/hips show "—" when unmeasured, and the trend is computed from real history.
+- **Why:** the setup weight lived only on `profile.weightKg`; nothing mirrored it into the date-keyed `bodyMeasurements` the dashboard reads, so the card never reflected entered data.
+
+---
+
 ## Meal Photo Preview + Optional Note · 2026-06-21
 
 - feat(meal): optional note on a meal photo — a preview step lets the user add a few words before the image is sent to the AI; the note is used as analysis context and (if provided) saved as the meal description.
