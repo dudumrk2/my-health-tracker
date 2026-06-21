@@ -92,6 +92,7 @@ fun MainScreen(
                         ActivityScreen(
                             viewModel = activityViewModel,
                             onNavigateToAddWorkout = onNavigateToAddWorkout,
+                            onNavigateToProfile = onNavigateToProfile,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -99,6 +100,7 @@ fun MainScreen(
                         FoodScreen(
                             viewModel = foodViewModel,
                             onNavigateToAddMeal = onNavigateToAddMeal,
+                            onNavigateToProfile = onNavigateToProfile,
                             modifier = Modifier.fillMaxSize()
                         )
                     }

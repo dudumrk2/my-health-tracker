@@ -149,6 +149,27 @@ class AddMealViewModelTest {
     }
 
     @Test
+    fun `reset clears the saved flag and returns to a clean input state`() = runTest(dispatcher) {
+        // ViewModels are not scoped per nav entry, so a stale isSaved=true would make
+        // re-opening the screen dismiss instantly. reset() must clear it for the next open.
+        val repo = FakeMealRepo()
+        val vm = vmInResultState(repo = repo, items = listOf(MealItem("A", "1", 100, 10, 5, 2)))
+        advanceUntilIdle()
+        vm.saveMeal()
+        advanceUntilIdle()
+        assertTrue(vm.isSaved.value)
+        assertEquals(AddMealStep.ResultState, vm.step.value)
+
+        vm.reset()
+
+        assertEquals(false, vm.isSaved.value)
+        assertEquals(AddMealStep.InputSelection, vm.step.value)
+        assertEquals("", vm.mealDescription.value)
+        assertTrue(vm.recognizedItems.value.isEmpty())
+        assertEquals(null, vm.errorMessage.value)
+    }
+
+    @Test
     fun `successful image analysis moves to result with items`() = runTest(dispatcher) {
         val analyzer = FakeAnalyzer(
             result = MealAnalysisResult(

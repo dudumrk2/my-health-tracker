@@ -110,6 +110,7 @@ private fun getMealEmoji(description: String): String {
 fun FoodScreen(
     viewModel: FoodViewModel,
     onNavigateToAddMeal: () -> Unit,
+    onNavigateToProfile: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.state.collectAsState()
@@ -122,6 +123,7 @@ fun FoodScreen(
         onRefreshClick = { viewModel.refreshAdvice() },
         onQuickAddWaterClick = { viewModel.quickAddWater(it) },
         onAddMealClick = onNavigateToAddMeal,
+        onProfileClick = onNavigateToProfile,
         modifier = modifier
     )
 }
@@ -135,6 +137,7 @@ private fun FoodContent(
     onRefreshClick: () -> Unit,
     onQuickAddWaterClick: (Int) -> Unit,
     onAddMealClick: () -> Unit,
+    onProfileClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedMeal by remember { mutableStateOf<MealEntry?>(null) }
@@ -203,7 +206,7 @@ private fun FoodContent(
                     )
 
                     // Left in RTL = Profile
-                    IconButton(onClick = {}) {
+                    IconButton(onClick = onProfileClick) {
                         Icon(
                             imageVector = Icons.Default.AccountCircle,
                             contentDescription = "פרופיל",

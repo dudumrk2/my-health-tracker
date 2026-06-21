@@ -58,6 +58,7 @@ fun AddBodyMeasurementScreen(
     LaunchedEffect(isSaved) {
         if (isSaved) {
             onDismiss()
+            viewModel.reset()
         }
     }
 

@@ -254,6 +254,32 @@ class AddMealViewModel(
         _excludedIndices.value = emptySet()
     }
 
+    /**
+     * Restore the initial input state and clear the saved flag. ViewModels here are
+     * not scoped per nav entry, so the same instance is reused across openings; without
+     * this, a stale `isSaved = true` would make the screen dismiss itself the instant it
+     * reopens (the "add meal" button appears dead after the first save).
+     */
+    fun reset() {
+        _step.value = AddMealStep.InputSelection
+        _mealDescription.value = ""
+        _recognizedItems.value = emptyList()
+        _excludedIndices.value = emptySet()
+        _lowConfidence.value = false
+        _recommendation.value = null
+        _quality.value = null
+        _manualCal.value = ""
+        _manualProtein.value = ""
+        _manualCarbs.value = ""
+        _manualFat.value = ""
+        _errorMessage.value = null
+        _isSaved.value = false
+        _pendingImageUri.value = null
+        _imageNote.value = ""
+        pendingImageBase64 = null
+        lastInputType = "text"
+    }
+
     fun resetToInput() {
         _errorMessage.value = null
         _step.value = AddMealStep.InputSelection

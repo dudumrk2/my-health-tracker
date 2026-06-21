@@ -4,6 +4,14 @@
 
 ---
 
+## Fix dead Food-screen buttons after adding a meal · 2026-06-21
+
+- fix(meal): re-opening "הוספת ארוחה" dismissed itself instantly after the first save — `AddMealViewModel` is shared app-wide (ViewModels aren't scoped per nav entry) and its `isSaved` flag was never reset. Added `reset()`, called when the save is consumed.
+- fix(food): the profile icon on the Food screen was a no-op (`onClick = {}`); wired it to navigate to the profile screen.
+- **Why:** with the meal VM persisting, a stale `isSaved = true` made the screen close the moment it reopened, so the FAB looked dead. (Note: `AddWorkout`/`AddBodyMeasurement` share the same latent pattern; the deeper fix is a per-entry `ViewModelStoreNavEntryDecorator`.)
+
+---
+
 ## Meal Photo Preview + Optional Note · 2026-06-21
 
 - feat(meal): optional note on a meal photo — a preview step lets the user add a few words before the image is sent to the AI; the note is used as analysis context and (if provided) saved as the meal description.
