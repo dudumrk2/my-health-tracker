@@ -114,4 +114,7 @@ dependencies {
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
   implementation(libs.coil.compose)
+
+  // Lottie animations for celebrations
+  implementation(libs.lottie.compose)
 }
