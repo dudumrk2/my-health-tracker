@@ -101,6 +101,30 @@ describe("buildDayData", () => {
     expect(d.isEmpty).toBe(true);
   });
 
+  it("reads goalOverrides.steps into stepsGoalOverride", () => {
+    const d = buildDayData({
+      date: "2026-06-13",
+      currentYear: 2026,
+      userDoc: { profile: { birthYear: 1990, gender: "male", goalOverrides: { steps: 12000 } } },
+      healthDaily: null,
+      meals: [],
+      water: null,
+    });
+    expect(d.profile?.stepsGoalOverride).toBe(12000);
+  });
+
+  it("leaves stepsGoalOverride undefined when no override is set", () => {
+    const d = buildDayData({
+      date: "2026-06-13",
+      currentYear: 2026,
+      userDoc: { profile: { birthYear: 1990, gender: "male" } },
+      healthDaily: null,
+      meals: [],
+      water: null,
+    });
+    expect(d.profile?.stepsGoalOverride).toBeUndefined();
+  });
+
   it("tolerates malformed/missing fields without throwing", () => {
     const d = buildDayData({
       date: "2026-06-13",

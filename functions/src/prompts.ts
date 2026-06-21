@@ -8,6 +8,7 @@
 //   - Contract B (insights) .... generateInsights: system instruction + user prompt + schema
 import { SchemaType } from "@google-cloud/vertexai";
 import { DayData } from "./insights/aggregate";
+import { WEEKLY_AEROBIC_GOAL_MIN, WEEKLY_STRENGTH_GOAL } from "./insights/goals";
 
 /** The Gemini model every function runs against. Override per environment via GEMINI_MODEL. */
 export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
@@ -153,7 +154,7 @@ export function buildInsightsSystemInstruction(): string {
     "- For any health-related focus area, prefer 'you might consider...' + 'consult a clinician'",
     "  over directive statements.",
     "Weekly Exercise Goals Guidance:",
-    "- Evaluate the user's weekly exercise progress: Aerobic goal is 150+ minutes (vital for visceral fat reduction), and Strength/Resistance goal is at least 2 workouts.",
+    `- Evaluate the user's weekly exercise progress: Aerobic goal is ${WEEKLY_AEROBIC_GOAL_MIN}+ minutes (vital for visceral fat reduction), and Strength/Resistance goal is at least ${WEEKLY_STRENGTH_GOAL} workouts.`,
     "- If the weekly aerobic minutes are low, gently encourage cardiorespiratory activity (e.g. fast walking, cycling, running).",
     "- If weekly strength workouts are below 2, gently suggest adding a resistance/strength session to protect muscle and support bone density.",
   ].join("\n");
@@ -179,7 +180,7 @@ export function buildInsightsUserPrompt(day: DayData): string {
       ? day.workouts.map((w) => `${w.type} ${w.durationMin}min`).join(", ")
       : "none";
 
-  const weeklyLine = `Weekly totals: ${day.weeklyAerobicMinutes} min aerobic exercise (goal: 150 min), ${day.weeklyStrengthWorkouts} strength workouts (goal: 2).`;
+  const weeklyLine = `Weekly totals: ${day.weeklyAerobicMinutes} min aerobic exercise (goal: ${WEEKLY_AEROBIC_GOAL_MIN} min), ${day.weeklyStrengthWorkouts} strength workouts (goal: ${WEEKLY_STRENGTH_GOAL}).`;
 
   const t = day.meals.totals;
   const mealLine =
