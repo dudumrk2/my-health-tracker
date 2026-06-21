@@ -367,64 +367,6 @@ private fun ProfileScreenContent(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp)
                     )
-
-                    Column {
-                        FieldLabel("העדפת תצוגה")
-                        SelectRow(
-                            options = listOf("system" to "מערכת", "light" to "בהירה", "dark" to "כהה"),
-                            selectedValue = themePreference,
-                            onSelect = onThemeSelect
-                        )
-                    }
-
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-
-                    val context = LocalContext.current
-                    val permissionLauncher = rememberLauncherForActivityResult(
-                        contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
-                    ) { isGranted ->
-                        onQuickActionsEnabledChange(isGranted)
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "התראת פעולות מהירות",
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "הצגת התראה קבועה להוספה מהירה של ארוחה, אימון ומים",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Switch(
-                            checked = quickActionsEnabled,
-                            onCheckedChange = { checked ->
-                                if (checked) {
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                        val hasPermission = ContextCompat.checkSelfPermission(
-                                            context, android.Manifest.permission.POST_NOTIFICATIONS
-                                        ) == PackageManager.PERMISSION_GRANTED
-                                        if (hasPermission) {
-                                            onQuickActionsEnabledChange(true)
-                                        } else {
-                                            permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                                        }
-                                    } else {
-                                        onQuickActionsEnabledChange(true)
-                                    }
-                                } else {
-                                    onQuickActionsEnabledChange(false)
-                                }
-                            }
-                        )
-                    }
                 }
             }
 
@@ -562,6 +504,77 @@ private fun ProfileScreenContent(
                         text = "סיום",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
+                }
+            }
+
+            // ── Display preference + quick-action notifications ───────────
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Column {
+                        FieldLabel("העדפת תצוגה")
+                        SelectRow(
+                            options = listOf("system" to "מערכת", "light" to "בהירה", "dark" to "כהה"),
+                            selectedValue = themePreference,
+                            onSelect = onThemeSelect
+                        )
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                    val context = LocalContext.current
+                    val permissionLauncher = rememberLauncherForActivityResult(
+                        contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+                    ) { isGranted ->
+                        onQuickActionsEnabledChange(isGranted)
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "התראת פעולות מהירות",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "הצגת התראה קבועה להוספה מהירה של ארוחה, אימון ומים",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = quickActionsEnabled,
+                            onCheckedChange = { checked ->
+                                if (checked) {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        val hasPermission = ContextCompat.checkSelfPermission(
+                                            context, android.Manifest.permission.POST_NOTIFICATIONS
+                                        ) == PackageManager.PERMISSION_GRANTED
+                                        if (hasPermission) {
+                                            onQuickActionsEnabledChange(true)
+                                        } else {
+                                            permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                        }
+                                    } else {
+                                        onQuickActionsEnabledChange(true)
+                                    }
+                                } else {
+                                    onQuickActionsEnabledChange(false)
+                                }
+                            }
+                        )
+                    }
                 }
             }
 
