@@ -22,6 +22,7 @@ class CelebrationControllerTest {
 
         controller.tryCelebrate(event)
         advanceUntilIdle()
+        runCurrent() // let backgroundScope collector receive buffered channel item
         controller.tryCelebrate(event) // same dedup key
         advanceUntilIdle()
 
@@ -57,5 +58,21 @@ class CelebrationControllerTest {
         runCurrent() // flush background collector loop-back
 
         assertEquals(2, received.size)
+    }
+
+    @Test
+    fun `event produced before a collector subscribes is still delivered`() = runTest {
+        val controller = CelebrationController(InMemoryCelebrationStore(), scope = this)
+        controller.celebrateNow(CelebrationEvent(CelebrationType.STEP_GOAL, "steps-early"))
+        advanceUntilIdle()
+
+        val received = mutableListOf<CelebrationEvent>()
+        val job = backgroundScope.launch { controller.events.collect { received.add(it) } }
+        advanceUntilIdle()
+        runCurrent()
+
+        assertEquals(1, received.size)
+        assertEquals(CelebrationType.STEP_GOAL, received.first().type)
+        job.cancel()
     }
 }

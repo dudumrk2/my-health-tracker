@@ -245,8 +245,9 @@ class AddMealViewModel(
                 recommendation = if (manual) null else _recommendation.value,
                 quality = if (manual) null else _quality.value
             )
-            // Celebrate a high-quality AI meal (great > good). Manual meals have no
-            // AI quality, so this is null for them and nothing fires.
+            // Celebrate a high-quality AI meal (great > good). One-shot at save via
+            // celebrateNow, which ignores the event's dedupKey, so each saved AI meal
+            // celebrates independently. Manual meals have no AI quality (guarded by !manual).
             if (!manual) {
                 celebrationController.celebrateNow(
                     CelebrationRules.mealQuality(_quality.value, today())
