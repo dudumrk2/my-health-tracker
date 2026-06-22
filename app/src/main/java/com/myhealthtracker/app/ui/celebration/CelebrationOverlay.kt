@@ -114,9 +114,13 @@ private fun playApplause(context: Context) {
     val resId = context.resources.getIdentifier("celeb_applause", "raw", context.packageName)
     if (resId == 0) return
     val player = MediaPlayer.create(context, resId) ?: return
+    player.setVolume(APPLAUSE_VOLUME, APPLAUSE_VOLUME) // softened so it isn't startling
     player.setOnCompletionListener { it.release() }
     player.start()
 }
+
+/** Playback volume for the applause sound (0f–1f). Kept gentle so celebrations aren't jarring. */
+private const val APPLAUSE_VOLUME = 0.45f
 
 private fun vibrate(context: Context) {
     val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
