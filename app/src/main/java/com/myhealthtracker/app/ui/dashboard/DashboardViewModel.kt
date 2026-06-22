@@ -14,6 +14,9 @@ import com.myhealthtracker.app.data.insights.InsightsRefresher
 import com.myhealthtracker.app.data.insights.InsightsRepository
 import com.myhealthtracker.app.data.insights.pickInsight
 import com.myhealthtracker.app.data.model.MealEntry
+import com.myhealthtracker.app.data.celebration.CelebrationController
+import com.myhealthtracker.app.data.celebration.CelebrationRules
+import com.myhealthtracker.app.data.goals.GoalCalculator
 import com.myhealthtracker.app.data.model.BodyMeasurement
 import com.myhealthtracker.app.di.AppContainer
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,6 +48,7 @@ class DashboardViewModel(
     private val bodyMeasurementRepository: BodyMeasurementRepository = AppContainer.bodyMeasurementRepository,
     private val insightsRepository: InsightsRepository = AppContainer.insightsRepository,
     private val insightsRefresher: InsightsRefresher = AppContainer.insightsRefresher,
+    private val celebrationController: CelebrationController = AppContainer.celebrationController,
     private val uidProvider: () -> String? = { AppContainer.currentUid() }
 ) : ViewModel() {
 
@@ -114,6 +118,39 @@ class DashboardViewModel(
         // Unified general insight: today's sentence if present, else last night's
         // tomorrow emphasis, else a "not ready" message. Selection is presence-based.
         val unifiedInsight = pickInsight(insights?.today, insights?.tomorrow, InsightCategory.GENERAL).text
+
+        // ── Celebrations (state-derived; each fires once via the dedup store) ──
+        // Goals use the raw (English-gender) profile; localizedProfile would break
+        // GoalCalculator's "male"/"female" checks.
+        val goals = GoalCalculator.compute(rawProfile ?: UserProfile())
+
+        celebrationController.tryCelebrate(
+            CelebrationRules.stepGoal(todayHealth.steps, goals.steps, todayStr)
+        )
+
+        val weekStart = CelebrationRules.startOfWeekSunday(today)
+        val weeklyWorkoutCount = healthList
+            .filter { day ->
+                runCatching {
+                    val d = LocalDate.parse(day.date)
+                    !d.isBefore(weekStart) && !d.isAfter(today)
+                }.getOrDefault(false)
+            }
+            .sumOf { it.workouts.size }
+        celebrationController.tryCelebrate(
+            CelebrationRules.workoutMilestones(weeklyWorkoutCount, CelebrationRules.weekId(today))
+        )
+
+        val yesterdayStr = today.minusDays(1).format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val yesterdayMeals = meals.filter { it.date == yesterdayStr }
+        celebrationController.tryCelebrate(
+            CelebrationRules.calorieGoalYesterday(
+                yesterdayMealCount = yesterdayMeals.size,
+                yesterdayCalories = yesterdayMeals.sumOf { it.totals.calories },
+                goalCalories = goals.caloriesKcal,
+                yesterday = yesterdayStr
+            )
+        )
 
         DashboardState(
             profile = localizedProfile,
