@@ -1,5 +1,9 @@
 package com.myhealthtracker.app.ui.meal
 
+import com.myhealthtracker.app.data.celebration.CelebrationController
+import com.myhealthtracker.app.data.celebration.CelebrationEvent
+import com.myhealthtracker.app.data.celebration.CelebrationType
+import com.myhealthtracker.app.data.celebration.InMemoryCelebrationStore
 import com.myhealthtracker.app.data.meal.MealAnalysisException
 import com.myhealthtracker.app.data.meal.MealAnalysisResult
 import com.myhealthtracker.app.data.meal.MealAnalyzer
@@ -12,9 +16,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -338,5 +344,90 @@ class AddMealViewModelTest {
         vm.sendImageForAnalysis()
         advanceUntilIdle()
         assertEquals(1, analyzer.callCount)
+    }
+
+    @Test
+    fun `saving a great AI meal emits a great-meal celebration`() = runTest(dispatcher) {
+        val controller = CelebrationController(InMemoryCelebrationStore(), scope = this)
+        val received = mutableListOf<CelebrationEvent>()
+        backgroundScope.launch { controller.events.collect { received.add(it) } }
+        runCurrent()
+
+        val analyzer = FakeAnalyzer(
+            result = MealAnalysisResult(
+                items = listOf(MealItem("Salad", "1", 120, 5, 10, 3)),
+                totals = MealTotals(120, 5, 10, 3),
+                lowConfidence = false,
+                quality = MealQuality(processedScore = 1, insulinImpact = "low")
+            )
+        )
+        val vm = AddMealViewModel(FakeMealRepo(), analyzer, controller)
+        vm.onDescriptionChange("salad"); vm.analyzeText(); advanceUntilIdle()
+        vm.saveMeal(); advanceUntilIdle()
+        runCurrent() // flush background collector loop-back
+
+        assertEquals(1, received.size)
+        assertEquals(CelebrationType.GREAT_MEAL, received.first().type)
+    }
+
+    @Test
+    fun `saving a good AI meal emits a good-meal celebration`() = runTest(dispatcher) {
+        val controller = CelebrationController(InMemoryCelebrationStore(), scope = this)
+        val received = mutableListOf<CelebrationEvent>()
+        backgroundScope.launch { controller.events.collect { received.add(it) } }
+        runCurrent()
+
+        val analyzer = FakeAnalyzer(
+            result = MealAnalysisResult(
+                items = listOf(MealItem("Bowl", "1", 300, 20, 30, 8)),
+                totals = MealTotals(300, 20, 30, 8),
+                lowConfidence = false,
+                quality = MealQuality(processedScore = 2, insulinImpact = "low")
+            )
+        )
+        val vm = AddMealViewModel(FakeMealRepo(), analyzer, controller)
+        vm.onDescriptionChange("bowl"); vm.analyzeText(); advanceUntilIdle()
+        vm.saveMeal(); advanceUntilIdle()
+        runCurrent() // flush background collector loop-back
+
+        assertEquals(1, received.size)
+        assertEquals(CelebrationType.GOOD_MEAL, received.first().type)
+    }
+
+    @Test
+    fun `saving a processed AI meal emits no celebration`() = runTest(dispatcher) {
+        val controller = CelebrationController(InMemoryCelebrationStore(), scope = this)
+        val received = mutableListOf<CelebrationEvent>()
+        backgroundScope.launch { controller.events.collect { received.add(it) } }
+        runCurrent()
+
+        val analyzer = FakeAnalyzer(
+            result = MealAnalysisResult(
+                items = listOf(MealItem("Pizza", "1", 800, 25, 90, 35)),
+                totals = MealTotals(800, 25, 90, 35),
+                lowConfidence = false,
+                quality = MealQuality(processedScore = 4, insulinImpact = "high")
+            )
+        )
+        val vm = AddMealViewModel(FakeMealRepo(), analyzer, controller)
+        vm.onDescriptionChange("pizza"); vm.analyzeText(); advanceUntilIdle()
+        vm.saveMeal(); advanceUntilIdle()
+
+        assertEquals(0, received.size)
+    }
+
+    @Test
+    fun `manual meal save emits no celebration`() = runTest(dispatcher) {
+        val controller = CelebrationController(InMemoryCelebrationStore(), scope = this)
+        val received = mutableListOf<CelebrationEvent>()
+        backgroundScope.launch { controller.events.collect { received.add(it) } }
+        runCurrent()
+
+        val vm = AddMealViewModel(FakeMealRepo(), FakeAnalyzer(), controller)
+        vm.switchToManualFallback()
+        vm.onManualCalChange("500")
+        vm.saveMeal(); advanceUntilIdle()
+
+        assertEquals(0, received.size)
     }
 }

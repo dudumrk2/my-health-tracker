@@ -56,6 +56,7 @@ fun ProfileScreen(
     var activityLevel by remember { mutableStateOf("moderate") }
     var focusAreas by remember { mutableStateOf(setOf<String>()) }
     var quickActionsEnabled by remember { mutableStateOf(true) }
+    var celebrationSoundEnabled by remember { mutableStateOf(true) }
     // Manual goal overrides (blank = use computed value).
     var caloriesOverride by remember { mutableStateOf("") }
     var stepsOverride by remember { mutableStateOf("") }
@@ -75,6 +76,7 @@ fun ProfileScreen(
             activityLevel = profile.activityLevel
             focusAreas = profile.focusAreas.toSet()
             quickActionsEnabled = profile.quickActionsEnabled
+            celebrationSoundEnabled = profile.celebrationSoundEnabled
             profile.goalOverrides?.let { o ->
                 caloriesOverride = o.caloriesKcal?.toString() ?: ""
                 stepsOverride = o.steps?.toString() ?: ""
@@ -151,7 +153,7 @@ fun ProfileScreen(
             viewModel.saveProfile(
                 birthYearStr, weightStr, heightStr, selectedGender, themePreference,
                 primaryGoal, activityLevel, focusAreas.toList(), buildOverrides(),
-                quickActionsEnabled
+                quickActionsEnabled, celebrationSoundEnabled
             )
         },
         onBackClick = {
@@ -160,6 +162,8 @@ fun ProfileScreen(
         },
         quickActionsEnabled = quickActionsEnabled,
         onQuickActionsEnabledChange = { quickActionsEnabled = it },
+        celebrationSoundEnabled = celebrationSoundEnabled,
+        onCelebrationSoundEnabledChange = { celebrationSoundEnabled = it },
         accountState = accountState,
         onLogoutClick = onLogout,
         onDeleteAccountConfirm = { viewModel.deleteAccount() },
@@ -250,6 +254,8 @@ private fun ProfileScreenContent(
     onBackClick: () -> Unit,
     quickActionsEnabled: Boolean,
     onQuickActionsEnabledChange: (Boolean) -> Unit,
+    celebrationSoundEnabled: Boolean,
+    onCelebrationSoundEnabledChange: (Boolean) -> Unit,
     accountState: AccountState,
     onLogoutClick: () -> Unit,
     onDeleteAccountConfirm: () -> Unit,
@@ -583,6 +589,31 @@ private fun ProfileScreenContent(
                             }
                         )
                     }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "צליל חגיגות",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "השמעת מחיאות כפיים בעת חגיגת הישג (האנימציה תמשיך להופיע גם בכיבוי)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = celebrationSoundEnabled,
+                            onCheckedChange = { onCelebrationSoundEnabledChange(it) }
+                        )
+                    }
                 }
             }
 
@@ -815,6 +846,7 @@ fun ProfileScreenPreviewLight() {
             onCaloriesOverrideChange = {}, onStepsOverrideChange = {}, onProteinOverrideChange = {},
             onWaterOverrideChange = {}, onSleepOverrideChange = {}, onSaveClick = {}, onBackClick = {},
             quickActionsEnabled = true, onQuickActionsEnabledChange = {},
+            celebrationSoundEnabled = true, onCelebrationSoundEnabledChange = {},
             accountState = AccountState.Idle,
             onLogoutClick = {}, onDeleteAccountConfirm = {}
         )

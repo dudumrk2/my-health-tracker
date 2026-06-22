@@ -13,6 +13,9 @@
     <!-- Notification Permission -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Haptic feedback for celebrations -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <!-- Health Connect package visibility (required on Android 13 and below) -->
     <queries>
         <package android:name="com.google.android.apps.healthdata" />

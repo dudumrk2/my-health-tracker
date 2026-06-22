@@ -6,11 +6,13 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.appcheck.AppCheckProviderFactory
 import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
+import com.myhealthtracker.app.di.AppContainer
 
 class MyHealthApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        
+        AppContainer.initCelebrations(this)
+
         try {
             // Ensure Firebase is initialized before App Check
             FirebaseApp.initializeApp(this)

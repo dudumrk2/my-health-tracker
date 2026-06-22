@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -23,6 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.myhealthtracker.app.di.AppContainer
+import com.myhealthtracker.app.ui.celebration.CelebrationOverlay
 import com.myhealthtracker.app.notification.QuickActionsNotificationManager
 import com.myhealthtracker.app.theme.MyHealthTrackerTheme
 import kotlinx.coroutines.flow.flowOf
@@ -49,6 +51,7 @@ class MainActivity : ComponentActivity() {
 
             val themePreference = profileData.getOrNull()?.themePreference ?: "system"
             val quickActionsEnabled = profileData.getOrNull()?.quickActionsEnabled ?: true
+            val celebrationSoundEnabled = profileData.getOrNull()?.celebrationSoundEnabled ?: true
 
             val darkTheme = when (themePreference) {
                 "light" -> false
@@ -91,17 +94,18 @@ class MainActivity : ComponentActivity() {
 
             MyHealthTrackerTheme(darkTheme = darkTheme) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    val currentIntent by intentState
-                    MainNavigation(
-                        intent = currentIntent,
-                        onIntentHandled = {
-                            intentState.value = null
-                            // Replace the launching intent so a configuration-change
-                            // recreation (e.g. rotation) doesn't re-deliver the deep link
-                            // and navigate a second time.
-                            setIntent(Intent())
-                        }
-                    )
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        val currentIntent by intentState
+                        MainNavigation(
+                            intent = currentIntent,
+                            onIntentHandled = {
+                                intentState.value = null
+                                setIntent(Intent())
+                            }
+                        )
+                        // Root-hosted so celebrations overlay every screen.
+                        CelebrationOverlay(soundEnabled = celebrationSoundEnabled)
+                    }
                 }
             }
         }

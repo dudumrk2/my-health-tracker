@@ -4,6 +4,8 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.myhealthtracker.app.data.celebration.CelebrationController
+import com.myhealthtracker.app.data.celebration.CelebrationRules
 import com.myhealthtracker.app.data.meal.MealAnalysisException
 import com.myhealthtracker.app.data.meal.MealAnalyzer
 import com.myhealthtracker.app.data.meal.MealRepository
@@ -30,7 +32,8 @@ sealed class AddMealStep {
 
 class AddMealViewModel(
     private val mealRepository: MealRepository = AppContainer.mealRepository,
-    private val analyzer: MealAnalyzer = AppContainer.mealAnalyzer
+    private val analyzer: MealAnalyzer = AppContainer.mealAnalyzer,
+    private val celebrationController: CelebrationController = AppContainer.celebrationController
 ) : ViewModel() {
 
     private val _step = MutableStateFlow<AddMealStep>(AddMealStep.InputSelection)
@@ -242,6 +245,14 @@ class AddMealViewModel(
                 recommendation = if (manual) null else _recommendation.value,
                 quality = if (manual) null else _quality.value
             )
+            // Celebrate a high-quality AI meal (great > good). One-shot at save via
+            // celebrateNow, which ignores the event's dedupKey, so each saved AI meal
+            // celebrates independently. Manual meals have no AI quality (guarded by !manual).
+            if (!manual) {
+                celebrationController.celebrateNow(
+                    CelebrationRules.mealQuality(_quality.value, today())
+                )
+            }
             _isSaved.value = true
         }
     }

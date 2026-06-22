@@ -35,6 +35,8 @@ data class UserProfile(
     // Optional manual overrides of computed goals.
     val goalOverrides: GoalOverrides? = null,
     val quickActionsEnabled: Boolean = true,
+    // When false, celebration overlays still show (animation + haptic) but play no applause sound.
+    val celebrationSoundEnabled: Boolean = true,
     val createdAt: Instant? = null,
     val updatedAt: Instant? = null
 )
@@ -77,6 +79,7 @@ fun mapProfile(profileMap: Map<*, *>): UserProfile {
         focusAreas = focusAreas,
         goalOverrides = goalOverrides,
         quickActionsEnabled = (profileMap["quickActionsEnabled"] as? Boolean) ?: true,
+        celebrationSoundEnabled = (profileMap["celebrationSoundEnabled"] as? Boolean) ?: true,
         createdAt = createdAtTimestamp?.toDate()?.toInstant(),
         updatedAt = updatedAtTimestamp?.toDate()?.toInstant()
     )
@@ -148,6 +151,7 @@ class FirestoreProfileRepository(private val firestore: FirebaseFirestore = Fire
                         "activityLevel" to profile.activityLevel,
                         "focusAreas" to profile.focusAreas,
                         "quickActionsEnabled" to profile.quickActionsEnabled,
+                        "celebrationSoundEnabled" to profile.celebrationSoundEnabled,
                         "createdAt" to finalCreatedAt,
                         "updatedAt" to Timestamp.now()
                     )
