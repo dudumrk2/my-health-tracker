@@ -33,6 +33,9 @@ import com.myhealthtracker.app.data.goals.HealthGoals
 import com.myhealthtracker.app.data.goals.PRIMARY_GOAL_OPTIONS
 import com.myhealthtracker.app.data.profile.GoalOverrides
 import com.myhealthtracker.app.data.profile.UserProfile
+import com.myhealthtracker.app.data.celebration.CelebrationEvent
+import com.myhealthtracker.app.data.celebration.CelebrationType
+import com.myhealthtracker.app.di.AppContainer
 import com.myhealthtracker.app.theme.MyHealthTrackerTheme
 
 @Composable
@@ -632,6 +635,55 @@ private fun ProfileScreenContent(
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall
                         )
+                    }
+                }
+            }
+
+            // ── TEMP: celebration animation preview (remove before release) ──
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    FieldLabel("בדיקת אנימציות (זמני)")
+                    Text(
+                        text = "כל לחיצה מפעילה את החגיגה. הקש שוב כדי לראות וריאציה אחרת.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    val celebrationTests = listOf(
+                        "צעדים" to CelebrationType.STEP_GOAL,
+                        "אימון 2" to CelebrationType.SECOND_WORKOUT,
+                        "אימון 4" to CelebrationType.FOURTH_WORKOUT,
+                        "ארוחה מצוינת" to CelebrationType.GREAT_MEAL,
+                        "ארוחה טובה" to CelebrationType.GOOD_MEAL,
+                        "יעד קלורי" to CelebrationType.CALORIE_GOAL
+                    )
+                    celebrationTests.chunked(2).forEach { rowItems ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            rowItems.forEach { (label, type) ->
+                                FilledTonalButton(
+                                    onClick = {
+                                        AppContainer.celebrationController.celebrateNow(
+                                            CelebrationEvent(type, "preview-$type")
+                                        )
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(label, maxLines = 1)
+                                }
+                            }
+                            if (rowItems.size == 1) Spacer(Modifier.weight(1f))
+                        }
                     }
                 }
             }
