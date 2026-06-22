@@ -66,7 +66,7 @@ fun CelebrationOverlay(
     }
 
     LaunchedEffect(event) {
-        playChime(context)
+        playApplause(context)
         vibrate(context)
     }
 
@@ -107,11 +107,11 @@ fun CelebrationOverlay(
     }
 }
 
-/** Plays the chime only when the ringer is in normal mode (respects silent/vibrate). */
-private fun playChime(context: Context) {
+/** Plays the applause sound only when the ringer is in normal mode (respects silent/vibrate). */
+private fun playApplause(context: Context) {
     val audio = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
     if (audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
-    val resId = context.resources.getIdentifier("celeb_chime", "raw", context.packageName)
+    val resId = context.resources.getIdentifier("celeb_applause", "raw", context.packageName)
     if (resId == 0) return
     val player = MediaPlayer.create(context, resId) ?: return
     player.setOnCompletionListener { it.release() }
