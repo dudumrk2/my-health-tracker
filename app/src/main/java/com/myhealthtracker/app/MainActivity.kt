@@ -51,6 +51,7 @@ class MainActivity : ComponentActivity() {
 
             val themePreference = profileData.getOrNull()?.themePreference ?: "system"
             val quickActionsEnabled = profileData.getOrNull()?.quickActionsEnabled ?: true
+            val celebrationSoundEnabled = profileData.getOrNull()?.celebrationSoundEnabled ?: true
 
             val darkTheme = when (themePreference) {
                 "light" -> false
@@ -103,7 +104,7 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                         // Root-hosted so celebrations overlay every screen.
-                        CelebrationOverlay()
+                        CelebrationOverlay(soundEnabled = celebrationSoundEnabled)
                     }
                 }
             }

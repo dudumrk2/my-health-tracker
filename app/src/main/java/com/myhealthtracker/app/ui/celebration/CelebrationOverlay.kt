@@ -44,11 +44,13 @@ private const val TEXT_ONLY_DURATION_MS = 2200L
  * Full-screen celebration layer. Hosted once at the app root so it overlays every
  * screen. Collects [controller] events and shows one at a time: a Lottie animation
  * (resolved from res/raw by name), a Hebrew message, a gentle sound (only off
- * silent mode), and a light haptic. Degrades to text-only when an asset is missing.
+ * silent mode, and only when [soundEnabled]), and a light haptic. Degrades to
+ * text-only when an asset is missing.
  */
 @Composable
 fun CelebrationOverlay(
     controller: CelebrationController = AppContainer.celebrationController,
+    soundEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -66,7 +68,7 @@ fun CelebrationOverlay(
     }
 
     LaunchedEffect(event) {
-        playApplause(context)
+        if (soundEnabled) playApplause(context)
         vibrate(context)
     }
 
