@@ -55,7 +55,6 @@ class DashboardViewModel(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
-    private val todayStr = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
     private val uid = uidProvider()
 
     private val profileFlow =
@@ -81,6 +80,12 @@ class DashboardViewModel(
         val rawProfile = (array[0] as Result<UserProfile?>).getOrNull()
         val localizedProfile = rawProfile?.let { it.copy(gender = genderToHebrew(it.gender)) }
 
+        // Evaluated per emission (not cached on the instance) so a process kept alive across
+        // midnight uses the current date — otherwise a stale dedup key would suppress the new
+        // day's step-goal celebration until the app is restarted.
+        val today = LocalDate.now()
+        val todayStr = today.format(DateTimeFormatter.ISO_LOCAL_DATE)
+
         @Suppress("UNCHECKED_CAST")
         val healthList = (array[1] as Result<List<DailyHealthData>>).getOrNull() ?: emptyList()
         val todayHealth = healthList.find { it.date == todayStr } ?: DailyHealthData(date = todayStr)
@@ -93,7 +98,6 @@ class DashboardViewModel(
         val isRefreshing = array[5] as Boolean
 
         // Filter meals for this week (last 7 days)
-        val today = LocalDate.now()
         val weeklyMeals = meals.filter { meal ->
             try {
                 !LocalDate.parse(meal.date).isBefore(today.minusDays(7))

@@ -33,9 +33,13 @@ import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.flowWithLifecycle
 import com.myhealthtracker.app.data.celebration.CelebrationController
 import com.myhealthtracker.app.data.celebration.CelebrationEvent
 import com.myhealthtracker.app.di.AppContainer
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 
 private const val TEXT_ONLY_DURATION_MS = 2200L
@@ -54,10 +58,15 @@ fun CelebrationOverlay(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     var current by remember { mutableStateOf<CelebrationEvent?>(null) }
 
-    LaunchedEffect(controller) {
-        controller.events.collect { current = it }
+    // Lifecycle-aware so celebrations never play sound/haptic while the app is backgrounded;
+    // events produced while STOPPED stay buffered in the controller's channel and surface on return.
+    LaunchedEffect(controller, lifecycleOwner) {
+        controller.events
+            .flowWithLifecycle(lifecycleOwner.lifecycle, Lifecycle.State.STARTED)
+            .collect { current = it }
     }
 
     val event = current ?: return
@@ -68,8 +77,18 @@ fun CelebrationOverlay(
     }
 
     LaunchedEffect(event) {
-        if (soundEnabled) playApplause(context)
+        val player = if (soundEnabled) playApplause(context) else null
         vibrate(context)
+        try {
+            // Keep the player alive for the duration of this celebration.
+            awaitCancellation()
+        } finally {
+            // Dismissed (tap or auto) before the clip ended → stop it instead of letting it linger.
+            player?.let {
+                runCatching { if (it.isPlaying) it.stop() }
+                it.release()
+            }
+        }
     }
 
     Box(
@@ -109,16 +128,20 @@ fun CelebrationOverlay(
     }
 }
 
-/** Plays the applause sound only when the ringer is in normal mode (respects silent/vibrate). */
-private fun playApplause(context: Context) {
-    val audio = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
-    if (audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
+/**
+ * Plays the applause sound only when the ringer is in normal mode (respects silent/vibrate).
+ * Returns the started [MediaPlayer] so the caller can stop/release it on dismissal, or null
+ * when nothing is playing (silent mode, missing asset). The caller owns release.
+ */
+private fun playApplause(context: Context): MediaPlayer? {
+    val audio = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return null
+    if (audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return null
     val resId = context.resources.getIdentifier("celeb_applause", "raw", context.packageName)
-    if (resId == 0) return
-    val player = MediaPlayer.create(context, resId) ?: return
+    if (resId == 0) return null
+    val player = MediaPlayer.create(context, resId) ?: return null
     player.setVolume(APPLAUSE_VOLUME, APPLAUSE_VOLUME) // softened so it isn't startling
-    player.setOnCompletionListener { it.release() }
     player.start()
+    return player
 }
 
 /** Playback volume for the applause sound (0f–1f). Kept gentle so celebrations aren't jarring. */
