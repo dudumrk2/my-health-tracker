@@ -41,7 +41,7 @@
 - **Security & Privacy:**
   - מפתחות Gemini/Vertex לעולם לא בצד הלקוח — רק ב-Cloud Functions.
   - נתוני Health Connect נקראים מקומית; רק נתונים מעובדים נשלחים ל-Firestore.
-  - תמונות אוכל לא נשמרות בשום מקום — נשלחות לניתוח, התוצאה נשמרת, התמונה נזרקת.
+  - תמונות אוכל לעולם לא עולות/נשמרות בענן. ניתן לשמור אותן מקומית במכשיר בלבד. תהליך הניתוח מתבצע ברקע: ארוחה נוצרת בסטטוס analyzing (create-pending), נשלחת לניתוח דרך WorkManager (הכולל מנגנון ניסיונות חוזרים), ומתעדכנת ל-complete או failed. בסיום התהליך, אם המשתמש טרם צפה בתוצאה (unseen-result interception), מוקפצת התראת צפייה בכניסה הבאה לאפליקציה.
   - Firestore Security Rules: משתמש ניגש רק ל-`users/{uid}` שלו.
   - App Check על קריאות ל-Cloud Functions למניעת שימוש לרעה.
 
@@ -126,7 +126,12 @@ users/{uid}
 │   ├── description: string        (קלט המשתמש או תיאור Gemini)
 │   ├── items: [{ name, quantity, calories, proteinG, carbsG, fatG }]
 │   ├── totals: { calories, proteinG, carbsG, fatG }
-│   └── aiModel: string            (לתיעוד גרסת מודל)
+│   ├── aiModel: string            (לתיעוד גרסת מודל)
+│   ├── status: "analyzing" | "complete" | "failed"
+│   ├── seen: boolean
+│   ├── localImagePath: string?    (מקומית בלבד)
+│   ├── note: string?
+│   └── failureReason: string?
 │
 ├── bodyMeasurements/{yyyy-MM-dd} (document per entry — מעקב עצמי, ידני)
 │   ├── date: string (yyyy-MM-dd)
