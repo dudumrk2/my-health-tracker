@@ -1,7 +1,10 @@
 package com.myhealthtracker.app
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -10,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -80,7 +84,7 @@ fun MainNavigation(
   // Unseen-meal interception: when the user returns to the Dashboard and there is a
   // completed meal they haven't seen yet, pop it automatically. Skipped when the launch
   // originated from a quick-action add button so the user lands where they asked.
-  LaunchedEffect(Unit) {
+  LaunchedEffect(suppressUnseenInterception) {
     if (suppressUnseenInterception) return@LaunchedEffect
     AppContainer.mealRepository.meals.collect { meals ->
       if (backStack.lastOrNull() != Dashboard) return@collect
@@ -161,14 +165,19 @@ fun MainNavigation(
         entry<EditMeal> { key ->
           val meals by AppContainer.mealRepository.meals.collectAsState()
           val meal = meals.firstOrNull { it.mealId == key.mealId }
-          if (meal != null) {
-            MealEditScreen(
+          when {
+            meal != null -> MealEditScreen(
               meal = meal,
               celebrateOnOpen = !meal.seen, // unseen → first surfacing celebrates; manual re-edit does not
               onDismiss = { backStack.removeLastOrNull() }
             )
-          } else {
-            LaunchedEffect(Unit) { backStack.removeLastOrNull() }
+            // meals StateFlow starts empty and loads async (e.g. notification cold start);
+            // show a loader instead of dismissing before the meal arrives.
+            meals.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+              CircularProgressIndicator()
+            }
+            // Loaded but this id isn't present (e.g. deleted) — back out.
+            else -> LaunchedEffect(key.mealId) { backStack.removeLastOrNull() }
           }
         }
         entry<AddWorkout> {
