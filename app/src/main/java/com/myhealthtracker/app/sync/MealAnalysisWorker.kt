@@ -14,7 +14,10 @@ import com.myhealthtracker.app.util.MealImageStore
 class MealAnalysisWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val input = fromData(inputData) ?: return Result.success()
+        val input = fromData(inputData) ?: run {
+            android.util.Log.w("MealAnalysisWorker", "Missing/corrupt input data; dropping work item")
+            return Result.success()
+        }
         val runner = MealAnalysisRunner(
             analyzer = AppContainer.mealAnalyzer,
             repository = AppContainer.mealRepository,

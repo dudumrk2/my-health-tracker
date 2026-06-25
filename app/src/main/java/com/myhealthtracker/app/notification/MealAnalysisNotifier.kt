@@ -44,7 +44,7 @@ object MealAnalysisNotifier {
 
     private fun createChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(CHANNEL_ID, "Meal analysis", NotificationManager.IMPORTANCE_DEFAULT)
+            val channel = NotificationChannel(CHANNEL_ID, "ניתוח מנות", NotificationManager.IMPORTANCE_DEFAULT)
                 .apply { description = "Notifies when a meal photo finishes analysis" }
             (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(channel)
         }
