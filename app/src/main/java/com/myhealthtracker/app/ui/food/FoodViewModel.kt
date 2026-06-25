@@ -14,6 +14,8 @@ import com.myhealthtracker.app.data.insights.InsightsRepository
 import com.myhealthtracker.app.data.insights.pickInsight
 import com.myhealthtracker.app.data.model.MealEntry
 import com.myhealthtracker.app.data.model.MealTotals
+import com.myhealthtracker.app.ui.meal.completeMealTotals
+import com.myhealthtracker.app.ui.meal.failedMealCount
 import com.myhealthtracker.app.di.AppContainer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -33,7 +35,8 @@ data class FoodState(
     val waterIntakeMl: Int = 0,
     val totals: MealTotals = MealTotals(0, 0, 0, 0),
     val aiAdvice: String = "",
-    val isRefreshing: Boolean = false
+    val isRefreshing: Boolean = false,
+    val failedMealCount: Int = 0
 )
 
 class FoodViewModel(
@@ -69,11 +72,7 @@ class FoodViewModel(
 
         val dailyMeals = allMeals.filter { it.date == dateStr }
         val waterIntake = waterMap[dateStr] ?: 0
-
-        val totalCal = dailyMeals.sumOf { it.totals.calories }
-        val totalProtein = dailyMeals.sumOf { it.totals.proteinG }
-        val totalCarbs = dailyMeals.sumOf { it.totals.carbsG }
-        val totalFat = dailyMeals.sumOf { it.totals.fatG }
+        val dayTotals = completeMealTotals(dailyMeals)
 
         // Nutrition insight: today's sentence if present, else last night's tomorrow
         // emphasis, else "not ready". Same presence-based selection as the dashboard.
@@ -83,9 +82,10 @@ class FoodViewModel(
             selectedDate = date,
             meals = dailyMeals,
             waterIntakeMl = waterIntake,
-            totals = MealTotals(totalCal, totalProtein, totalCarbs, totalFat),
+            totals = dayTotals,
             aiAdvice = advice,
-            isRefreshing = isRefreshing
+            isRefreshing = isRefreshing,
+            failedMealCount = failedMealCount(allMeals)
         )
     }.stateIn(
         scope = viewModelScope,

@@ -4,6 +4,16 @@
 
 ---
 
+## Resilient Meal Analysis & Local Photos · 2026-06-25
+
+- Meal analysis is now background + auto-save: meals persist immediately as "analyzing",
+  run through WorkManager with retries, and update in place to complete/failed. Photos are
+  stored on-device (never uploaded) and shown on saved meals. Completed-but-unseen meals pop
+  their result screen (with celebration) on next app entry; failures surface as a Food-screen
+  banner with retry/delete. Quick-action notification entries bypass the interception.
+
+---
+
 ## Fix dead Food-screen buttons after adding a meal · 2026-06-21
 
 - fix(meal): re-opening "הוספת ארוחה" dismissed itself instantly after the first save — `AddMealViewModel` is shared app-wide (ViewModels aren't scoped per nav entry) and its `isSaved` flag was never reset. Added `reset()`, called when the save is consumed.

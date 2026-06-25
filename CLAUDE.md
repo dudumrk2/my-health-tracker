@@ -37,13 +37,14 @@
 users/{uid}
 ├── profile           : { birthYear, gender, weightKg, heightCm, primaryGoal, activityLevel, focusAreas?, goalOverrides?, themePreference, createdAt, updatedAt }
 ├── healthDaily/{date}: { date, steps, sleepMinutes, sleepSessions[{start,end,stages?}], workouts[{type,durationMin,startTime,source}], syncedAt, source }
-├── meals/{mealId}    : { date, loggedAt, inputType, description, items[], totals, aiModel }
+├── meals/{mealId}    : { date, loggedAt, inputType, description, items[], totals, aiModel, status, seen, localImagePath?, note?, failureReason? }
 ├── water/{date}      : { date, amountMl, updatedAt }   (כמות מצטברת במ"ל, idempotent — הגדלה ב-FieldValue.increment)
 ├── bodyMeasurements/{date} : { date, weightKg?, waistCm?, hipCm?, notes?, loggedAt }  (מעקב עצמי ידני, לא מוזן ל-AI)
 └── insights/{date}   : { date, today{general,nutrition,activity,sleep}, tomorrow{nutrition,activity,sleep}, disclaimer, trigger, generatedAt }
 ```
 - `sleepSessions[].stages`: אופציונלי — `[{ stage: "awake"|"light"|"deep"|"rem", start, end }]`, תלוי במקור הסנכרון.
 - `workout.source`: `"health_connect"` | `"manual"`. `healthDaily.source`: `"health_connect"` | `"mixed"`.
+- `meals.status` ∈ `"analyzing"`|`"complete"`|`"failed"` — הניתוח רץ ב-WorkManager (רקע + ניסיונות חוזרים). רק מנות "complete" נספרות בסיכומים היומיים ובמנגנון התובנות. `localImagePath` מקומי בלבד.
 - `gender`: `"male"` | `"female"` | `"other"` — מועבר ל-Gemini כהקשר בניתוח ארוחות ובתובנות.
 - `primaryGoal`: `"lose"|"maintain"|"gain"`; `activityLevel`: `"sedentary"|"light"|"moderate"|"very"|"extra"` (מקדם TDEE). שניהם נבחרים ע"י המשתמש בהרשמה.
 - `focusAreas`: מערך הצהרה-עצמית אופציונלי (למשל `"menopause"`) — **לעולם לא מוסק מגיל/מין**, רק קלט ישיר. נכלל ב-prompt רק אם הוצהר.
@@ -56,7 +57,7 @@ users/{uid}
 ## כללי ברזל (חלים על כל הפייזים)
 
 1. **מפתחות AI לעולם לא בצד הלקוח.** כל קריאת Gemini עוברת דרך Cloud Function.
-2. **תמונות אוכל לא נשמרות.** נשלחות לניתוח, התוצאה נשמרת, התמונה נזרקת.
+2. **תמונות אוכל לעולם לא עולות/נשמרות בענן.** ניתן לשמור אותן **מקומית במכשיר בלבד** (לצפייה חוזרת ולניסיון ניתוח חוזר). הניתוח נשלח ל-Cloud Function; התמונה לא עוזבת את המכשיר. רק נתיב הקובץ המקומי נשמר במסמך ה-Firestore.
 3. **Firestore Security Rules:** משתמש ניגש רק ל-`users/{uid}` שלו.
 4. **בקש רק הרשאות Health Connect בשימוש בפועל** (עיקרון המינימום).
 5. **אין ייעוץ רפואי.** סיכום ומשוב כללי בלבד, עם דיסקליימר קבוע, טון מציע ("כדאי לשקול") ולא קובע.

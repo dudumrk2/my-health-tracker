@@ -113,12 +113,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        // Record an app-foreground heartbeat so the server-side inactivity cleanup can
-        // distinguish a live install from an abandoned one. No-op when signed out.
+        com.myhealthtracker.app.app.AppForegroundTracker.onEnterForeground()
         val uid = AppContainer.currentUid() ?: return
-        lifecycleScope.launch {
-            runCatching { AppContainer.activityRepository.touchLastActive(uid) }
-        }
+        lifecycleScope.launch { runCatching { AppContainer.activityRepository.touchLastActive(uid) } }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        com.myhealthtracker.app.app.AppForegroundTracker.onEnterBackground()
     }
 
     override fun onNewIntent(intent: Intent) {

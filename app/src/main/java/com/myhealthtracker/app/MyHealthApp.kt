@@ -7,11 +7,32 @@ import com.google.firebase.appcheck.AppCheckProviderFactory
 import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 import com.myhealthtracker.app.di.AppContainer
+import com.myhealthtracker.app.util.MealImageStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.launch
 
 class MyHealthApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        AppContainer.initCelebrations(this)
+        AppContainer.init(this)
+
+        // Remove on-device meal images no longer referenced by any meal doc. Gate on a
+        // NON-EMPTY snapshot for a signed-in user: the meals StateFlow starts empty and the
+        // first emission may precede the Firestore load, so sweeping on empty would wrongly
+        // delete valid images. Deletions also clean their own image at delete time (Task 9),
+        // so skipping the sweep for a genuinely zero-meal user is safe.
+        CoroutineScope(Dispatchers.IO).launch {
+            AppContainer.mealRepository.meals
+                .filter { AppContainer.currentUid() != null && it.isNotEmpty() }
+                .take(1)
+                .collect { meals ->
+                    val referenced = meals.mapNotNull { it.localImagePath }.toSet()
+                    MealImageStore.sweepOrphans(MealImageStore.dir(this@MyHealthApp), referenced)
+                }
+        }
 
         try {
             // Ensure Firebase is initialized before App Check
