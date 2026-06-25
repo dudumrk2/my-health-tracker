@@ -79,6 +79,13 @@ class AddMealViewModelTest {
             )
         }
         override fun deleteMeal(mealId: String) {}
+        override fun newMealId() = "id"
+        override fun createPendingMeal(mealId: String, date: String, inputType: String, description: String, note: String?, localImagePath: String?) {}
+        override fun completeMeal(mealId: String, items: List<MealItem>, totals: MealTotals, recommendation: String?, quality: MealQuality?) {}
+        override fun failMeal(mealId: String, reason: String) {}
+        override fun retryMeal(mealId: String) {}
+        override fun markMealSeen(mealId: String) {}
+        override fun updateMeal(mealId: String, description: String, items: List<MealItem>, totals: MealTotals) {}
     }
 
     @Before fun setUp() = Dispatchers.setMain(dispatcher)
