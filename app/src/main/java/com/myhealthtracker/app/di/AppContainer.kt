@@ -62,6 +62,19 @@ object AppContainer {
         _celebrationController = CelebrationController(DataStoreCelebrationStore(context.applicationContext))
     }
 
+    @Volatile private var appContext: android.content.Context? = null
+
+    /** Call once from Application.onCreate. Stores the app context and inits celebrations. */
+    fun init(context: android.content.Context) {
+        appContext = context.applicationContext
+        initCelebrations(context)
+    }
+
+    val mealAnalysisLauncher: com.myhealthtracker.app.data.meal.MealAnalysisLauncher by lazy {
+        val ctx = appContext ?: error("AppContainer.init(context) must be called before mealAnalysisLauncher")
+        com.myhealthtracker.app.data.meal.WorkManagerMealAnalysisLauncher(ctx)
+    }
+
     /** Current authenticated user id, or null when signed out. */
     fun currentUid(): String? = authManager.currentUser?.uid
 }
