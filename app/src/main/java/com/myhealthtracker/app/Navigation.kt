@@ -62,10 +62,14 @@ fun MainNavigation(
     when (pendingDestination) {
       QuickActionsNotificationManager.DEST_ADD_MEAL -> backStack.add(AddMeal)
       QuickActionsNotificationManager.DEST_ADD_WORKOUT -> backStack.add(AddWorkout)
-      QuickActionsNotificationManager.DEST_MEAL_RESULT -> pendingMealId?.let { backStack.add(EditMeal(it)) }
+      QuickActionsNotificationManager.DEST_MEAL_RESULT -> pendingMealId?.let { backStack.add(EditMeal(it, celebrate = true)) }
     }
     pendingDestination = null
     pendingMealId = null
+    // Re-arm the unseen-meal interception. The quick-add screen is still protected because
+    // the interception only acts when backStack.lastOrNull() == Dashboard, and right now
+    // the top is AddMeal/AddWorkout; the unseen meal surfaces only after the user returns.
+    suppressUnseenInterception = false
   }
 
   LaunchedEffect(intent) {
@@ -92,7 +96,7 @@ fun MainNavigation(
       // Mark all currently-unseen completed meals seen so they don't pop again.
       meals.filter { it.status == MealStatus.COMPLETE && !it.seen }
         .forEach { AppContainer.mealRepository.markMealSeen(it.mealId) }
-      backStack.add(EditMeal(unseen.mealId))
+      backStack.add(EditMeal(unseen.mealId, celebrate = true))
     }
   }
 
@@ -168,7 +172,7 @@ fun MainNavigation(
           when {
             meal != null -> MealEditScreen(
               meal = meal,
-              celebrateOnOpen = !meal.seen, // unseen → first surfacing celebrates; manual re-edit does not
+              celebrateOnOpen = key.celebrate, // intent carried on key; avoids Firestore-timing race with markMealSeen
               onDismiss = { backStack.removeLastOrNull() }
             )
             // meals StateFlow starts empty and loads async (e.g. notification cold start);

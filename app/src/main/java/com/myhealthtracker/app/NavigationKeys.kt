@@ -9,4 +9,4 @@ import kotlinx.serialization.Serializable
 @Serializable data object AddWorkout : NavKey
 @Serializable data object AddMeal : NavKey
 @Serializable data object AddBodyMeasurement : NavKey
-@Serializable data class EditMeal(val mealId: String) : NavKey
+@Serializable data class EditMeal(val mealId: String, val celebrate: Boolean = false) : NavKey
