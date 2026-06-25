@@ -2,7 +2,6 @@ package com.myhealthtracker.app.ui.meal
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.myhealthtracker.app.data.celebration.CelebrationController
 import com.myhealthtracker.app.data.meal.MealAnalysisInput
 import com.myhealthtracker.app.data.meal.MealAnalysisLauncher
 import com.myhealthtracker.app.data.meal.MealRepository
@@ -25,7 +24,6 @@ sealed class AddMealStep {
 class AddMealViewModel(
     private val mealRepository: MealRepository = AppContainer.mealRepository,
     private val analysisLauncher: MealAnalysisLauncher = AppContainer.mealAnalysisLauncher,
-    @Suppress("unused") private val celebrationController: CelebrationController = AppContainer.celebrationController
 ) : ViewModel() {
 
     private val _step = MutableStateFlow<AddMealStep>(AddMealStep.InputSelection)
@@ -122,5 +120,4 @@ class AddMealViewModel(
         _closeScreen.value = false
     }
 
-    fun consumeClose() { _closeScreen.value = false }
 }

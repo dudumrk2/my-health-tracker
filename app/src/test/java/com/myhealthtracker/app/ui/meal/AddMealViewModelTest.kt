@@ -1,7 +1,5 @@
 package com.myhealthtracker.app.ui.meal
 
-import com.myhealthtracker.app.data.celebration.CelebrationController
-import com.myhealthtracker.app.data.celebration.InMemoryCelebrationStore
 import com.myhealthtracker.app.data.meal.MealAnalysisInput
 import com.myhealthtracker.app.data.meal.MealAnalysisLauncher
 import com.myhealthtracker.app.data.meal.MealRepository
@@ -56,7 +54,7 @@ class AddMealViewModelTest {
     }
 
     private fun vm(repo: MealRepository = FakeRepo(), launcher: MealAnalysisLauncher = FakeLauncher()) =
-        AddMealViewModel(repo, launcher, CelebrationController(InMemoryCelebrationStore()))
+        AddMealViewModel(repo, launcher)
 
     @Before fun setUp() = Dispatchers.setMain(dispatcher)
     @After fun tearDown() = Dispatchers.resetMain()

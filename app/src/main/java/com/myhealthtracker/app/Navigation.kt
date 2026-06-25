@@ -93,7 +93,7 @@ fun MainNavigation(
     AppContainer.mealRepository.meals.collect { meals ->
       if (backStack.lastOrNull() != Dashboard) return@collect
       val unseen = pickUnseenMealToShow(meals) ?: return@collect
-      // Mark all currently-unseen completed meals seen so they don't pop again.
+      // Only the newest unseen-complete meal is surfaced; the rest are marked seen so they don't queue a stack of screens (they remain viewable in the journal).
       meals.filter { it.status == MealStatus.COMPLETE && !it.seen }
         .forEach { AppContainer.mealRepository.markMealSeen(it.mealId) }
       backStack.add(EditMeal(unseen.mealId, celebrate = true))

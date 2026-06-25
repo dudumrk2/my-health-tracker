@@ -97,12 +97,7 @@ fun MealResultContent(
 
     // Active items = not marked removed. Totals derive from these only.
     val activeItems = recognizedItems.filterIndexed { i, _ -> i !in excludedIndices }
-    val totals = MealTotals(
-        calories = activeItems.sumOf { it.calories },
-        proteinG = activeItems.sumOf { it.proteinG },
-        carbsG = activeItems.sumOf { it.carbsG },
-        fatG = activeItems.sumOf { it.fatG }
-    )
+    val totals = MealTotals.fromItems(activeItems)
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         LazyColumn(
@@ -509,20 +504,10 @@ fun MealResultContent(
                                         Text("חלבון", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         Text("${item.proteinG}g", style = MaterialTheme.typography.bodyMedium)
                                     }
-                                    // Carbs/Fat/Fiber Column
-                                    val macroLabel = when {
-                                        item.name.contains("אספרגוס") -> "סיבים"
-                                        item.name.contains("סלמון") -> "שומן"
-                                        else -> "פחמימות"
-                                    }
-                                    val macroValue = when {
-                                        item.name.contains("אספרגוס") -> "4g"
-                                        item.name.contains("סלמון") -> "${item.fatG}g"
-                                        else -> "${item.carbsG}g"
-                                    }
+                                    // Carbs Column
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(macroLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        Text(macroValue, style = MaterialTheme.typography.bodyMedium)
+                                        Text("פחמימות", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text("${item.carbsG}g", style = MaterialTheme.typography.bodyMedium)
                                     }
                                 }
 
