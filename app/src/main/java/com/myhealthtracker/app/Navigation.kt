@@ -3,7 +3,13 @@ package com.myhealthtracker.app
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -11,22 +17,20 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
+import android.content.Intent
+import com.myhealthtracker.app.data.model.MealStatus
 import com.myhealthtracker.app.di.AppContainer
+import com.myhealthtracker.app.notification.QuickActionsNotificationManager
 import com.myhealthtracker.app.ui.auth.AuthScreen
 import com.myhealthtracker.app.ui.auth.AuthViewModel
+import com.myhealthtracker.app.ui.body.AddBodyMeasurementScreen
+import com.myhealthtracker.app.ui.main.MainScreen
+import com.myhealthtracker.app.ui.meal.AddMealScreen
+import com.myhealthtracker.app.ui.meal.MealEditScreen
+import com.myhealthtracker.app.ui.meal.pickUnseenMealToShow
 import com.myhealthtracker.app.ui.profile.ProfileScreen
 import com.myhealthtracker.app.ui.profile.ProfileViewModel
-import com.myhealthtracker.app.ui.main.MainScreen
 import com.myhealthtracker.app.ui.workout.AddWorkoutScreen
-import com.myhealthtracker.app.ui.meal.AddMealScreen
-import com.myhealthtracker.app.ui.body.AddBodyMeasurementScreen
-import android.content.Intent
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import com.myhealthtracker.app.notification.QuickActionsNotificationManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -45,23 +49,46 @@ fun MainNavigation(
   // session already exists, otherwise it's held until sign-in completes (see
   // routeAfterAuth) so a tap from the lock/signed-out state isn't lost.
   var pendingDestination by remember { mutableStateOf<String?>(null) }
+  var pendingMealId by remember { mutableStateOf<String?>(null) }
+  // True for this launch when it came from a quick-action add button; suppresses the
+  // unseen-meal interception so the user lands on the screen they asked for.
+  var suppressUnseenInterception by remember { mutableStateOf(false) }
 
   fun applyPendingDestination() {
     when (pendingDestination) {
       QuickActionsNotificationManager.DEST_ADD_MEAL -> backStack.add(AddMeal)
       QuickActionsNotificationManager.DEST_ADD_WORKOUT -> backStack.add(AddWorkout)
+      QuickActionsNotificationManager.DEST_MEAL_RESULT -> pendingMealId?.let { backStack.add(EditMeal(it)) }
     }
     pendingDestination = null
+    pendingMealId = null
   }
 
   LaunchedEffect(intent) {
     val destination = intent?.getStringExtra(QuickActionsNotificationManager.EXTRA_NAVIGATE_TO)
     if (destination != null) {
       pendingDestination = destination
+      pendingMealId = intent.getStringExtra(QuickActionsNotificationManager.EXTRA_MEAL_ID)
+      suppressUnseenInterception =
+        destination == QuickActionsNotificationManager.DEST_ADD_MEAL ||
+        destination == QuickActionsNotificationManager.DEST_ADD_WORKOUT
       onIntentHandled()
-      if (AppContainer.currentUid() != null) {
-        applyPendingDestination()
-      }
+      if (AppContainer.currentUid() != null) applyPendingDestination()
+    }
+  }
+
+  // Unseen-meal interception: when the user returns to the Dashboard and there is a
+  // completed meal they haven't seen yet, pop it automatically. Skipped when the launch
+  // originated from a quick-action add button so the user lands where they asked.
+  LaunchedEffect(Unit) {
+    if (suppressUnseenInterception) return@LaunchedEffect
+    AppContainer.mealRepository.meals.collect { meals ->
+      if (backStack.lastOrNull() != Dashboard) return@collect
+      val unseen = pickUnseenMealToShow(meals) ?: return@collect
+      // Mark all currently-unseen completed meals seen so they don't pop again.
+      meals.filter { it.status == MealStatus.COMPLETE && !it.seen }
+        .forEach { AppContainer.mealRepository.markMealSeen(it.mealId) }
+      backStack.add(EditMeal(unseen.mealId))
     }
   }
 
@@ -123,12 +150,26 @@ fun MainNavigation(
             onNavigateToAddMeasurement = { backStack.add(AddBodyMeasurement) },
             onNavigateToAddWorkout = { backStack.add(AddWorkout) },
             onNavigateToAddMeal = { backStack.add(AddMeal) },
+            onNavigateToEditMeal = { backStack.add(EditMeal(it)) },
             onLogout = {
               authViewModel.signOut(context)
               backStack.clear()
               backStack.add(Auth)
             }
           )
+        }
+        entry<EditMeal> { key ->
+          val meals by AppContainer.mealRepository.meals.collectAsState()
+          val meal = meals.firstOrNull { it.mealId == key.mealId }
+          if (meal != null) {
+            MealEditScreen(
+              meal = meal,
+              celebrateOnOpen = !meal.seen, // unseen → first surfacing celebrates; manual re-edit does not
+              onDismiss = { backStack.removeLastOrNull() }
+            )
+          } else {
+            LaunchedEffect(Unit) { backStack.removeLastOrNull() }
+          }
         }
         entry<AddWorkout> {
           AddWorkoutScreen(
