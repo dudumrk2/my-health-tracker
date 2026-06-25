@@ -21,12 +21,8 @@ object ImageEncoder {
     }
 
     /** Loads the image at [uri], downscales it, and returns base64 JPEG. Returns null on failure. */
-    fun uriToBase64Jpeg(context: Context, uri: Uri): String? {
-        val original = context.contentResolver.openInputStream(uri)?.use {
-            BitmapFactory.decodeStream(it)
-        } ?: return null
-        return bitmapToBase64Jpeg(original)
-    }
+    fun uriToBase64Jpeg(context: Context, uri: Uri): String? =
+        uriToJpegBytes(context, uri)?.let { Base64.encodeToString(it, Base64.NO_WRAP) }
 
     fun bitmapToJpegBytes(bitmap: Bitmap): ByteArray {
         val scaled = downscale(bitmap)

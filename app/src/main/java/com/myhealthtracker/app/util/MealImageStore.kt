@@ -20,9 +20,11 @@ object MealImageStore {
     /** Downscales [uri] to a JPEG, writes a new file, and returns its absolute path (or null). */
     suspend fun saveFromUri(context: Context, uri: Uri): String? = withContext(Dispatchers.IO) {
         val bytes = ImageEncoder.uriToJpegBytes(context, uri) ?: return@withContext null
-        val file = File.createTempFile("meal_", ".jpg", dir(context))
-        file.writeBytes(bytes)
-        file.absolutePath
+        runCatching {
+            val file = File.createTempFile("meal_", ".jpg", dir(context))
+            file.writeBytes(bytes)
+            file.absolutePath
+        }.getOrNull()
     }
 
     /** Reads the file at [path] and returns base64 (NO_WRAP), or null if missing/unreadable. */
