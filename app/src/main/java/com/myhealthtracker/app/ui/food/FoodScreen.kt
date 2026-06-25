@@ -28,11 +28,20 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
+import coil.compose.AsyncImage
+import com.myhealthtracker.app.data.meal.toAnalysisInput
+import com.myhealthtracker.app.data.model.MealStatus
+import com.myhealthtracker.app.di.AppContainer
+import com.myhealthtracker.app.sync.MealAnalysisScheduler
+import com.myhealthtracker.app.util.MealImageStore
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -105,12 +114,21 @@ private fun getMealEmoji(description: String): String {
     }
 }
 
+@Composable
+private fun StatusBadge(text: String, bg: Color, fg: Color) {
+    Surface(color = bg, shape = RoundedCornerShape(8.dp)) {
+        Text(text, color = fg, style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FoodScreen(
     viewModel: FoodViewModel,
     onNavigateToAddMeal: () -> Unit,
     onNavigateToProfile: () -> Unit,
+    onEditMeal: (MealEntry) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.state.collectAsState()
@@ -124,6 +142,7 @@ fun FoodScreen(
         onQuickAddWaterClick = { viewModel.quickAddWater(it) },
         onAddMealClick = onNavigateToAddMeal,
         onProfileClick = onNavigateToProfile,
+        onEditMeal = onEditMeal,
         modifier = modifier
     )
 }
@@ -138,10 +157,12 @@ private fun FoodContent(
     onQuickAddWaterClick: (Int) -> Unit,
     onAddMealClick: () -> Unit,
     onProfileClick: () -> Unit = {},
+    onEditMeal: (MealEntry) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedMeal by remember { mutableStateOf<MealEntry?>(null) }
     var selectedMealTitle by remember { mutableStateOf("") }
+    var recoveryMeal by remember { mutableStateOf<MealEntry?>(null) }
 
     val dateList = remember(state.selectedDate) {
         // Generate a 7-day window centered on the selected date
@@ -271,6 +292,25 @@ private fun FoodContent(
                                     )
                                 }
                             }
+                        }
+                    }
+                }
+
+                // Failure banner — persists across day changes (above AnimatedContent)
+                if (state.failedMealCount > 0) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+                    ) {
+                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "יש ${state.failedMealCount} מנות שלא נותחו — הקש על המנה האדומה ביומן כדי לנסות שוב",
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                         }
                     }
                 }
@@ -547,8 +587,11 @@ private fun FoodContent(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
-                                            selectedMealTitle = mealTitle
-                                            selectedMeal = meal
+                                            when (meal.status) {
+                                                MealStatus.FAILED -> recoveryMeal = meal
+                                                MealStatus.ANALYZING -> { /* no-op while analyzing */ }
+                                                else -> { selectedMealTitle = mealTitle; selectedMeal = meal }
+                                            }
                                         }
                                 ) {
                                     Row(
@@ -564,18 +607,28 @@ private fun FoodContent(
                                             verticalAlignment = Alignment.CenterVertically,
                                             modifier = Modifier.weight(1f)
                                         ) {
-                                            // Circular Image/Avatar
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(56.dp)
-                                                    .clip(CircleShape)
-                                                    .background(MaterialTheme.colorScheme.primaryContainer),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = getMealEmoji(meal.description),
-                                                    fontSize = 28.sp
+                                            // Circular Image/Avatar — photo thumbnail when available, emoji otherwise
+                                            val path = meal.localImagePath
+                                            if (path != null && meal.status != MealStatus.ANALYZING) {
+                                                AsyncImage(
+                                                    model = java.io.File(path),
+                                                    contentDescription = null,
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier.size(56.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer)
                                                 )
+                                            } else {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(56.dp)
+                                                        .clip(CircleShape)
+                                                        .background(MaterialTheme.colorScheme.primaryContainer),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Text(
+                                                        text = getMealEmoji(meal.description),
+                                                        fontSize = 28.sp
+                                                    )
+                                                }
                                             }
 
                                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -589,6 +642,12 @@ private fun FoodContent(
                                                     style = MaterialTheme.typography.bodyMedium,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                                 )
+                                                // Status badge
+                                                when (meal.status) {
+                                                    MealStatus.ANALYZING -> StatusBadge("⏳ מנתח…", MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer)
+                                                    MealStatus.FAILED -> StatusBadge("⚠️ נכשל — הקש לתיקון", MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
+                                                    else -> {}
+                                                }
                                             }
                                         }
 
@@ -630,7 +689,34 @@ private fun FoodContent(
                 MealDetailSheet(
                     meal = meal,
                     title = selectedMealTitle,
-                    onDismiss = { selectedMeal = null }
+                    onDismiss = { selectedMeal = null },
+                    onEdit = { entry -> onEditMeal(entry); selectedMeal = null }
+                )
+            }
+
+            recoveryMeal?.let { meal ->
+                val context = LocalContext.current
+                AlertDialog(
+                    onDismissRequest = { recoveryMeal = null },
+                    title = { Text("המנה לא נותחה") },
+                    text = { Text(meal.failureReason ?: "ניתוח המנה נכשל.") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            AppContainer.mealRepository.retryMeal(meal.mealId)
+                            MealAnalysisScheduler.enqueue(context, meal.toAnalysisInput())
+                            recoveryMeal = null
+                        }) { Text("נסה שוב") }
+                    },
+                    dismissButton = {
+                        Row {
+                            TextButton(onClick = {
+                                MealImageStore.delete(meal.localImagePath)
+                                AppContainer.mealRepository.deleteMeal(meal.mealId)
+                                recoveryMeal = null
+                            }) { Text("מחק") }
+                            TextButton(onClick = { recoveryMeal = null }) { Text("סגור") }
+                        }
+                    }
                 )
             }
         }
@@ -642,7 +728,8 @@ private fun FoodContent(
 fun MealDetailSheet(
     meal: MealEntry,
     title: String,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onEdit: (MealEntry) -> Unit = {}
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     
@@ -677,12 +764,17 @@ fun MealDetailSheet(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                IconButton(onClick = onDismiss) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "סגור",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { onEdit(meal); onDismiss() }) {
+                        Text("ערוך")
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "סגור",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
@@ -691,6 +783,16 @@ fun MealDetailSheet(
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
+
+            // Photo thumbnail (full-width) if present
+            meal.localImagePath?.let { path ->
+                AsyncImage(
+                    model = java.io.File(path),
+                    contentDescription = "תמונת הארוחה",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(12.dp))
+                )
+            }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
