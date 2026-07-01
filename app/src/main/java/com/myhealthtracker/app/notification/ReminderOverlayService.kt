@@ -4,6 +4,8 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
+import android.media.AudioManager
+import android.media.RingtoneManager
 import android.os.IBinder
 import android.provider.Settings
 import android.view.View
@@ -61,6 +63,7 @@ class ReminderOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
     }
 
     private fun showOverlay(mealLabel: String, slotIndex: Int) {
+        playNotificationSound()
         val wm = getSystemService(WINDOW_SERVICE) as WindowManager
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -96,6 +99,20 @@ class ReminderOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         composeView.post {
             lifecycleRegistry.currentState = Lifecycle.State.RESUMED
             visible.value = true
+        }
+    }
+
+    /**
+     * Plays the device's default notification sound when the popup appears. Respects
+     * silent/vibrate by only playing in normal ringer mode (same rule as the celebration
+     * applause). Fire-and-forget: a notification tone is short, so no need to hold/release.
+     */
+    private fun playNotificationSound() {
+        val audio = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+        if (audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
+        runCatching {
+            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            RingtoneManager.getRingtone(applicationContext, uri)?.play()
         }
     }
 
