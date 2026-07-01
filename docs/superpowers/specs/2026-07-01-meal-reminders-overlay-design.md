@@ -5,8 +5,8 @@ floating popup **over other apps** (not a drawer notification) at configurable *
 times**. The purpose is to **prompt the user to photograph / log the meal in the moment**
 — before they finish eating, when there is still food to capture. At each meal time the
 popup appears **unless that meal has already been logged**. The popup shows a playful
-Lottie animation of a waiter rising from the bottom holding a tray, with three actions:
-**log a meal**, **snooze 30 minutes**, or **dismiss**.
+waiter character (a static `drawable` animated natively in Compose) that slides up from
+the bottom, with three actions: **log a meal**, **snooze 30 minutes**, or **dismiss**.
 
 The core problem being solved: the user forgets to log meals, and forgetting means the
 app is usually *not open* — so an in-app-only reminder can't help. The reminder must
@@ -26,10 +26,12 @@ reach the user while the app is closed, at the moment they are about to eat.
 > - **Default times**: `07:00` / `12:00` / `19:00` (breakfast / lunch / dinner). These are
 >   meal *times* — the reminder fires at the meal so the user can photograph it — not
 >   deadlines after the fact. All three times are editable in the new settings screen.
-> - **Lottie asset**: The waiter animation is produced separately (a design agent, per the
->   prepared prompt) as a vector Lottie JSON with a transparent background. This spec
->   assumes the asset is dropped into `res/raw/`; the three buttons and text are native
->   Compose, **not** part of the Lottie.
+> - **Waiter asset & animation**: The animation is **native Compose**, not Lottie. A static
+>   `app/src/main/res/drawable/waiter.png` is animated via `AnimatedVisibility`
+>   (`slideInVertically` + spring overshoot) plus an `InfiniteTransition` idle loop
+>   (hover + breathing). The composable already exists as
+>   `ui/meal/MealReminderOverlay.kt`. No `lottie-compose` dependency and no `res/raw`
+>   JSON are needed.
 
 ## Reminder Timing & Suppression
 
@@ -66,7 +68,8 @@ unit-testable; the Android pieces (scheduler, receiver, service) stay thin.
 | `ReminderScheduler` | Wrap `AlarmManager`: (re)arm each enabled slot's next occurrence; snooze; cancel all | AlarmManager | — |
 | `ReminderAlarmReceiver` | Fires at a slot time → read today's meals → `MealReminderPolicy` → show overlay if due → re-arm next occurrence | Scheduler, MealRepository | — |
 | `ReminderBootReceiver` | Re-arm all alarms after device reboot | Scheduler | — |
-| `ReminderOverlayService` | Host the floating popup (WindowManager `TYPE_APPLICATION_OVERLAY`): Lottie + 3 buttons | WindowManager | — |
+| `ReminderOverlayService` | Host the floating popup: a `ComposeView` in WindowManager (`TYPE_APPLICATION_OVERLAY`) rendering `MealReminderOverlay` | WindowManager | — |
+| `MealReminderOverlay` (composable, **exists**) | Native waiter animation (slide-up + hover/breathing) + card + 3 buttons | drawable `waiter` | — |
 | `ReminderSettingsScreen` + `ReminderSettingsViewModel` | UI to edit times/toggles + grant overlay permission | Store | ✅ ViewModel |
 
 ## Data Flow
@@ -160,21 +163,27 @@ suppressed automatically.
 
 #### [NEW] `notification/ReminderOverlayService.kt`
 - Started `Service`. Guards on `Settings.canDrawOverlays`; self-stops if not granted.
-- Adds a `ComposeView` to `WindowManager` with `TYPE_APPLICATION_OVERLAY`,
-  `FLAG_NOT_FOCUSABLE`-style flags so the popup floats without stealing global focus.
-  The `ComposeView` is given a lightweight `LifecycleOwner` + `SavedStateRegistryOwner` +
-  `ViewModelStoreOwner` so Compose renders inside the window (standard overlay-Compose
-  requirement).
+- Adds a `ComposeView` to `WindowManager` as a `MATCH_PARENT`, focusable-but-not-keyboard
+  window (`TYPE_APPLICATION_OVERLAY`). The `ComposeView` is given a lightweight
+  `LifecycleOwner` + `SavedStateRegistryOwner` + `ViewModelStoreOwner` so Compose renders
+  inside the window (standard overlay-Compose requirement).
+- Hosts `MealReminderOverlay(isVisible, onLogMeal, onRemindLater, onDismiss)`. The service
+  drives an `isVisible` `mutableStateOf`: starts `false`, flips to `true` **after** the
+  view attaches so the slide-in plays. On any action it sets `isVisible = false`, waits
+  ~300 ms for the exit animation, then removes the window view and `stopSelf`.
 - Because the app holds `SYSTEM_ALERT_WINDOW`, starting this service and adding the window
   from the background is permitted on Android 12+. If a foreground-service start is
   required on a given OS level, it starts briefly as a foreground service with a minimal
   transient notification; otherwise a plain started service.
-- Content: a rounded card with the Lottie waiter (`lottie-compose`, intro-then-loop),
-  the title (e.g. "📸 זמן לתעד את ארוחת הבוקר 🍳"), and three buttons wired to the actions
-  in the Data Flow above. Removes its window view in `onDestroy`.
+- The overlay's full-screen scrim dims the whole screen behind it (a deliberate modal
+  feel) and consumes touches; the buttons dispatch the actions in the Data Flow above.
 
-#### [NEW] Lottie asset `res/raw/waiter_reminder.json`
-- Supplied by the design agent (transparent background, vector). Placeholder until then.
+#### [MODIFY] `ui/meal/MealReminderOverlay.kt` (already exists)
+- Native composable: `AnimatedVisibility` slide-up (spring overshoot) + `InfiniteTransition`
+  hover/breathing over `R.drawable.waiter`, a Material 3 card, and the three buttons.
+- Small enhancement: accept a `title: String` (and optional body) param so the service can
+  pass the per-meal text (e.g. "📸 זמן לתעד את ארוחת הבוקר 🍳"), instead of the current
+  hard-coded copy.
 
 ---
 
@@ -215,8 +224,8 @@ suppressed automatically.
 - On sign-out, call `ReminderScheduler.cancelAll` (mirrors the existing periodic-sync
   cancellation on sign-out).
 
-#### [MODIFY] `app/build.gradle`
-- Add `com.airbnb.android:lottie-compose` dependency.
+#### `app/build.gradle`
+- No new dependency needed — the animation is native Compose over a drawable.
 
 ## Iron-Rule Compliance
 
