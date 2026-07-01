@@ -69,8 +69,6 @@ class ReminderOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         )
-        lifecycleRegistry.currentState = Lifecycle.State.RESUMED
-
         val composeView = ComposeView(this).apply {
             setViewTreeLifecycleOwner(this@ReminderOverlayService)
             setViewTreeSavedStateRegistryOwner(this@ReminderOverlayService)
@@ -92,8 +90,13 @@ class ReminderOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         }
         overlayView = composeView
         wm.addView(composeView, params)
-        // Flip visible after attach so AnimatedVisibility plays the slide-in.
-        composeView.post { visible.value = true }
+        // Move to RESUMED and reveal only after the view attaches to the window,
+        // so the ComposeView hosts its composition with the lifecycle transitioning
+        // into RESUMED rather than already resumed before attach.
+        composeView.post {
+            lifecycleRegistry.currentState = Lifecycle.State.RESUMED
+            visible.value = true
+        }
     }
 
     private fun openAddMeal() {
