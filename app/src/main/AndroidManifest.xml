@@ -16,6 +16,10 @@
     <!-- Haptic feedback for celebrations -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- Meal reminder overlay + re-arm on reboot -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <!-- Health Connect package visibility (required on Android 13 and below) -->
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
@@ -80,7 +84,19 @@
         <!-- Triggered only via an explicit PendingIntent from our own notification,
              so no intent-filter is needed and it stays unexported. -->
         <receiver android:name=".notification.WaterLoggingReceiver" android:exported="false" />
-        
+
+        <receiver
+            android:name=".notification.ReminderAlarmReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".notification.ReminderBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>
