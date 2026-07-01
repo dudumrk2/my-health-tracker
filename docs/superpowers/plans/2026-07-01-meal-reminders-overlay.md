@@ -469,6 +469,7 @@ package com.myhealthtracker.app.notification
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.provider.Settings
 import com.myhealthtracker.app.data.model.MealStatus
 import com.myhealthtracker.app.data.reminders.MealReminderPolicy
@@ -484,9 +485,9 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
- * Fired at a slot's meal time. Reads today's meals, asks MealReminderPolicy whether the
- * meal is still un-logged, and if so shows the floating overlay. Always re-arms the next
- * daily occurrence so the schedule keeps running.
+ * Fired at a slot's meal time. Skips during a call, reads today's meals, asks
+ * MealReminderPolicy whether the meal is still un-logged, and if so shows the reminder.
+ * Always re-arms the next daily occurrence so the schedule keeps running.
  */
 class ReminderAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -506,6 +507,16 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
 
                 if (slot == null || AppContainer.currentUid() == null) return@launch
                 if (!Settings.canDrawOverlays(appContext)) return@launch
+
+                // Call guard: never cover the call/answer UI. Snooze a few minutes instead.
+                val audio = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                if (audio.mode == AudioManager.MODE_IN_CALL ||
+                    audio.mode == AudioManager.MODE_IN_COMMUNICATION ||
+                    audio.mode == AudioManager.MODE_RINGTONE
+                ) {
+                    ReminderScheduler.snooze(appContext, slotIndex, 5)
+                    return@launch
+                }
 
                 val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
                 // meals is a StateFlow seeded empty and loaded async; wait briefly for the
@@ -608,9 +619,9 @@ git commit -m "feat(reminders): inexact alarm scheduler + alarm/boot receivers"
 
 **Interfaces:**
 - Consumes: `MealReminderOverlay(isVisible, title, body, onLogMeal, onRemindLater, onDismiss)`; `ReminderScheduler.snooze`; `QuickActionsNotificationManager.EXTRA_NAVIGATE_TO` / `DEST_ADD_MEAL`; `MyHealthTrackerTheme`; `MainActivity`.
-- Produces: `object`-style `companion` `ReminderOverlayService.start(context, mealLabel, slotIndex)`.
+- Produces: `companion` `ReminderOverlayService.start(context, mealLabel, slotIndex)`.
 
-> No unit tests — WindowManager/Service integration, verified by build + manual plan. After this task the module compiles; run a build.
+> No unit tests — WindowManager/Service integration, verified by build + manual plan. After this task the module compiles; run a build. The overlay window does **not** wake the screen and does **not** show over a secure lock screen (by design — it appears once the user turns the screen on / unlocks).
 
 - [ ] **Step 1: Add `title`/`body` parameters to the existing composable**
 
