@@ -23,6 +23,9 @@ import com.myhealthtracker.app.data.profile.ProfileRepository
 import com.myhealthtracker.app.data.celebration.CelebrationController
 import com.myhealthtracker.app.data.celebration.DataStoreCelebrationStore
 import com.myhealthtracker.app.data.celebration.InMemoryCelebrationStore
+import com.myhealthtracker.app.data.reminders.DataStoreReminderSettingsStore
+import com.myhealthtracker.app.data.reminders.InMemoryReminderSettingsStore
+import com.myhealthtracker.app.data.reminders.ReminderSettingsStore
 import com.myhealthtracker.app.data.water.FirestoreWaterRepository
 import com.myhealthtracker.app.data.water.WaterRepository
 
@@ -62,12 +65,21 @@ object AppContainer {
         _celebrationController = CelebrationController(DataStoreCelebrationStore(context.applicationContext))
     }
 
+    // Meal reminders. Device-local settings; swapped to DataStore-backed in init().
+    @Volatile
+    private var _reminderSettingsStore: ReminderSettingsStore? = null
+
+    val reminderSettingsStore: ReminderSettingsStore
+        get() = _reminderSettingsStore
+            ?: InMemoryReminderSettingsStore().also { _reminderSettingsStore = it }
+
     @Volatile private var appContext: android.content.Context? = null
 
     /** Call once from Application.onCreate. Stores the app context and inits celebrations. */
     fun init(context: android.content.Context) {
         appContext = context.applicationContext
         initCelebrations(context)
+        _reminderSettingsStore = DataStoreReminderSettingsStore(context.applicationContext)
     }
 
     val mealAnalysisLauncher: com.myhealthtracker.app.data.meal.MealAnalysisLauncher by lazy {
