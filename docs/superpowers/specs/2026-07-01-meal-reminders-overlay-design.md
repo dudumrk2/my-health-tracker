@@ -1,14 +1,16 @@
 # Meal Reminders (Floating Overlay) Design
 
 This document details the design for **meal-logging reminders** that surface as a
-floating popup **over other apps** (not a drawer notification) at configurable times of
-day, when no meal has been logged in the relevant meal window. The popup shows a playful
+floating popup **over other apps** (not a drawer notification) at configurable **meal
+times**. The purpose is to **prompt the user to photograph / log the meal in the moment**
+— before they finish eating, when there is still food to capture. At each meal time the
+popup appears **unless that meal has already been logged**. The popup shows a playful
 Lottie animation of a waiter rising from the bottom holding a tray, with three actions:
 **log a meal**, **snooze 30 minutes**, or **dismiss**.
 
 The core problem being solved: the user forgets to log meals, and forgetting means the
 app is usually *not open* — so an in-app-only reminder can't help. The reminder must
-reach the user while the app is closed.
+reach the user while the app is closed, at the moment they are about to eat.
 
 ## User Review Required
 
@@ -21,30 +23,36 @@ reach the user while the app is closed.
 > - **Inexact alarms**: We use `AlarmManager` **inexact** alarms
 >   (`setAndAllowWhileIdle`), so no `SCHEDULE_EXACT_ALARM` permission is needed. A meal
 >   reminder does not need second-level precision; it may fire a few minutes late in Doze.
-> - **Default times**: `10:00` / `14:00` / `20:00` (breakfast / lunch / dinner windows).
->   These are more meaningful for "you missed a meal" than the originally-mentioned
->   `7:00 / 12:00 / 19:00` (a 07:00 window is almost always empty and would nag every
->   morning). All three times are editable in the new settings screen, including reverting
->   to 7/12/19.
+> - **Default times**: `07:00` / `12:00` / `19:00` (breakfast / lunch / dinner). These are
+>   meal *times* — the reminder fires at the meal so the user can photograph it — not
+>   deadlines after the fact. All three times are editable in the new settings screen.
 > - **Lottie asset**: The waiter animation is produced separately (a design agent, per the
 >   prepared prompt) as a vector Lottie JSON with a transparent background. This spec
 >   assumes the asset is dropped into `res/raw/`; the three buttons and text are native
 >   Compose, **not** part of the Lottie.
 
-## Window Semantics
+## Reminder Timing & Suppression
 
-Reminders are an ordered list of "slots", each `{ time, mealLabel, enabled }`. For slot
-`i` at time `Tᵢ`, the checked window is **`[Tᵢ₋₁, Tᵢ)`** (the first slot's window starts
-at midnight). When slot `i` fires at `Tᵢ`, if **no `complete` meal** has a `loggedAt`
-within that window, the popup is shown for `mealLabelᵢ`.
+Reminders are an ordered list of "slots", each `{ time, mealLabel, enabled }`. Each slot
+is a **meal-time prompt**: at slot `i`'s time `Tᵢ` the popup fires **unless the user has
+already logged that meal**.
 
-Defaults:
-- `10:00` → window `[00:00, 10:00)` → "לא רשמת ארוחת בוקר 🍳"
-- `14:00` → window `[10:00, 14:00)` → "לא רשמת ארוחת צהריים 🥗"
-- `20:00` → window `[14:00, 20:00)` → "לא רשמת ארוחת ערב 🍽️"
+"Already logged that meal" means a `complete` meal whose `loggedAt` falls in the
+**suppression window** `[Sᵢ, now]`, where:
+- `Sᵢ` = the **midpoint** between the previous enabled slot's time and `Tᵢ`
+  (`S₀` = start of day, `00:00`, for the first slot).
+- `now` = the moment the check runs (equal to `Tᵢ`, or the snooze time on a re-check).
+
+The midpoint boundary is what keeps each meal independent: logging breakfast does **not**
+suppress the lunch prompt, but logging lunch a bit early does suppress it.
+
+Defaults (with `07:00 / 12:00 / 19:00`):
+- `07:00` breakfast → suppression window `[00:00, now]` → "📸 זמן לתעד את ארוחת הבוקר 🍳"
+- `12:00` lunch → suppression window `[09:30, now]` → "📸 זמן לתעד את ארוחת הצהריים 🥗"
+- `19:00` dinner → suppression window `[15:30, now]` → "📸 זמן לתעד את ארוחת הערב 🍽️"
 
 Times compare against the device's local time zone. Only meals with `date == today` and
-`status == complete` count; `analyzing`/`failed` meals are ignored.
+`status == complete` count; `analyzing`/`failed` meals do not suppress a reminder.
 
 ## Architecture
 
@@ -54,9 +62,9 @@ unit-testable; the Android pieces (scheduler, receiver, service) stay thin.
 | Unit | Responsibility | Depends on | Tested |
 |------|----------------|------------|--------|
 | `ReminderSettings` + `ReminderSettingsStore` | Persist master toggle + 3 slots (time/label/enabled) in DataStore | DataStore | ✅ InMemory |
-| `MealWindowChecker` (pure) | Given a slot index, settings, and today's meal timestamps → is the window missed? | — | ✅ unit |
+| `MealReminderPolicy` (pure) | Given a slot index, settings, today's meal times, and now → should the reminder fire? | — | ✅ unit |
 | `ReminderScheduler` | Wrap `AlarmManager`: (re)arm each enabled slot's next occurrence; snooze; cancel all | AlarmManager | — |
-| `ReminderAlarmReceiver` | Fires at a slot time → read today's meals → `MealWindowChecker` → start overlay if missed → re-arm next occurrence | Scheduler, MealRepository | — |
+| `ReminderAlarmReceiver` | Fires at a slot time → read today's meals → `MealReminderPolicy` → show overlay if due → re-arm next occurrence | Scheduler, MealRepository | — |
 | `ReminderBootReceiver` | Re-arm all alarms after device reboot | Scheduler | — |
 | `ReminderOverlayService` | Host the floating popup (WindowManager `TYPE_APPLICATION_OVERLAY`): Lottie + 3 buttons | WindowManager | — |
 | `ReminderSettingsScreen` + `ReminderSettingsViewModel` | UI to edit times/toggles + grant overlay permission | Store | ✅ ViewModel |
@@ -68,8 +76,8 @@ AlarmManager (per enabled slot)
    → ReminderAlarmReceiver.onReceive (goAsync)
         ├─ currentUid() == null?  → skip (still re-arm next day)
         ├─ read today's complete meals (mealRepository.meals.first(), filtered)
-        ├─ MealWindowChecker.isWindowMissed(slotIndex, settings, meals)
-        │      └─ missed && Settings.canDrawOverlays()
+        ├─ MealReminderPolicy.shouldRemind(slotIndex, settings, mealTimes, now)
+        │      └─ due && Settings.canDrawOverlays()
         │             → start ReminderOverlayService(mealLabel, slotIndex)
         └─ ReminderScheduler.armNextOccurrence(slotIndex)
 
@@ -79,6 +87,10 @@ ReminderOverlayService (popup buttons)
    └─ "ביטול"             → remove overlay; stop
 ```
 
+On a snooze re-check, `MealReminderPolicy.shouldRemind` runs again with the later `now`,
+so if the user photographed the meal during the 30 minutes, the snoozed popup is
+suppressed automatically.
+
 ## Proposed Changes
 
 ### Component 1: Settings data & persistence
@@ -86,7 +98,7 @@ ReminderOverlayService (popup buttons)
 #### [NEW] `data/reminders/ReminderSettings.kt`
 - `data class ReminderSlot(val time: LocalTime, val mealLabel: String, val enabled: Boolean)`.
 - `data class ReminderSettings(val masterEnabled: Boolean, val slots: List<ReminderSlot>)`
-  with a `DEFAULT` (master on; the three default slots above).
+  with a `DEFAULT` (master on; breakfast/lunch/dinner at 07:00/12:00/19:00).
 
 #### [NEW] `data/reminders/ReminderSettingsStore.kt`
 - `interface ReminderSettingsStore { val settings: Flow<ReminderSettings>; suspend fun update(new: ReminderSettings) }`.
@@ -102,11 +114,12 @@ ReminderOverlayService (popup buttons)
 
 ### Component 2: Core logic (pure)
 
-#### [NEW] `data/reminders/MealWindowChecker.kt`
-- `fun isWindowMissed(slotIndex: Int, settings: ReminderSettings, todaysMealTimes: List<LocalTime>): Boolean`.
-- Computes `[prevSlotTime, thisSlotTime)` (prev = midnight for slot 0, using only
-  **enabled** slots to define boundaries) and returns `true` when no meal time falls in it.
-- Boundary rule: start inclusive, end exclusive. No Android imports.
+#### [NEW] `data/reminders/MealReminderPolicy.kt`
+- `fun shouldRemind(slotIndex: Int, settings: ReminderSettings, todaysMealTimes: List<LocalTime>, now: LocalTime): Boolean`.
+- Computes the suppression window `[Sᵢ, now]` where `Sᵢ` = midpoint between the previous
+  **enabled** slot's time and this slot's time (`S₀` = `00:00`). Returns `false` when any
+  meal time falls in that window (meal already logged), `true` otherwise.
+- No Android imports.
 
 ---
 
@@ -119,7 +132,7 @@ ReminderOverlayService (popup buttons)
   ahead, else tomorrow) and `setAndAllowWhileIdle` a `PendingIntent` → `ReminderAlarmReceiver`
   with `requestCode = slotIndex` and an extra carrying the slot index.
 - `snooze(context, slotIndex, minutes = 30)`: one-shot alarm `now + minutes` for the same
-  slot (re-runs the same window check at snooze time).
+  slot (re-runs the same suppression check at snooze time).
 - `cancelAll(context)`: cancel every slot PendingIntent (called on sign-out and when the
   master toggle is turned off).
 
@@ -132,8 +145,8 @@ ReminderOverlayService (popup buttons)
   - If `AppContainer.currentUid() == null` → re-arm next occurrence and return.
   - `goAsync()` + coroutine: read today's `complete` meals
     (`mealRepository.meals.first()` filtered by `date` and `status`), map `loggedAt` →
-    `LocalTime` (device zone), run `MealWindowChecker.isWindowMissed(...)`.
-  - If missed **and** `Settings.canDrawOverlays(context)` → start `ReminderOverlayService`
+    `LocalTime` (device zone), run `MealReminderPolicy.shouldRemind(...)`.
+  - If due **and** `Settings.canDrawOverlays(context)` → start `ReminderOverlayService`
     with the slot's `mealLabel` and index.
   - Always re-arm the next occurrence of this slot.
 
@@ -157,8 +170,8 @@ ReminderOverlayService (popup buttons)
   required on a given OS level, it starts briefly as a foreground service with a minimal
   transient notification; otherwise a plain started service.
 - Content: a rounded card with the Lottie waiter (`lottie-compose`, intro-then-loop),
-  the title (e.g. "לא רשמת ארוחת בוקר 🍳"), and three buttons wired to the actions in the
-  Data Flow above. Removes its window view in `onDestroy`.
+  the title (e.g. "📸 זמן לתעד את ארוחת הבוקר 🍳"), and three buttons wired to the actions
+  in the Data Flow above. Removes its window view in `onDestroy`.
 
 #### [NEW] Lottie asset `res/raw/waiter_reminder.json`
 - Supplied by the design agent (transparent background, vector). Placeholder until then.
@@ -213,16 +226,19 @@ ReminderOverlayService (popup buttons)
 - **#5 no medical advice**: the popup is a neutral logging nudge, no health claims.
 - **#6 no blocking on main thread**: DataStore, meal reads, and the receiver use
   coroutines / `goAsync`.
-- **#2 food images stay local**: unaffected — this feature reads only meal metadata.
+- **#2 food images stay local**: unaffected — this feature reads only meal metadata; the
+  photo the user takes still stays on-device per the existing rule.
 - **Phase isolation**: builds on Phase-2 meal data (read-only); does not touch the daily
   summary / insights pipeline.
 
 ## Verification Plan
 
 ### Automated Tests
-- `MealWindowChecker`: table of cases — empty window; a meal exactly on the start boundary
-  (counts) and on the end boundary (excluded); a `failed`/`analyzing` meal ignored; meals
-  that fall only in other windows; a disabled middle slot widening a later window.
+- `MealReminderPolicy.shouldRemind`: table of cases — no meal logged (fires); breakfast
+  logged at 08:00 does not suppress the 12:00 lunch prompt (fires); lunch logged at 11:30
+  suppresses the 12:00 prompt (skips); a meal exactly on the midpoint boundary (skips) vs
+  just before it (fires); a `failed`/`analyzing` meal does not suppress; a disabled middle
+  slot shifts the next slot's midpoint boundary.
 - `ReminderSettingsStore` (InMemory + DataStore round-trip parse/serialize of times).
 - `ReminderSettingsViewModel`: toggling master/slots and editing a time persists and
   triggers `armAll`/`cancelAll`; overlay-permission status is reflected.
@@ -231,10 +247,12 @@ ReminderOverlayService (popup buttons)
 ### Manual Verification
 1. **Grant flow**: open reminder settings, tap grant, approve overlay permission, return —
    status shows granted.
-2. **Missed window**: with no meal logged, set a slot time to a minute ahead, lock the app
-   / open another app; at the time, the floating waiter popup appears over that app.
-3. **Not missed**: log a meal in the window; at the slot time no popup appears.
+2. **Meal-time prompt**: with no meal logged, set a slot time to a minute ahead, open
+   another app; at the time, the floating waiter popup appears over that app.
+3. **Already logged**: log a meal just before the slot time; at the slot time no popup
+   appears.
 4. **Buttons**: "רשום ארוחה" opens the app on the Add-Meal sheet; "תזכיר עוד 30 דק'"
-   dismisses and re-fires ~30 min later; "ביטול" dismisses with no re-fire.
+   dismisses and re-fires ~30 min later (and self-suppresses if you logged meanwhile);
+   "ביטול" dismisses with no re-fire.
 5. **Reboot**: reboot the device; confirm reminders still fire (boot re-arm).
 6. **Sign-out**: sign out; confirm no popups fire.
