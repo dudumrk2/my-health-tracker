@@ -30,17 +30,23 @@ private val Context.reminderDataStore by preferencesDataStore(name = "reminders"
 class DataStoreReminderSettingsStore(context: Context) : ReminderSettingsStore {
     private val appContext = context.applicationContext
     private val masterKey = booleanPreferencesKey("master_enabled")
+    private val soundKey = booleanPreferencesKey("sound_enabled")
     private val slotsKey = stringPreferencesKey("slots")
 
     override val settings: Flow<ReminderSettings> = appContext.reminderDataStore.data.map { prefs ->
         val slots = prefs[slotsKey]?.let { ReminderSettingsCodec.decodeSlots(it) }
             ?: ReminderSettings.DEFAULT.slots
-        ReminderSettings(masterEnabled = prefs[masterKey] ?: true, slots = slots)
+        ReminderSettings(
+            masterEnabled = prefs[masterKey] ?: true,
+            soundEnabled = prefs[soundKey] ?: true,
+            slots = slots
+        )
     }
 
     override suspend fun update(new: ReminderSettings) {
         appContext.reminderDataStore.edit { prefs ->
             prefs[masterKey] = new.masterEnabled
+            prefs[soundKey] = new.soundEnabled
             prefs[slotsKey] = ReminderSettingsCodec.encodeSlots(new.slots)
         }
     }

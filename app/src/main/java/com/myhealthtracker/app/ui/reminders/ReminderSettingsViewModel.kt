@@ -25,6 +25,9 @@ class ReminderSettingsViewModel(
     fun setMasterEnabled(enabled: Boolean) =
         persist(settings.value.copy(masterEnabled = enabled))
 
+    fun setSoundEnabled(enabled: Boolean) =
+        persist(settings.value.copy(soundEnabled = enabled))
+
     fun setSlotEnabled(index: Int, enabled: Boolean) = persist(
         settings.value.copy(slots = settings.value.slots.mapIndexed { i, s ->
             if (i == index) s.copy(enabled = enabled) else s

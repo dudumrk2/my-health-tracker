@@ -62,6 +62,16 @@ fun ReminderSettingsScreen(
         }
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("צליל התראה", fontWeight = FontWeight.Bold)
+            Switch(checked = settings.soundEnabled, onCheckedChange = { vm.setSoundEnabled(it) })
+        }
+        HorizontalDivider(Modifier.padding(vertical = 8.dp))
+
         settings.slots.forEachIndexed { index, slot ->
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),

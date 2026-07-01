@@ -66,7 +66,7 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
                     .map { it.loggedAt.atZone(zone).toLocalTime() }
 
                 if (MealReminderPolicy.shouldRemind(slotIndex, settings, mealTimes, LocalTime.now())) {
-                    ReminderOverlayService.start(appContext, slot.mealLabel, slotIndex)
+                    ReminderOverlayService.start(appContext, slot.mealLabel, slotIndex, settings.soundEnabled)
                 }
             } finally {
                 pending.finish()

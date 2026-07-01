@@ -48,6 +48,17 @@ class ReminderSettingsViewModelTest {
     }
 
     @Test
+    fun `setSoundEnabled false persists`() = runTest(dispatcher) {
+        val store = InMemoryReminderSettingsStore()
+        val vm = ReminderSettingsViewModel(store) {}
+
+        vm.setSoundEnabled(false)
+        testScheduler.advanceUntilIdle()
+
+        assertFalse(store.settings.first().soundEnabled)
+    }
+
+    @Test
     fun `setSlotEnabled toggles the target slot only`() = runTest(dispatcher) {
         val store = InMemoryReminderSettingsStore()
         val vm = ReminderSettingsViewModel(store) {}

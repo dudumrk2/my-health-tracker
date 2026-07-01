@@ -12,11 +12,13 @@ data class ReminderSlot(
 /** All reminder settings. Device-local only; never synced to Firestore. */
 data class ReminderSettings(
     val masterEnabled: Boolean = true,
+    val soundEnabled: Boolean = true,
     val slots: List<ReminderSlot>
 ) {
     companion object {
         val DEFAULT = ReminderSettings(
             masterEnabled = true,
+            soundEnabled = true,
             slots = listOf(
                 ReminderSlot(LocalTime.of(7, 0), "ארוחת בוקר", true),
                 ReminderSlot(LocalTime.of(12, 0), "ארוחת צהריים", true),

@@ -58,12 +58,13 @@ class ReminderOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         }
         val mealLabel = intent?.getStringExtra(EXTRA_MEAL_LABEL) ?: ""
         val slotIndex = intent?.getIntExtra(EXTRA_SLOT_INDEX, -1) ?: -1
-        showOverlay(mealLabel, slotIndex)
+        val soundEnabled = intent?.getBooleanExtra(EXTRA_SOUND_ENABLED, true) ?: true
+        showOverlay(mealLabel, slotIndex, soundEnabled)
         return START_NOT_STICKY
     }
 
-    private fun showOverlay(mealLabel: String, slotIndex: Int) {
-        playNotificationSound()
+    private fun showOverlay(mealLabel: String, slotIndex: Int, soundEnabled: Boolean) {
+        if (soundEnabled) playNotificationSound()
         val wm = getSystemService(WINDOW_SERVICE) as WindowManager
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -155,12 +156,14 @@ class ReminderOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
     companion object {
         private const val EXTRA_MEAL_LABEL = "meal_label"
         private const val EXTRA_SLOT_INDEX = "slot_index"
+        private const val EXTRA_SOUND_ENABLED = "sound_enabled"
 
-        fun start(context: Context, mealLabel: String, slotIndex: Int) {
+        fun start(context: Context, mealLabel: String, slotIndex: Int, soundEnabled: Boolean) {
             context.startService(
                 Intent(context, ReminderOverlayService::class.java).apply {
                     putExtra(EXTRA_MEAL_LABEL, mealLabel)
                     putExtra(EXTRA_SLOT_INDEX, slotIndex)
+                    putExtra(EXTRA_SOUND_ENABLED, soundEnabled)
                 }
             )
         }
