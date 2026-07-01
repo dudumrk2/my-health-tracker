@@ -7,6 +7,7 @@ import androidx.work.WorkManager
 import com.google.firebase.auth.FirebaseUser
 import com.myhealthtracker.app.data.auth.AuthManager
 import com.myhealthtracker.app.di.AppContainer
+import com.myhealthtracker.app.notification.ReminderScheduler
 import com.myhealthtracker.app.sync.HealthSyncScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -50,6 +51,7 @@ class AuthViewModel(
     fun signOut(context: Context) {
         authManager.signOut()
         WorkManager.getInstance(context).cancelUniqueWork(HealthSyncScheduler.PERIODIC_WORK_NAME)
+        ReminderScheduler.cancelAll(context)
         _uiState.value = AuthUiState.Idle
     }
 }
