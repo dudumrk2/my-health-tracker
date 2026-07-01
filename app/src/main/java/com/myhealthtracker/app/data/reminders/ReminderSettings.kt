@@ -31,10 +31,13 @@ object ReminderSettingsCodec {
     fun encodeSlots(slots: List<ReminderSlot>): String =
         slots.joinToString(";") { "${it.time}|${it.mealLabel}|${it.enabled}" }
 
-    fun decodeSlots(encoded: String): List<ReminderSlot> =
-        if (encoded.isBlank()) emptyList()
-        else encoded.split(";").map { part ->
-            val (t, label, en) = part.split("|")
-            ReminderSlot(LocalTime.parse(t), label, en.toBoolean())
-        }
+    fun decodeSlots(encoded: String): List<ReminderSlot> {
+        if (encoded.isBlank()) return emptyList()
+        return runCatching {
+            encoded.split(";").map { part ->
+                val (t, label, en) = part.split("|")
+                ReminderSlot(LocalTime.parse(t), label, en.toBoolean())
+            }
+        }.getOrElse { ReminderSettings.DEFAULT.slots }
+    }
 }

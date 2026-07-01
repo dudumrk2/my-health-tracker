@@ -36,4 +36,14 @@ class ReminderSettingsTest {
         store.update(updated)
         assertEquals(updated, store.settings.first())
     }
+
+    @Test
+    fun `decodeSlots falls back to default on structurally malformed input`() {
+        assertEquals(ReminderSettings.DEFAULT.slots, ReminderSettingsCodec.decodeSlots("garbage-without-delimiters"))
+    }
+
+    @Test
+    fun `decodeSlots falls back to default on unparseable time`() {
+        assertEquals(ReminderSettings.DEFAULT.slots, ReminderSettingsCodec.decodeSlots("99:99|x|true"))
+    }
 }

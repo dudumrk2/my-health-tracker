@@ -35,6 +35,13 @@ object ReminderScheduler {
         setAlarm(context, slotIndex, triggerAt)
     }
 
+    /**
+     * Re-fires this slot after [minutes]. Reuses the slot's PendingIntent (shared with the
+     * daily alarm), so it temporarily replaces the pending daily alarm. This is safe because
+     * ReminderAlarmReceiver arms the next daily occurrence BEFORE showing the popup, and when
+     * the snooze alarm later fires the receiver re-arms the next daily occurrence again — so
+     * the daily cadence is always restored.
+     */
     fun snooze(context: Context, slotIndex: Int, minutes: Long = 30) {
         setAlarm(context, slotIndex, System.currentTimeMillis() + minutes * 60_000L)
     }
