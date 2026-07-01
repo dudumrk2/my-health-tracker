@@ -49,6 +49,8 @@ import kotlin.math.roundToInt
 @Composable
 fun MealReminderOverlay(
     isVisible: Boolean,
+    title: String = "זה שוב אני...",
+    body: String = "אל תשכח לעדכן את הארוחה הבאה שלך",
     onLogMeal: () -> Unit,
     onRemindLater: () -> Unit,
     onDismiss: () -> Unit
@@ -122,11 +124,11 @@ fun MealReminderOverlay(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 80.dp, bottom = 24.dp, start = 24.dp, end = 24.dp),
+                            .padding(top = 115.dp, bottom = 24.dp, start = 24.dp, end = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "היי, לא שכחת משהו?",
+                            text = title,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -134,7 +136,7 @@ fun MealReminderOverlay(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "הגיע הזמן לעדכן את הארוחה האחרונה שלך! המלצר שלנו כבר מחכה.",
+                            text = body,
                             fontSize = 16.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center

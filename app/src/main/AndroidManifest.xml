@@ -97,6 +97,10 @@
             </intent-filter>
         </receiver>
 
+        <service
+            android:name=".notification.ReminderOverlayService"
+            android:exported="false" />
+
     </application>
 
 </manifest>
