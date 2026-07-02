@@ -41,6 +41,7 @@ fun ProfileScreen(
     onSaveSuccess: () -> Unit,
     onLogout: () -> Unit,
     onAccountDeleted: () -> Unit,
+    onNavigateToReminderSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -167,6 +168,7 @@ fun ProfileScreen(
         accountState = accountState,
         onLogoutClick = onLogout,
         onDeleteAccountConfirm = { viewModel.deleteAccount() },
+        onNavigateToReminderSettings = onNavigateToReminderSettings,
         modifier = modifier
     )
 }
@@ -259,6 +261,7 @@ private fun ProfileScreenContent(
     accountState: AccountState,
     onLogoutClick: () -> Unit,
     onDeleteAccountConfirm: () -> Unit,
+    onNavigateToReminderSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -590,6 +593,29 @@ private fun ProfileScreenContent(
                         )
                     }
 
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToReminderSettings() }
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "תזכורות ארוחה",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "תזכורת קופצת בזמן הארוחה כדי לצלם ולתעד",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                     Row(

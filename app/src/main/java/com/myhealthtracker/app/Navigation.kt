@@ -22,6 +22,8 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import android.content.Intent
+import android.net.Uri
+import android.provider.Settings as AndroidSettings
 import com.myhealthtracker.app.data.model.MealStatus
 import com.myhealthtracker.app.di.AppContainer
 import com.myhealthtracker.app.notification.QuickActionsNotificationManager
@@ -34,6 +36,7 @@ import com.myhealthtracker.app.ui.meal.MealEditScreen
 import com.myhealthtracker.app.ui.meal.pickUnseenMealToShow
 import com.myhealthtracker.app.ui.profile.ProfileScreen
 import com.myhealthtracker.app.ui.profile.ProfileViewModel
+import com.myhealthtracker.app.ui.reminders.ReminderSettingsScreen
 import com.myhealthtracker.app.ui.workout.AddWorkoutScreen
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -148,6 +151,7 @@ fun MainNavigation(
               backStack.clear()
               backStack.add(Auth)
             },
+            onNavigateToReminderSettings = { backStack.add(ReminderSettingsRoute) },
             modifier = Modifier.safeDrawingPadding().padding(16.dp)
           )
         }
@@ -192,6 +196,21 @@ fun MainNavigation(
         entry<AddMeal> {
           AddMealScreen(
             onDismiss = { backStack.removeLastOrNull() }
+          )
+        }
+        entry<ReminderSettingsRoute> {
+          val context = LocalContext.current
+          ReminderSettingsScreen(
+            onBack = { backStack.removeLastOrNull() },
+            onGrantOverlay = {
+              context.startActivity(
+                Intent(
+                  AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                  Uri.parse("package:${context.packageName}")
+                )
+              )
+            },
+            modifier = Modifier.safeDrawingPadding().padding(16.dp)
           )
         }
         entry<AddBodyMeasurement> {
