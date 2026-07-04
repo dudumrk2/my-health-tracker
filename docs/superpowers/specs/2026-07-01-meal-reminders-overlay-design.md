@@ -15,15 +15,24 @@ reach the user while the app is closed, at the moment they are about to eat.
 ## User Review Required
 
 > [!IMPORTANT]
-> - **Overlay permission**: The floating popup requires `SYSTEM_ALERT_WINDOW` ("display over
->   other apps"). The user grants it once via system settings. This is a deliberate,
->   personal-app choice (not published to Play Store, where Google discourages it). If the
->   permission is missing when a reminder fires, we skip silently — never crash.
-> - **Does not wake the screen / not over the lock screen**: The overlay
->   (`TYPE_APPLICATION_OVERLAY`) intentionally does **not** turn the display on and does
->   **not** show over a secure lock screen. It appears when the user next turns the screen
->   on / unlocks (in practice, leaving Doze at unlock flushes the deferred alarm and the
->   popup surfaces then). This is by explicit user choice — no alarm-clock behavior.
+> - **Overlay permission + why an Activity**: The popup is a translucent `Activity`
+>   (`ReminderActivity`) launched from the alarm receiver, **not** a WindowManager overlay
+>   service. Reason (verified on-device): starting a plain `Service` from the background is
+>   blocked on Android 8+, so the old overlay service only worked while the app was in the
+>   foreground. `SYSTEM_ALERT_WINDOW` ("display over other apps") grants the
+>   **background-activity-launch exemption** (`BAL_ALLOW_SAW_PERMISSION`), which a plain
+>   `startService` does not get — so the reminder reliably appears even when the app is
+>   killed. The user grants the permission once via system settings; if it's missing when a
+>   reminder fires, we skip silently — never crash.
+> - **Does not wake the screen / not over the lock screen**: `ReminderActivity`
+>   deliberately does **not** set `setShowWhenLocked` / `setTurnScreenOn`, so it never turns
+>   the display on and never shows over a secure lock screen. It floats over whatever app is
+>   foreground, and is simply there once the user turns the screen on / unlocks. Explicit
+>   user choice — no alarm-clock behavior.
+> - **Notification sound**: When the popup appears it plays the device's default
+>   notification tone (`RingtoneManager`), gated on `RINGER_MODE_NORMAL` (respects
+>   silent/vibrate). Controlled by a `soundEnabled` toggle in the settings screen
+>   (default on); no extra permission.
 > - **Skips during phone/VoIP calls**: Before showing, the receiver checks
 >   `AudioManager.mode`; if a call is active or ringing (`MODE_IN_CALL` /
 >   `MODE_IN_COMMUNICATION` / `MODE_RINGTONE`) it does **not** show — it snoozes ~5 minutes
@@ -67,18 +76,18 @@ Times compare against the device's local time zone. Only meals with `date == tod
 ## Architecture
 
 Small, isolated units. The decision logic is pure Kotlin (no Android), so it is fully
-unit-testable; the Android pieces (scheduler, receiver, service) stay thin.
+unit-testable; the Android pieces (scheduler, receiver, activity) stay thin.
 
 | Unit | Responsibility | Depends on | Tested |
 |------|----------------|------------|--------|
 | `ReminderSettings` + `ReminderSettingsStore` | Persist master toggle + 3 slots (time/label/enabled) in DataStore | DataStore | ✅ InMemory |
 | `MealReminderPolicy` (pure) | Given a slot index, settings, today's meal times, and now → should the reminder fire? | — | ✅ unit |
 | `ReminderScheduler` | Wrap `AlarmManager`: (re)arm each enabled slot's next occurrence; snooze; cancel all | AlarmManager | — |
-| `ReminderAlarmReceiver` | Fires at a slot time → skip if in a call → read today's meals → `MealReminderPolicy` → show overlay if due → re-arm next occurrence | Scheduler, MealRepository, AudioManager | — |
+| `ReminderAlarmReceiver` | Fires at a slot time → skip if in a call → read today's meals → `MealReminderPolicy` → launch `ReminderActivity` if due → re-arm next occurrence | Scheduler, MealRepository, AudioManager | — |
 | `ReminderBootReceiver` | Re-arm all alarms after device reboot | Scheduler | — |
-| `ReminderOverlayService` | Host the floating popup: a `ComposeView` in WindowManager (`TYPE_APPLICATION_OVERLAY`) rendering `MealReminderOverlay` | WindowManager | — |
+| `ReminderActivity` | Translucent, borderless Activity (launched from the receiver via the SAW background-launch exemption) hosting `MealReminderOverlay`; plays the notification tone; no wake/lock flags | MealReminderOverlay | — |
 | `MealReminderOverlay` (composable, **exists**) | Native waiter animation (slide-up + hover/breathing) + card + 3 buttons | drawable `waiter` | — |
-| `ReminderSettingsScreen` + `ReminderSettingsViewModel` | UI to edit times/toggles + grant overlay permission | Store | ✅ ViewModel |
+| `ReminderSettingsScreen` + `ReminderSettingsViewModel` | UI to edit times/toggles + sound toggle + grant overlay permission | Store | ✅ ViewModel |
 
 ## Data Flow
 
@@ -90,13 +99,13 @@ AlarmManager (per enabled slot)
         ├─ AudioManager in a call/ringing?  → snooze 5 min, stop
         ├─ read today's complete meals (mealRepository.meals, filtered)
         ├─ MealReminderPolicy.shouldRemind(slotIndex, settings, mealTimes, now)
-        │      └─ due → start ReminderOverlayService(mealLabel, slotIndex)
+        │      └─ due → ReminderActivity.start(mealLabel, slotIndex, soundEnabled)
         └─ (done)
 
-ReminderOverlayService (popup buttons; does not wake screen / not over lock screen)
-   ├─ "רשום ארוחה"        → launch MainActivity deep-link DEST_ADD_MEAL; remove overlay; stop
-   ├─ "תזכיר עוד 30 דק'"  → ReminderScheduler.snooze(slotIndex, +30min); remove overlay; stop
-   └─ "ביטול"             → remove overlay; stop
+ReminderActivity (translucent; plays sound if soundEnabled; no wake/lock flags)
+   ├─ "רשום ארוחה"        → launch MainActivity deep-link DEST_ADD_MEAL; finish
+   ├─ "תזכיר עוד 30 דק'"  → ReminderScheduler.snooze(slotIndex, +30min); finish
+   └─ "ביטול"             → finish
 ```
 
 On a snooze re-check, `MealReminderPolicy.shouldRemind` runs again with the later `now`,
@@ -109,8 +118,9 @@ suppressed automatically.
 
 #### [NEW] `data/reminders/ReminderSettings.kt`
 - `data class ReminderSlot(val time: LocalTime, val mealLabel: String, val enabled: Boolean)`.
-- `data class ReminderSettings(val masterEnabled: Boolean, val slots: List<ReminderSlot>)`
-  with a `DEFAULT` (master on; breakfast/lunch/dinner at 07:00/12:00/19:00).
+- `data class ReminderSettings(val masterEnabled: Boolean, val soundEnabled: Boolean, val slots: List<ReminderSlot>)`
+  with a `DEFAULT` (master on; sound on; breakfast/lunch/dinner at 07:00/12:00/19:00).
+  `soundEnabled` is a separate `booleanPreferencesKey` in the store (not part of the slot codec).
 
 #### [NEW] `data/reminders/ReminderSettingsStore.kt`
 - `interface ReminderSettingsStore { val settings: Flow<ReminderSettings>; suspend fun update(new: ReminderSettings) }`.
@@ -161,7 +171,7 @@ suppressed automatically.
     (don't cover the call UI).
   - Read today's `complete` meals (from `mealRepository.meals`, filtered by `date` and
     `status`), map `loggedAt` → `LocalTime` (device zone), run `MealReminderPolicy.shouldRemind(...)`.
-  - If due → `ReminderOverlayService.start(context, mealLabel, slotIndex)`.
+  - If due → `ReminderActivity.start(context, mealLabel, slotIndex, settings.soundEnabled)`.
 
 #### [NEW] `notification/ReminderBootReceiver.kt`
 - Handles `ACTION_BOOT_COMPLETED`; calls `ReminderScheduler.armAll` (reads settings first;
@@ -169,43 +179,43 @@ suppressed automatically.
 
 ---
 
-### Component 5: Overlay popup
+### Component 5: Reminder popup
 
-#### [NEW] `notification/ReminderOverlayService.kt`
-- Started `Service`. Guards on `Settings.canDrawOverlays`; self-stops if not granted.
-- Adds a `ComposeView` to `WindowManager` as a `MATCH_PARENT`, `FLAG_NOT_FOCUSABLE`
-  window (`TYPE_APPLICATION_OVERLAY`). The `ComposeView` is given a lightweight
-  `LifecycleOwner` + `SavedStateRegistryOwner` + `ViewModelStoreOwner` so Compose renders
-  inside the window (standard overlay-Compose requirement). This window type does **not**
-  wake the screen and does **not** show over a secure lock screen — by design.
-- Hosts `MealReminderOverlay(isVisible, title, onLogMeal, onRemindLater, onDismiss)`. The
-  service drives an `isVisible` `mutableStateOf`: starts `false`, flips to `true` **after**
-  the view attaches so the slide-in plays. On any action it sets `isVisible = false`, waits
-  ~350 ms for the exit animation, then removes the window view and `stopSelf`.
-- Because the app holds `SYSTEM_ALERT_WINDOW`, starting this service and adding the window
-  from the background is permitted on Android 12+.
-- The overlay's full-screen scrim dims the whole screen behind it (a deliberate modal
-  feel) and consumes touches; the buttons dispatch the actions in the Data Flow above.
+#### [NEW] `notification/ReminderActivity.kt`
+- Translucent, borderless `ComponentActivity` (`@android:style/Theme.Translucent.NoTitleBar`,
+  its own task via `taskAffinity=""` + `excludeFromRecents`), launched from
+  `ReminderAlarmReceiver` via `startActivity` with `FLAG_ACTIVITY_NEW_TASK`.
+- **Why an Activity, not a Service** (verified on-device): a plain `startService` from the
+  background is blocked on Android 8+, so the reminder only appeared while the app was
+  foreground. Holding `SYSTEM_ALERT_WINDOW` grants the background-activity-launch exemption
+  (`BAL_ALLOW_SAW_PERMISSION` in `ActivityTaskManager`), so the Activity launches reliably
+  even when the app is killed.
+- **No** `setShowWhenLocked` / `setTurnScreenOn`: it never wakes the screen or shows over a
+  secure lock screen; it floats over the foreground app and is present once the screen is on.
+- Plays the notification tone (if `soundEnabled`, gated on `RINGER_MODE_NORMAL`) in
+  `onCreate`. Hosts `MealReminderOverlay(isVisible, title, onLogMeal, onRemindLater, onDismiss)`,
+  flipping `isVisible` true after first composition so the slide-in plays; each action sets
+  it false, waits ~350 ms for the exit animation, then `finish()`es. `overridePendingTransition(0,0)`
+  so only the Compose animation shows.
 
 #### [MODIFY] `ui/meal/MealReminderOverlay.kt` (already exists)
 - Native composable: `AnimatedVisibility` slide-up (spring overshoot) + `InfiniteTransition`
   hover/breathing over `R.drawable.waiter`, a Material 3 card, and the three buttons.
-- Small enhancement: accept a `title: String` (and optional body) param so the service can
-  pass the per-meal text (e.g. "📸 זמן לתעד את ארוחת הבוקר 🍳"), instead of the current
-  hard-coded copy.
+- Enhancement: accept `title`/`body` params so `ReminderActivity` passes the per-meal text
+  (e.g. "📸 זמן לתעד את ארוחת הבוקר 🍳"); defaults preserve the existing hard-coded copy.
 
 ---
 
 ### Component 6: UI & navigation
 
 #### [NEW] `ui/reminders/ReminderSettingsScreen.kt` + `ReminderSettingsViewModel.kt`
-- Master enable `Switch`.
+- Master enable `Switch`; a **sound** `Switch` (`soundEnabled`).
 - One row per slot: meal label, a time picker (`TimePickerDialog`/M3 time picker), and an
   enable `Switch`.
-- An "overlay permission" status row: shows granted/not-granted and a button that launches
-  `Settings.ACTION_MANAGE_OVERLAY_PERMISSION` when missing.
-- ViewModel reads/writes `ReminderSettingsStore`; on any change it persists and calls
-  `ReminderScheduler.armAll` / `cancelAll` so the schedule always matches the settings.
+- A grant-overlay button that launches `Settings.ACTION_MANAGE_OVERLAY_PERMISSION`.
+- ViewModel (`setMasterEnabled` / `setSoundEnabled` / `setSlotEnabled` / `setSlotTime`)
+  reads/writes `ReminderSettingsStore`; on any change it persists and calls an injected
+  `onChanged` (wired to `ReminderScheduler.armAll`) so the schedule matches the settings.
 
 #### [MODIFY] `ui/profile/ProfileScreen.kt`
 - Add a row (e.g. "תזכורות ארוחה") navigating to the reminder settings screen, alongside
@@ -225,7 +235,9 @@ suppressed automatically.
 - `<receiver android:name=".notification.ReminderAlarmReceiver" android:exported="false" />`.
 - `<receiver android:name=".notification.ReminderBootReceiver" android:exported="false">`
   with an `ACTION_BOOT_COMPLETED` intent-filter.
-- `<service android:name=".notification.ReminderOverlayService" android:exported="false" />`.
+- `<activity android:name=".notification.ReminderActivity" android:exported="false"
+  android:excludeFromRecents="true" android:launchMode="singleTask" android:taskAffinity=""
+  android:theme="@android:style/Theme.Translucent.NoTitleBar" />`.
 
 #### [MODIFY] app startup (`MyHealthApp` / `MainActivity`) & sign-out (`AuthViewModel`)
 - On authenticated startup with `masterEnabled`, call `ReminderScheduler.armAll`.
