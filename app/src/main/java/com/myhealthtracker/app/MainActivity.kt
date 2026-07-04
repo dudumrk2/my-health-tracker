@@ -26,7 +26,9 @@ import androidx.lifecycle.lifecycleScope
 import com.myhealthtracker.app.di.AppContainer
 import com.myhealthtracker.app.ui.celebration.CelebrationOverlay
 import com.myhealthtracker.app.notification.QuickActionsNotificationManager
+import com.myhealthtracker.app.notification.ReminderScheduler
 import com.myhealthtracker.app.theme.MyHealthTrackerTheme
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -89,6 +91,13 @@ class MainActivity : ComponentActivity() {
                     }
                 } else {
                     QuickActionsNotificationManager.stop(context)
+                }
+            }
+
+            LaunchedEffect(authUser) {
+                if (authUser != null) {
+                    val settings = AppContainer.reminderSettingsStore.settings.first()
+                    ReminderScheduler.armAll(context, settings)
                 }
             }
 
