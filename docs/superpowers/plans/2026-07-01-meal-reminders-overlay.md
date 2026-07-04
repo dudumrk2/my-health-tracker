@@ -2,6 +2,19 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> [!NOTE]
+> **Post-implementation amendments** (see the design doc for the up-to-date architecture):
+> 1. **Notification sound + toggle** — the popup plays the system notification tone (gated
+>    on `RINGER_MODE_NORMAL`); `ReminderSettings.soundEnabled` (default on) with a switch in
+>    the settings screen controls it.
+> 2. **Popup is a translucent `ReminderActivity`, not `ReminderOverlayService`** — starting a
+>    plain `Service` from the background is blocked on Android 8+, so the overlay service only
+>    worked in the foreground. `SYSTEM_ALERT_WINDOW` grants the background-activity-launch
+>    exemption (`BAL_ALLOW_SAW_PERMISSION`), so the reminder is launched as a translucent
+>    Activity (no wake/lock flags) and works reliably when the app is killed. Task 4's
+>    `ReminderOverlayService` was replaced accordingly; the receiver calls
+>    `ReminderActivity.start(...)`.
+
 **Goal:** Remind the user to photograph/log a meal with a floating popup over other apps at each meal time, unless that meal was already logged.
 
 **Architecture:** A daily `AlarmManager` (inexact) alarm per meal slot fires a `BroadcastReceiver`, which reads today's meals, asks a pure `MealReminderPolicy` whether the meal is still un-logged, and if so starts a `Service` that hosts the existing `MealReminderOverlay` composable in a `WindowManager` overlay window. Settings (times, toggles) live in a device-local DataStore and drive scheduling.
