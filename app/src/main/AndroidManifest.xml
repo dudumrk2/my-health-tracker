@@ -97,9 +97,16 @@
             </intent-filter>
         </receiver>
 
-        <service
-            android:name=".notification.ReminderOverlayService"
-            android:exported="false" />
+        <!-- The floating reminder popup. A translucent activity launched from the alarm
+             receiver; the SYSTEM_ALERT_WINDOW permission grants the background-launch
+             exemption. Its own task so it floats over whatever app is foreground. -->
+        <activity
+            android:name=".notification.ReminderActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
     </application>
 
