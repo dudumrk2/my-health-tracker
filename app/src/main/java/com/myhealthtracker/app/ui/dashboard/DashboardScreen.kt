@@ -521,9 +521,16 @@ private fun DashboardContent(
                         }
                     }
 
-                    val lastWeight = state.bodyMeasurements.lastOrNull()?.weightKg ?: 74.2
-                    val lastWaist = state.bodyMeasurements.lastOrNull()?.waistCm ?: 88.0
-                    val lastHips = state.bodyMeasurements.lastOrNull()?.hipsCm ?: 102.0
+                    // Weights in chronological order; fall back to the profile's setup
+                    // weight so the badge reflects real data even before a manual measurement.
+                    val weightHistory = state.bodyMeasurements.mapNotNull { it.weightKg }
+                    val lastWeight = weightHistory.lastOrNull() ?: state.profile?.weightKg
+                    // Waist/hips aren't captured at setup — show the latest real value or "—".
+                    val lastWaist = state.bodyMeasurements.lastOrNull { it.waistCm != null }?.waistCm
+                    val lastHips = state.bodyMeasurements.lastOrNull { it.hipsCm != null }?.hipsCm
+                    val weightDelta = if (weightHistory.size >= 2) {
+                        weightHistory.last() - weightHistory[weightHistory.size - 2]
+                    } else null
 
                     Box(
                         modifier = Modifier
@@ -551,20 +558,23 @@ private fun DashboardContent(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Text(
-                                    text = "$lastWeight ק״ג",
+                                    text = if (lastWeight != null) "${formatMeasurement(lastWeight)} ק״ג" else "— ק״ג",
                                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
-                                Text(
-                                    text = "|",
-                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
-                                    fontSize = 12.sp
-                                )
-                                Text(
-                                    text = "ירידה של 0.8 ק״ג",
-                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+                                if (weightDelta != null && kotlin.math.abs(weightDelta) >= 0.05) {
+                                    Text(
+                                        text = "|",
+                                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                                        fontSize = 12.sp
+                                    )
+                                    val direction = if (weightDelta < 0) "ירידה" else "עלייה"
+                                    Text(
+                                        text = "$direction של ${formatMeasurement(kotlin.math.abs(weightDelta))} ק״ג",
+                                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
                         }
                     }
@@ -580,7 +590,7 @@ private fun DashboardContent(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "$lastWaist ס״מ",
+                                text = if (lastWaist != null) "${formatMeasurement(lastWaist)} ס״מ" else "—",
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -593,7 +603,7 @@ private fun DashboardContent(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "$lastHips ס״מ",
+                                text = if (lastHips != null) "${formatMeasurement(lastHips)} ס״מ" else "—",
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -673,6 +683,10 @@ fun SleepProgressRow(
     }
 }
 
+/** Trims a trailing ".0" so 75.0 shows as "75" while 75.5 stays "75.5". */
+private fun formatMeasurement(value: Double): String =
+    if (value % 1.0 == 0.0) value.toLong().toString() else "%.1f".format(value)
+
 @Composable
 fun WeightTrendGraph(
     measurements: List<BodyMeasurement>,
@@ -680,13 +694,13 @@ fun WeightTrendGraph(
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
     val surfaceColor = MaterialTheme.colorScheme.surface
-    val points = if (measurements.size >= 2) {
-        measurements.mapNotNull { it.weightKg }
-    } else {
-        listOf(74.8, 74.5, 74.6, 74.3, 74.4, 74.1, 74.2)
-    }
+    // A single weight (e.g. from setup) is drawn as a flat baseline; no synthetic trend.
+    val weights = measurements.mapNotNull { it.weightKg }
+    val points = if (weights.size == 1) weights + weights else weights
 
     Canvas(modifier = modifier) {
+        if (points.size < 2) return@Canvas
+
         val width = size.width
         val height = size.height
         val paddingX = 15f
