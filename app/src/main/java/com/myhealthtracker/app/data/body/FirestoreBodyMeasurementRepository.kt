@@ -1,5 +1,6 @@
 package com.myhealthtracker.app.data.body
 
+import android.util.Log
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -74,6 +75,9 @@ class FirestoreBodyMeasurementRepository(
         firestore.collection("users").document(uid)
             .collection("bodyMeasurements").document(date)
             .set(data)
+            .addOnFailureListener { e ->
+                Log.w("FirestoreBodyRepo", "addBodyMeasurement failed for date $date", e)
+            }
     }
 
     override fun seedWeight(date: String, weight: Double) {
@@ -87,5 +91,8 @@ class FirestoreBodyMeasurementRepository(
         firestore.collection("users").document(uid)
             .collection("bodyMeasurements").document(date)
             .set(data, SetOptions.merge())
+            .addOnFailureListener { e ->
+                Log.w("FirestoreBodyRepo", "seedWeight failed for date $date", e)
+            }
     }
 }

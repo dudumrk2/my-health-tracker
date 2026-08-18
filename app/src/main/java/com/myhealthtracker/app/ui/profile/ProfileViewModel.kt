@@ -15,7 +15,7 @@ import com.myhealthtracker.app.di.AppContainer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -195,16 +195,15 @@ class ProfileViewModel(
                 return@launch
             }
 
-            profileRepository.saveUserProfile(uid, profile).collect { result ->
-                if (result.isSuccess) {
-                    // Mirror the setup/edit weight into the body-measurement history
-                    // for today so the dashboard's "מדדי גוף" section reflects it.
-                    val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-                    bodyMeasurementRepository.seedWeight(today, weight)
-                    _uiState.value = ProfileUiState.Saved
-                } else {
-                    _uiState.value = ProfileUiState.Error(result.exceptionOrNull()?.message ?: "שגיאה בשמירה")
-                }
+            val result = profileRepository.saveUserProfile(uid, profile).first()
+            if (result.isSuccess) {
+                // Mirror the setup/edit weight into the body-measurement history
+                // for today so the dashboard's "מדדי גוף" section reflects it.
+                val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+                bodyMeasurementRepository.seedWeight(today, weight)
+                _uiState.value = ProfileUiState.Saved
+            } else {
+                _uiState.value = ProfileUiState.Error(result.exceptionOrNull()?.message ?: "שגיאה בשמירה")
             }
         }
     }
