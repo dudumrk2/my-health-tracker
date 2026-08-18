@@ -189,6 +189,24 @@ class UiValidationTests {
         assertEquals(45, savedWorkout!!.durationMin)
     }
 
+    @Test
+    fun addWorkoutViewModel_reset_clearsSavedFlagAndInputs() = runTest {
+        // VM is shared (not scoped per nav entry); a stale isSaved=true would dismiss the
+        // screen the instant it reopens. reset() must clear it for the next open.
+        val viewModel = AddWorkoutViewModel(healthRepository = FakeRepository, uidProvider = { "test-uid" })
+        viewModel.selectType("ריצה")
+        viewModel.onDurationChange("45")
+        viewModel.saveWorkout()
+        assertEquals(true, viewModel.isSaved.value)
+
+        viewModel.reset()
+
+        assertEquals(false, viewModel.isSaved.value)
+        assertNull(viewModel.selectedType.value)
+        assertEquals("", viewModel.durationStr.value)
+        assertNull(viewModel.errorMessage.value)
+    }
+
     // --- AddBodyMeasurementViewModel Tests ---
 
     @Test
@@ -256,5 +274,26 @@ class UiValidationTests {
         assertEquals(82.0, saved.waistCm!!, 0.001)
         assertEquals(95.0, saved.hipsCm!!, 0.001)
         assertEquals("שקילה שבועית", saved.note)
+    }
+
+    @Test
+    fun addBodyMeasurementViewModel_reset_clearsSavedFlagAndInputs() = runTest {
+        val viewModel = AddBodyMeasurementViewModel(bodyMeasurementRepository = FakeRepository)
+        viewModel.onWeightChange("78.5")
+        viewModel.onWaistChange("82.0")
+        viewModel.onHipsChange("95.0")
+        viewModel.onNoteChange("שקילה שבועית")
+        viewModel.saveMeasurement()
+        assertEquals(true, viewModel.isSaved.value)
+
+        viewModel.reset()
+
+        assertEquals(false, viewModel.isSaved.value)
+        assertEquals("", viewModel.note.value)
+        assertNull(viewModel.errorMessage.value)
+        // Values should be reloaded from the last saved state
+        assertEquals("78.5", viewModel.weightStr.value)
+        assertEquals("82.0", viewModel.waistStr.value)
+        assertEquals("95.0", viewModel.hipsStr.value)
     }
 }

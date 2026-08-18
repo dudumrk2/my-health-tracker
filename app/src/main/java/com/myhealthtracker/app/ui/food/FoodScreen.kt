@@ -2,6 +2,12 @@ package com.myhealthtracker.app.ui.food
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,11 +28,20 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
+import coil.compose.AsyncImage
+import com.myhealthtracker.app.data.meal.toAnalysisInput
+import com.myhealthtracker.app.data.model.MealStatus
+import com.myhealthtracker.app.di.AppContainer
+import com.myhealthtracker.app.sync.MealAnalysisScheduler
+import com.myhealthtracker.app.util.MealImageStore
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -53,6 +68,8 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.roundToInt
+import com.myhealthtracker.app.notification.QuickActionsNotificationManager.WATER_STEP_ML
 
 private const val DAILY_CALORIE_TARGET = 2500
 private const val DAILY_WATER_TARGET_ML = 3000 // 3.0L
@@ -73,6 +90,15 @@ private fun getHebrewDayName(date: LocalDate): String {
 private fun formatInstantToTime(instant: Instant): String {
     val formatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
     return formatter.format(instant)
+}
+
+private fun formatLiters(ml: Int): String {
+    val liters = ml / 1000f
+    return when {
+        ml % 1000 == 0 -> String.format(Locale.US, "%.0f", liters)
+        ml % 100 == 0 -> String.format(Locale.US, "%.1f", liters)
+        else -> String.format(Locale.US, "%.2f", liters)
+    }
 }
 
 private fun getMealTitle(description: String, index: Int): String {
@@ -99,11 +125,21 @@ private fun getMealEmoji(description: String): String {
     }
 }
 
+@Composable
+private fun StatusBadge(text: String, bg: Color, fg: Color) {
+    Surface(color = bg, shape = RoundedCornerShape(8.dp)) {
+        Text(text, color = fg, style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FoodScreen(
     viewModel: FoodViewModel,
     onNavigateToAddMeal: () -> Unit,
+    onNavigateToProfile: () -> Unit,
+    onEditMeal: (MealEntry) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.state.collectAsState()
@@ -116,6 +152,8 @@ fun FoodScreen(
         onRefreshClick = { viewModel.refreshAdvice() },
         onQuickAddWaterClick = { viewModel.quickAddWater(it) },
         onAddMealClick = onNavigateToAddMeal,
+        onProfileClick = onNavigateToProfile,
+        onEditMeal = onEditMeal,
         modifier = modifier
     )
 }
@@ -129,10 +167,13 @@ private fun FoodContent(
     onRefreshClick: () -> Unit,
     onQuickAddWaterClick: (Int) -> Unit,
     onAddMealClick: () -> Unit,
+    onProfileClick: () -> Unit = {},
+    onEditMeal: (MealEntry) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedMeal by remember { mutableStateOf<MealEntry?>(null) }
     var selectedMealTitle by remember { mutableStateOf("") }
+    var recoveryMeal by remember { mutableStateOf<MealEntry?>(null) }
 
     val dateList = remember(state.selectedDate) {
         // Generate a 7-day window centered on the selected date
@@ -197,7 +238,7 @@ private fun FoodContent(
                     )
 
                     // Left in RTL = Profile
-                    IconButton(onClick = {}) {
+                    IconButton(onClick = onProfileClick) {
                         Icon(
                             imageVector = Icons.Default.AccountCircle,
                             contentDescription = "פרופיל",
@@ -218,13 +259,23 @@ private fun FoodContent(
                     ) {
                         items(dateList) { date ->
                             val isSelected = date == state.selectedDate
+                            val isCurrentDay = date == LocalDate.now()
                             val dayName = getHebrewDayName(date)
                             val dayNumber = date.dayOfMonth.toString()
+
+                            // White reads better than the theme's onPrimary on the slate
+                            // background (onPrimary defaults to a dark hue in dark mode).
+                            val selectedContentColor =
+                                if (isCurrentDay) MaterialTheme.colorScheme.onPrimary else Color.White
 
                             Card(
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+                                    containerColor = when {
+                                        isSelected && isCurrentDay -> MaterialTheme.colorScheme.primary
+                                        isSelected -> if (isSystemInDarkTheme()) SlateSelectedDark else SlateSelectedLight
+                                        else -> MaterialTheme.colorScheme.surface
+                                    }
                                 ),
                                 border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                 modifier = Modifier
@@ -241,14 +292,14 @@ private fun FoodContent(
                                         text = dayName,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Medium,
-                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = if (isSelected) selectedContentColor else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = dayNumber,
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                                        color = if (isSelected) selectedContentColor else MaterialTheme.colorScheme.onSurface
                                     )
                                 }
                             }
@@ -256,331 +307,388 @@ private fun FoodContent(
                     }
                 }
 
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(bottom = 88.dp)
-                ) {
-                    // 1. AI Suggestion Card
-                    item {
-                        Card(
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer
-                            ),
-                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primary),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Lightbulb,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text(
-                                        text = "המלצה חכמה להיום",
-                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                    Text(
-                                        text = if (state.isRefreshing) "מחשב המלצות..." else state.aiAdvice,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        lineHeight = 18.sp
-                                    )
-                                }
-                            }
+                // Failure banner — persists across day changes (above AnimatedContent)
+                if (state.failedMealCount > 0) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+                    ) {
+                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "יש ${state.failedMealCount} מנות שלא נותחו — הקש על המנה האדומה ביומן כדי לנסות שוב",
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                         }
                     }
+                }
 
-                    // 2. Nutrition Summary Card
-                    item {
-                        Card(
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                val consumedCal = state.totals.calories
-                                val calorieTarget = goals.caloriesKcal
-                                val remainingCal = (calorieTarget - consumedCal).coerceAtLeast(0)
-                                
-                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    Text(
-                                        text = "נותרו עוד",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Row(
-                                        verticalAlignment = Alignment.Bottom,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Text(
-                                            text = String.format("%,d", remainingCal),
-                                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                        Text(
-                                            text = "קלוריות",
-                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                            color = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.padding(bottom = 3.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = "מתוך $calorieTarget",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.padding(bottom = 4.dp)
-                                        )
-                                    }
-                                }
-
-                                // Macros progress bars side-by-side
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Box(modifier = Modifier.weight(1f)) {
-                                        MacroProgressBarHorizontal(
-                                            name = "חלבון",
-                                            value = state.totals.proteinG,
-                                            target = goals.proteinG,
-                                            color = ProteinColor
-                                        )
-                                    }
-                                    Box(modifier = Modifier.weight(1f)) {
-                                        MacroProgressBarHorizontal(
-                                            name = "פחמימות",
-                                            value = state.totals.carbsG,
-                                            target = goals.carbsG,
-                                            color = CarbsColor
-                                        )
-                                    }
-                                    Box(modifier = Modifier.weight(1f)) {
-                                        MacroProgressBarHorizontal(
-                                            name = "שומן",
-                                            value = state.totals.fatG,
-                                            target = goals.fatG,
-                                            color = FatColor
-                                        )
-                                    }
-                                }
-                            }
+                AnimatedContent(
+                    targetState = state.selectedDate,
+                    transitionSpec = {
+                        // Later day → slide in from the right (toward the tapped card);
+                        // earlier day → slide in from the left. Strip is forced LTR.
+                        val direction = if (targetState.isAfter(initialState)) {
+                            AnimatedContentTransitionScope.SlideDirection.Left
+                        } else {
+                            AnimatedContentTransitionScope.SlideDirection.Right
                         }
-                    }
-
-                    // 3. Water Log Card
-                    item {
-                        Card(
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "שתיית מים",
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = "${String.format(Locale.US, "%.1f", state.waterIntakeMl / 1000f)} / ${String.format(Locale.US, "%.1f", goals.waterMl / 1000f)} ליטר",
-                                        style = MaterialTheme.typography.bodyMedium.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            color = WaterColor
-                                        )
-                                    )
-                                }
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    // 10 Water Drops, proportional to the daily goal so the
-                                    // last drop fills exactly at the target regardless of step size.
-                                    val waterTarget = goals.waterMl.coerceAtLeast(1)
-                                    val filledDropsCount = (state.waterIntakeMl * 10 / waterTarget).coerceIn(0, 10)
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        for (i in 0 until 10) {
-                                            val isFilled = i < filledDropsCount
-                                            val alpha by animateFloatAsState(
-                                                targetValue = if (isFilled) 1f else 0.2f,
-                                                animationSpec = tween(durationMillis = 500),
-                                                label = "WaterDropAlpha"
-                                            )
-                                            Text(
-                                                text = "💧",
-                                                fontSize = 20.sp,
-                                                modifier = Modifier.alpha(alpha)
-                                            )
-                                        }
-                                    }
-
-                                    Spacer(modifier = Modifier.width(8.dp))
-
-                                    // Quick Add Button
-                                    if (isToday) {
-                                        Button(
-                                            onClick = { onQuickAddWaterClick(250) },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                            ),
-                                            shape = RoundedCornerShape(20.dp),
-                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                            modifier = Modifier.height(36.dp)
-                                        ) {
-                                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("הוספת מים", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // 4. Meal Journal Header
-                    item {
-                        Text(
-                            text = "יומן ארוחות",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
-
-                    // Meal items
-                    if (state.meals.isEmpty()) {
+                        (slideIntoContainer(direction, tween(300)) + fadeIn(tween(300))) togetherWith
+                            (slideOutOfContainer(direction, tween(300)) + fadeOut(tween(300)))
+                    },
+                    label = "FoodDateTransition",
+                    modifier = Modifier.weight(1f)
+                ) { _ ->
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        contentPadding = PaddingValues(bottom = 88.dp)
+                    ) {
+                        // 1. AI Suggestion Card
                         item {
                             Card(
                                 shape = RoundedCornerShape(16.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer
                                 ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                             ) {
-                                Text(
-                                    text = "לא נרשמו ארוחות ביום זה",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(24.dp).fillMaxWidth(),
-                                    textAlign = TextAlign.Center
-                                )
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.primary),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Lightbulb,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text(
+                                            text = "המלצה חכמה להיום",
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                        Text(
+                                            text = if (state.isRefreshing) "מחשב המלצות..." else state.aiAdvice,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            lineHeight = 18.sp
+                                        )
+                                    }
+                                }
                             }
                         }
-                    } else {
-                        itemsIndexed(state.meals) { index, meal ->
-                            val mealTitle = getMealTitle(meal.description, index)
+
+                        // 2. Nutrition Summary Card
+                        item {
                             Card(
                                 shape = RoundedCornerShape(16.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        selectedMealTitle = mealTitle
-                                        selectedMeal = meal
-                                    }
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
-                                    // Right Side: Circular Avatar + Details
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        // Circular Image/Avatar
-                                        Box(
-                                            modifier = Modifier
-                                                .size(56.dp)
-                                                .clip(CircleShape)
-                                                .background(MaterialTheme.colorScheme.primaryContainer),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = getMealEmoji(meal.description),
-                                                fontSize = 28.sp
-                                            )
-                                        }
-
-                                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                            Text(
-                                                text = getMealTitle(meal.description, index),
-                                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
-                                            Text(
-                                                text = meal.description.ifEmpty { "ארוחה ללא תיאור" },
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    }
-
-                                    // Left Side: Time and Calories
-                                    Column(
-                                        horizontalAlignment = Alignment.End,
-                                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
+                                    val consumedCal = state.totals.calories
+                                    val calorieTarget = goals.caloriesKcal
+                                    val remainingCal = (calorieTarget - consumedCal).coerceAtLeast(0)
+                                    
+                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                         Text(
-                                            text = formatInstantToTime(meal.loggedAt),
-                                            style = MaterialTheme.typography.bodySmall,
+                                            text = "נותרו עוד",
+                                            style = MaterialTheme.typography.labelMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                         Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                            verticalAlignment = Alignment.Bottom,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                                         ) {
                                             Text(
-                                                text = "${meal.totals.calories}",
-                                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                                text = String.format("%,d", remainingCal),
+                                                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                                                 color = MaterialTheme.colorScheme.primary
                                             )
                                             Text(
                                                 text = "קלוריות",
+                                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                                color = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.padding(bottom = 3.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "מתוך $calorieTarget",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(bottom = 4.dp)
+                                            )
+                                        }
+                                    }
+
+                                    // Macros progress bars side-by-side
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Box(modifier = Modifier.weight(1f)) {
+                                            MacroProgressBarHorizontal(
+                                                name = "חלבון",
+                                                value = state.totals.proteinG,
+                                                target = goals.proteinG,
+                                                color = ProteinColor
+                                            )
+                                        }
+                                        Box(modifier = Modifier.weight(1f)) {
+                                            MacroProgressBarHorizontal(
+                                                name = "פחמימות",
+                                                value = state.totals.carbsG,
+                                                target = goals.carbsG,
+                                                color = CarbsColor
+                                            )
+                                        }
+                                        Box(modifier = Modifier.weight(1f)) {
+                                            MacroProgressBarHorizontal(
+                                                name = "שומן",
+                                                value = state.totals.fatG,
+                                                target = goals.fatG,
+                                                color = FatColor
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 3. Water Log Card
+                        item {
+                            Card(
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "שתיית מים",
+                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "${formatLiters(state.waterIntakeMl)} / ${formatLiters(goals.waterMl)} ליטר",
+                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = WaterColor
+                                            )
+                                        )
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // 10 Water Drops, proportional to the daily goal so the
+                                        // last drop fills exactly at the target regardless of step size.
+                                        val dropStep = WATER_STEP_ML
+                                        val totalDrops = (goals.waterMl.toFloat() / dropStep.toFloat()).roundToInt().coerceAtLeast(1)
+                                        val filledDropsCount = (state.waterIntakeMl.toFloat() / dropStep.toFloat()).roundToInt().coerceIn(0, totalDrops)
+                                        FlowRow(
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            for (i in 0 until totalDrops) {
+                                                val isFilled = i < filledDropsCount
+                                                val alpha by animateFloatAsState(
+                                                    targetValue = if (isFilled) 1f else 0.2f,
+                                                    animationSpec = tween(durationMillis = 500),
+                                                    label = "WaterDropAlpha"
+                                                )
+                                                Text(
+                                                    text = "💧",
+                                                    fontSize = 20.sp,
+                                                    modifier = Modifier.alpha(alpha)
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.width(8.dp))
+
+                                        // Quick Add Button
+                                        if (isToday) {
+                                            Button(
+                                                onClick = { onQuickAddWaterClick(WATER_STEP_ML) },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                                ),
+                                                shape = RoundedCornerShape(20.dp),
+                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                                modifier = Modifier.height(36.dp)
+                                            ) {
+                                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("הוספת מים", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 4. Meal Journal Header
+                        item {
+                            Text(
+                                text = "יומן ארוחות",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+
+                        // Meal items
+                        if (state.meals.isEmpty()) {
+                            item {
+                                Card(
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surface
+                                    ),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = "לא נרשמו ארוחות ביום זה",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        } else {
+                            itemsIndexed(state.meals) { index, meal ->
+                                val mealTitle = getMealTitle(meal.description, index)
+                                Card(
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            when (meal.status) {
+                                                MealStatus.FAILED -> recoveryMeal = meal
+                                                MealStatus.ANALYZING -> { /* no-op while analyzing */ }
+                                                else -> { selectedMealTitle = mealTitle; selectedMeal = meal }
+                                            }
+                                        }
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // Right Side: Circular Avatar + Details
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            // Circular Image/Avatar — photo thumbnail when available, emoji otherwise
+                                            val path = meal.localImagePath
+                                            if (path != null && meal.status != MealStatus.ANALYZING) {
+                                                AsyncImage(
+                                                    model = java.io.File(path),
+                                                    contentDescription = null,
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier.size(56.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer)
+                                                )
+                                            } else {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(56.dp)
+                                                        .clip(CircleShape)
+                                                        .background(MaterialTheme.colorScheme.primaryContainer),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Text(
+                                                        text = getMealEmoji(meal.description),
+                                                        fontSize = 28.sp
+                                                    )
+                                                }
+                                            }
+
+                                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                                Text(
+                                                    text = getMealTitle(meal.description, index),
+                                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                Text(
+                                                    text = meal.description.ifEmpty { "ארוחה ללא תיאור" },
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                // Status badge
+                                                when (meal.status) {
+                                                    MealStatus.ANALYZING -> StatusBadge("⏳ מנתח…", MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer)
+                                                    MealStatus.FAILED -> StatusBadge("⚠️ נכשל — הקש לתיקון", MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
+                                                    else -> {}
+                                                }
+                                            }
+                                        }
+
+                                        // Left Side: Time and Calories
+                                        Column(
+                                            horizontalAlignment = Alignment.End,
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Text(
+                                                text = formatInstantToTime(meal.loggedAt),
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                            ) {
+                                                Text(
+                                                    text = "${meal.totals.calories}",
+                                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                                Text(
+                                                    text = "קלוריות",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -594,7 +702,34 @@ private fun FoodContent(
                 MealDetailSheet(
                     meal = meal,
                     title = selectedMealTitle,
-                    onDismiss = { selectedMeal = null }
+                    onDismiss = { selectedMeal = null },
+                    onEdit = { entry -> onEditMeal(entry); selectedMeal = null }
+                )
+            }
+
+            recoveryMeal?.let { meal ->
+                val context = LocalContext.current
+                AlertDialog(
+                    onDismissRequest = { recoveryMeal = null },
+                    title = { Text("המנה לא נותחה") },
+                    text = { Text(meal.failureReason ?: "ניתוח המנה נכשל.") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            AppContainer.mealRepository.retryMeal(meal.mealId)
+                            MealAnalysisScheduler.enqueue(context, meal.toAnalysisInput())
+                            recoveryMeal = null
+                        }) { Text("נסה שוב") }
+                    },
+                    dismissButton = {
+                        Row {
+                            TextButton(onClick = {
+                                MealImageStore.delete(meal.localImagePath)
+                                AppContainer.mealRepository.deleteMeal(meal.mealId)
+                                recoveryMeal = null
+                            }) { Text("מחק") }
+                            TextButton(onClick = { recoveryMeal = null }) { Text("סגור") }
+                        }
+                    }
                 )
             }
         }
@@ -606,7 +741,8 @@ private fun FoodContent(
 fun MealDetailSheet(
     meal: MealEntry,
     title: String,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onEdit: (MealEntry) -> Unit = {}
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     
@@ -641,12 +777,17 @@ fun MealDetailSheet(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                IconButton(onClick = onDismiss) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "סגור",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { onEdit(meal); onDismiss() }) {
+                        Text("ערוך")
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "סגור",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
@@ -655,6 +796,16 @@ fun MealDetailSheet(
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
+
+            // Photo thumbnail (full-width) if present
+            meal.localImagePath?.let { path ->
+                AsyncImage(
+                    model = java.io.File(path),
+                    contentDescription = "תמונת הארוחה",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(12.dp))
+                )
+            }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 

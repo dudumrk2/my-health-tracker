@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -23,8 +24,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.myhealthtracker.app.di.AppContainer
+import com.myhealthtracker.app.ui.celebration.CelebrationOverlay
 import com.myhealthtracker.app.notification.QuickActionsNotificationManager
+import com.myhealthtracker.app.notification.ReminderScheduler
 import com.myhealthtracker.app.theme.MyHealthTrackerTheme
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -49,6 +53,7 @@ class MainActivity : ComponentActivity() {
 
             val themePreference = profileData.getOrNull()?.themePreference ?: "system"
             val quickActionsEnabled = profileData.getOrNull()?.quickActionsEnabled ?: true
+            val celebrationSoundEnabled = profileData.getOrNull()?.celebrationSoundEnabled ?: true
 
             val darkTheme = when (themePreference) {
                 "light" -> false
@@ -89,19 +94,27 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            LaunchedEffect(authUser) {
+                if (authUser != null) {
+                    val settings = AppContainer.reminderSettingsStore.settings.first()
+                    ReminderScheduler.armAll(context, settings)
+                }
+            }
+
             MyHealthTrackerTheme(darkTheme = darkTheme) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    val currentIntent by intentState
-                    MainNavigation(
-                        intent = currentIntent,
-                        onIntentHandled = {
-                            intentState.value = null
-                            // Replace the launching intent so a configuration-change
-                            // recreation (e.g. rotation) doesn't re-deliver the deep link
-                            // and navigate a second time.
-                            setIntent(Intent())
-                        }
-                    )
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        val currentIntent by intentState
+                        MainNavigation(
+                            intent = currentIntent,
+                            onIntentHandled = {
+                                intentState.value = null
+                                setIntent(Intent())
+                            }
+                        )
+                        // Root-hosted so celebrations overlay every screen.
+                        CelebrationOverlay(soundEnabled = celebrationSoundEnabled)
+                    }
                 }
             }
         }
@@ -109,12 +122,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        // Record an app-foreground heartbeat so the server-side inactivity cleanup can
-        // distinguish a live install from an abandoned one. No-op when signed out.
+        com.myhealthtracker.app.app.AppForegroundTracker.onEnterForeground()
         val uid = AppContainer.currentUid() ?: return
-        lifecycleScope.launch {
-            runCatching { AppContainer.activityRepository.touchLastActive(uid) }
-        }
+        lifecycleScope.launch { runCatching { AppContainer.activityRepository.touchLastActive(uid) } }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        com.myhealthtracker.app.app.AppForegroundTracker.onEnterBackground()
     }
 
     override fun onNewIntent(intent: Intent) {

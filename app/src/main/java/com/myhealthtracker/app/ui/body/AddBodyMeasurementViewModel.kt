@@ -102,4 +102,17 @@ class AddBodyMeasurementViewModel(
             }
         }
     }
+
+    /**
+     * Restore the initial input state and clear the saved flag. ViewModels here are not
+     * scoped per nav entry, so the same instance is reused across openings; without this a
+     * stale `isSaved = true` would dismiss the screen the instant it reopens.
+     */
+    fun reset() {
+        _note.value = ""
+        _errorMessage.value = null
+        _isSaved.value = false
+        loadLastValues()
+    }
 }
+

@@ -14,6 +14,9 @@ import com.myhealthtracker.app.data.insights.InsightsRefresher
 import com.myhealthtracker.app.data.insights.InsightsRepository
 import com.myhealthtracker.app.data.insights.pickInsight
 import com.myhealthtracker.app.data.model.MealEntry
+import com.myhealthtracker.app.data.celebration.CelebrationController
+import com.myhealthtracker.app.data.celebration.CelebrationRules
+import com.myhealthtracker.app.data.goals.GoalCalculator
 import com.myhealthtracker.app.data.model.BodyMeasurement
 import com.myhealthtracker.app.di.AppContainer
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,13 +48,13 @@ class DashboardViewModel(
     private val bodyMeasurementRepository: BodyMeasurementRepository = AppContainer.bodyMeasurementRepository,
     private val insightsRepository: InsightsRepository = AppContainer.insightsRepository,
     private val insightsRefresher: InsightsRefresher = AppContainer.insightsRefresher,
+    private val celebrationController: CelebrationController = AppContainer.celebrationController,
     private val uidProvider: () -> String? = { AppContainer.currentUid() }
 ) : ViewModel() {
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
-    private val todayStr = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
     private val uid = uidProvider()
 
     private val profileFlow =
@@ -77,6 +80,12 @@ class DashboardViewModel(
         val rawProfile = (array[0] as Result<UserProfile?>).getOrNull()
         val localizedProfile = rawProfile?.let { it.copy(gender = genderToHebrew(it.gender)) }
 
+        // Evaluated per emission (not cached on the instance) so a process kept alive across
+        // midnight uses the current date — otherwise a stale dedup key would suppress the new
+        // day's step-goal celebration until the app is restarted.
+        val today = LocalDate.now()
+        val todayStr = today.format(DateTimeFormatter.ISO_LOCAL_DATE)
+
         @Suppress("UNCHECKED_CAST")
         val healthList = (array[1] as Result<List<DailyHealthData>>).getOrNull() ?: emptyList()
         val todayHealth = healthList.find { it.date == todayStr } ?: DailyHealthData(date = todayStr)
@@ -89,7 +98,6 @@ class DashboardViewModel(
         val isRefreshing = array[5] as Boolean
 
         // Filter meals for this week (last 7 days)
-        val today = LocalDate.now()
         val weeklyMeals = meals.filter { meal ->
             try {
                 !LocalDate.parse(meal.date).isBefore(today.minusDays(7))
@@ -114,6 +122,39 @@ class DashboardViewModel(
         // Unified general insight: today's sentence if present, else last night's
         // tomorrow emphasis, else a "not ready" message. Selection is presence-based.
         val unifiedInsight = pickInsight(insights?.today, insights?.tomorrow, InsightCategory.GENERAL).text
+
+        // ── Celebrations (state-derived; each fires once via the dedup store) ──
+        // Goals use the raw (English-gender) profile; localizedProfile would break
+        // GoalCalculator's "male"/"female" checks.
+        val goals = GoalCalculator.compute(rawProfile ?: UserProfile())
+
+        celebrationController.tryCelebrate(
+            CelebrationRules.stepGoal(todayHealth.steps, goals.steps, todayStr)
+        )
+
+        val weekStart = CelebrationRules.startOfWeekSunday(today)
+        val weeklyWorkoutCount = healthList
+            .filter { day ->
+                runCatching {
+                    val d = LocalDate.parse(day.date)
+                    !d.isBefore(weekStart) && !d.isAfter(today)
+                }.getOrDefault(false)
+            }
+            .sumOf { it.workouts.size }
+        celebrationController.tryCelebrate(
+            CelebrationRules.workoutMilestones(weeklyWorkoutCount, CelebrationRules.weekId(today))
+        )
+
+        val yesterdayStr = today.minusDays(1).format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val yesterdayMeals = meals.filter { it.date == yesterdayStr }
+        celebrationController.tryCelebrate(
+            CelebrationRules.calorieGoalYesterday(
+                yesterdayMealCount = yesterdayMeals.size,
+                yesterdayCalories = yesterdayMeals.sumOf { it.totals.calories },
+                goalCalories = goals.caloriesKcal,
+                yesterday = yesterdayStr
+            )
+        )
 
         DashboardState(
             profile = localizedProfile,

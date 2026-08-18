@@ -11,6 +11,7 @@ import com.myhealthtracker.app.data.model.MealEntry
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
 import com.myhealthtracker.app.data.model.MealQuality
+import com.myhealthtracker.app.data.model.MealStatus
 import com.myhealthtracker.app.data.profile.ProfileRepository
 import com.myhealthtracker.app.data.profile.UserProfile
 import com.myhealthtracker.app.data.water.WaterRepository
@@ -277,6 +278,53 @@ object FakeRepository : ProfileRepository, HealthRepository, MealRepository, Wat
 
     override fun deleteMeal(mealId: String) {
         _meals.value = _meals.value.filter { it.mealId != mealId }
+    }
+
+    override fun newMealId(): String = UUID.randomUUID().toString()
+
+    override fun createPendingMeal(
+        mealId: String, date: String, inputType: String,
+        description: String, note: String?, localImagePath: String?
+    ) {
+        _meals.value = _meals.value + MealEntry(
+            mealId = mealId, date = date, loggedAt = Instant.now(), inputType = inputType,
+            description = description, items = emptyList(), totals = MealTotals(0, 0, 0, 0),
+            status = MealStatus.ANALYZING, seen = false, note = note, localImagePath = localImagePath
+        )
+    }
+
+    override fun completeMeal(
+        mealId: String, items: List<MealItem>, totals: MealTotals,
+        recommendation: String?, quality: MealQuality?
+    ) {
+        _meals.value = _meals.value.map {
+            if (it.mealId == mealId) it.copy(
+                items = items, totals = totals, recommendation = recommendation,
+                quality = quality, status = MealStatus.COMPLETE, failureReason = null
+            ) else it
+        }
+    }
+
+    override fun failMeal(mealId: String, reason: String) {
+        _meals.value = _meals.value.map {
+            if (it.mealId == mealId) it.copy(status = MealStatus.FAILED, failureReason = reason) else it
+        }
+    }
+
+    override fun retryMeal(mealId: String) {
+        _meals.value = _meals.value.map {
+            if (it.mealId == mealId) it.copy(status = MealStatus.ANALYZING, failureReason = null) else it
+        }
+    }
+
+    override fun markMealSeen(mealId: String) {
+        _meals.value = _meals.value.map { if (it.mealId == mealId) it.copy(seen = true) else it }
+    }
+
+    override fun updateMeal(mealId: String, description: String, items: List<MealItem>, totals: MealTotals) {
+        _meals.value = _meals.value.map {
+            if (it.mealId == mealId) it.copy(description = description, items = items, totals = totals) else it
+        }
     }
 
     // --- BodyMeasurementRepository Implementation ---

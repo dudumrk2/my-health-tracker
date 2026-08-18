@@ -51,6 +51,7 @@ fun MainScreen(
     onNavigateToAddMeasurement: () -> Unit,
     onNavigateToAddWorkout: () -> Unit,
     onNavigateToAddMeal: () -> Unit,
+    onNavigateToEditMeal: (String) -> Unit = {},
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -92,6 +93,7 @@ fun MainScreen(
                         ActivityScreen(
                             viewModel = activityViewModel,
                             onNavigateToAddWorkout = onNavigateToAddWorkout,
+                            onNavigateToProfile = onNavigateToProfile,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -99,6 +101,8 @@ fun MainScreen(
                         FoodScreen(
                             viewModel = foodViewModel,
                             onNavigateToAddMeal = onNavigateToAddMeal,
+                            onNavigateToProfile = onNavigateToProfile,
+                            onEditMeal = { onNavigateToEditMeal(it.mealId) },
                             modifier = Modifier.fillMaxSize()
                         )
                     }

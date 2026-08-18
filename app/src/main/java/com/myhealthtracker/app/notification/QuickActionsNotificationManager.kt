@@ -30,6 +30,8 @@ object QuickActionsNotificationManager {
     const val EXTRA_NAVIGATE_TO = "EXTRA_NAVIGATE_TO"
     const val DEST_ADD_MEAL = "add_meal"
     const val DEST_ADD_WORKOUT = "add_workout"
+    const val DEST_MEAL_RESULT = "meal_result"
+    const val EXTRA_MEAL_ID = "EXTRA_MEAL_ID"
     const val ACTION_ADD_WATER = "com.myhealthtracker.app.ACTION_ADD_WATER"
     const val WATER_STEP_ML = 250
 

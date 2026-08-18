@@ -12,22 +12,28 @@ object ImageEncoder {
     private const val MAX_DIM = 1024
     private const val JPEG_QUALITY = 80
 
-    /** Loads the image at [uri], downscales it, and returns base64 JPEG. Returns null on failure. */
-    fun uriToBase64Jpeg(context: Context, uri: Uri): String? {
+    /** Loads the image at [uri], downscales it, and returns JPEG bytes. Returns null on failure. */
+    fun uriToJpegBytes(context: Context, uri: Uri): ByteArray? {
         val original = context.contentResolver.openInputStream(uri)?.use {
             BitmapFactory.decodeStream(it)
         } ?: return null
-        return bitmapToBase64Jpeg(original)
+        return bitmapToJpegBytes(original)
     }
 
-    fun bitmapToBase64Jpeg(bitmap: Bitmap): String {
+    /** Loads the image at [uri], downscales it, and returns base64 JPEG. Returns null on failure. */
+    fun uriToBase64Jpeg(context: Context, uri: Uri): String? =
+        uriToJpegBytes(context, uri)?.let { Base64.encodeToString(it, Base64.NO_WRAP) }
+
+    fun bitmapToJpegBytes(bitmap: Bitmap): ByteArray {
         val scaled = downscale(bitmap)
         val out = ByteArrayOutputStream()
         scaled.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)
-        val bytes = out.toByteArray()
         if (scaled != bitmap) scaled.recycle()
-        return Base64.encodeToString(bytes, Base64.NO_WRAP)
+        return out.toByteArray()
     }
+
+    fun bitmapToBase64Jpeg(bitmap: Bitmap): String =
+        Base64.encodeToString(bitmapToJpegBytes(bitmap), Base64.NO_WRAP)
 
     private fun downscale(bitmap: Bitmap): Bitmap {
         val largest = max(bitmap.width, bitmap.height)

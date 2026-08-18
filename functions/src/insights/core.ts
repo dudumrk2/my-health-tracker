@@ -3,6 +3,7 @@ import { DayData } from "./aggregate";
 import { buildInsightsSystemInstruction, buildInsightsUserPrompt } from "../prompts";
 import { parseInsights, ParsedInsights, InsightsParseError } from "./insightsParse";
 import { WriteMode } from "./writeInsights";
+import { buildFallbackInsights } from "./fallback";
 
 export interface RunOptions {
   mode: WriteMode;
@@ -12,7 +13,7 @@ export interface RunOptions {
 }
 
 export interface RunResult {
-  status: "written" | "skipped" | "failed";
+  status: "written" | "skipped" | "failed" | "fallback";
 }
 
 /** Dependencies injected so the orchestration is unit-testable without Firestore/Vertex. */
@@ -46,6 +47,15 @@ export async function runInsightsForUser(
     if (opts.skipEmpty && day.isEmpty) {
       logger.info("insights skip empty day", { uid, date, trigger: opts.trigger });
       return { status: "skipped" };
+    }
+
+    if (!day.hasMeals) {
+      const fallback = buildFallbackInsights(day);
+      await deps.write(uid, date, fallback, opts.mode, opts.trigger);
+      logger.info("insights fallback note written", {
+        uid, date, mode: opts.mode, trigger: opts.trigger, durationMs: Date.now() - started,
+      });
+      return { status: "fallback" };
     }
 
     const raw = await deps.generate(buildInsightsSystemInstruction(), buildInsightsUserPrompt(day));

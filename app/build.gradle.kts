@@ -67,6 +67,9 @@ dependencies {
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
 
+  // DataStore (local celebration dedup state)
+  implementation(libs.androidx.datastore.preferences)
+
   // Compose
   implementation(libs.androidx.compose.ui)
   implementation(libs.androidx.compose.ui.tooling.preview)
@@ -111,4 +114,7 @@ dependencies {
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
   implementation(libs.coil.compose)
+
+  // Lottie animations for celebrations
+  implementation(libs.lottie.compose)
 }

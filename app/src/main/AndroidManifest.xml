@@ -13,6 +13,13 @@
     <!-- Notification Permission -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Haptic feedback for celebrations -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Meal reminder overlay + re-arm on reboot -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <!-- Health Connect package visibility (required on Android 13 and below) -->
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
@@ -77,7 +84,30 @@
         <!-- Triggered only via an explicit PendingIntent from our own notification,
              so no intent-filter is needed and it stays unexported. -->
         <receiver android:name=".notification.WaterLoggingReceiver" android:exported="false" />
-        
+
+        <receiver
+            android:name=".notification.ReminderAlarmReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".notification.ReminderBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- The floating reminder popup. A translucent activity launched from the alarm
+             receiver; the SYSTEM_ALERT_WINDOW permission grants the background-launch
+             exemption. Its own task so it floats over whatever app is foreground. -->
+        <activity
+            android:name=".notification.ReminderActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
     </application>
 
 </manifest>

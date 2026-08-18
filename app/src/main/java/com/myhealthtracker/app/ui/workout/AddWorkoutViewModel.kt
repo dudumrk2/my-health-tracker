@@ -30,6 +30,19 @@ class AddWorkoutViewModel(
     private val _isSaved = MutableStateFlow(false)
     val isSaved: StateFlow<Boolean> = _isSaved.asStateFlow()
 
+    /**
+     * Restore the initial input state and clear the saved flag. ViewModels here are not
+     * scoped per nav entry, so the same instance is reused across openings; without this a
+     * stale `isSaved = true` would dismiss the screen the instant it reopens (the "add
+     * workout" button appears dead after the first save).
+     */
+    fun reset() {
+        _selectedType.value = null
+        _durationStr.value = ""
+        _errorMessage.value = null
+        _isSaved.value = false
+    }
+
     fun selectType(type: String) {
         _selectedType.value = type
         _errorMessage.value = null

@@ -4,6 +4,24 @@
 
 ---
 
+## Resilient Meal Analysis & Local Photos · 2026-06-25
+
+- Meal analysis is now background + auto-save: meals persist immediately as "analyzing",
+  run through WorkManager with retries, and update in place to complete/failed. Photos are
+  stored on-device (never uploaded) and shown on saved meals. Completed-but-unseen meals pop
+  their result screen (with celebration) on next app entry; failures surface as a Food-screen
+  banner with retry/delete. Quick-action notification entries bypass the interception.
+
+---
+
+## Fix dead Food-screen buttons after adding a meal · 2026-06-21
+
+- fix(meal): re-opening "הוספת ארוחה" dismissed itself instantly after the first save — `AddMealViewModel` is shared app-wide (ViewModels aren't scoped per nav entry) and its `isSaved` flag was never reset. Added `reset()`, called when the save is consumed.
+- fix(food): the profile icon on the Food screen was a no-op (`onClick = {}`); wired it to navigate to the profile screen.
+- **Why:** with the meal VM persisting, a stale `isSaved = true` made the screen close the moment it reopened, so the FAB looked dead. (Note: `AddWorkout`/`AddBodyMeasurement` share the same latent pattern; the deeper fix is a per-entry `ViewModelStoreNavEntryDecorator`.)
+
+---
+
 ## Dashboard body metrics reflect setup weight · 2026-06-21
 
 - fix(dashboard): the "מדדי גוף" card showed hardcoded mockup placeholders (74.2 kg / 88 / 102 / "ירידה של 0.8 ק״ג") instead of the user's data. Saving the profile now seeds today's weight into `bodyMeasurements` (merge — keeps a same-day manual waist/hips), the weight badge falls back to `profile.weightKg`, waist/hips show "—" when unmeasured, and the trend is computed from real history.
