@@ -70,7 +70,7 @@ fun AddBodyMeasurementScreen(
         waistStr = waistStr,
         hipsStr = hipsStr,
         note = note,
-        errorMessage = errorMessage,
+        errorResId = errorMessage,
         onWeightChange = { viewModel.onWeightChange(it) },
         onWaistChange = { viewModel.onWaistChange(it) },
         onHipsChange = { viewModel.onHipsChange(it) },
@@ -88,7 +88,7 @@ private fun AddBodyMeasurementContent(
     waistStr: String,
     hipsStr: String,
     note: String,
-    errorMessage: String?,
+    errorResId: Int?,
     onWeightChange: (String) -> Unit,
     onWaistChange: (String) -> Unit,
     onHipsChange: (String) -> Unit,
@@ -97,6 +97,7 @@ private fun AddBodyMeasurementContent(
     onCloseClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val errorMessage = errorResId?.let { stringResource(it) }
     val scrollState = rememberScrollState()
     val formattedDate = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
 
@@ -411,7 +412,7 @@ fun AddBodyMeasurementScreenPreviewLight() {
             waistStr = "84.5",
             hipsStr = "",
             note = "",
-            errorMessage = null,
+            errorResId = null,
             onWeightChange = {},
             onWaistChange = {},
             onHipsChange = {},
@@ -430,8 +431,8 @@ fun AddBodyMeasurementScreenPreviewDark() {
             weightStr = "",
             waistStr = "",
             hipsStr = "",
-            note = "נמדד בערב",
-            errorMessage = "היקף הירכיים אינו תקין",
+            note = "Measured in evening",
+            errorResId = null,
             onWeightChange = {},
             onWaistChange = {},
             onHipsChange = {},

@@ -62,8 +62,8 @@ data class DisplayWorkoutInfo(
 fun getDisplayWorkoutInfo(workout: ExerciseSessionInfo): DisplayWorkoutInfo {
     val isManual = workout.source == "manual"
     val durationText = stringResource(R.string.activity_minutes_short, workout.durationMin)
-    return when (workout.type) {
-        "Running", "ריצה" -> DisplayWorkoutInfo(
+    return when (workout.type.lowercase()) {
+        "running", "ריצה" -> DisplayWorkoutInfo(
             title = stringResource(R.string.activity_morning_run),
             subtitle = "07:15",
             durationText = durationText,
@@ -73,7 +73,7 @@ fun getDisplayWorkoutInfo(workout: ExerciseSessionInfo): DisplayWorkoutInfo {
             iconBgColor = Color(0xFFE8F5E9), // Light Green
             isManual = isManual
         )
-        "Strength", "כוח" -> DisplayWorkoutInfo(
+        "strength", "כוח" -> DisplayWorkoutInfo(
             title = stringResource(R.string.activity_strength_workout),
             subtitle = "18:30",
             durationText = durationText,
@@ -83,7 +83,7 @@ fun getDisplayWorkoutInfo(workout: ExerciseSessionInfo): DisplayWorkoutInfo {
             iconBgColor = Color(0xFFFFF3E0), // Light Orange/Amber
             isManual = isManual
         )
-        "Swimming", "שחייה" -> DisplayWorkoutInfo(
+        "swimming", "שחייה" -> DisplayWorkoutInfo(
             title = stringResource(R.string.activity_swimming),
             subtitle = "08:00",
             durationText = durationText,
@@ -663,9 +663,9 @@ fun ActivityScreenPreviewLight() {
                 steps = 8432,
                 sleepMinutes = 440,
                 workouts = listOf(
-                    ExerciseSessionInfo("Running", 45, Instant.now()),
-                    ExerciseSessionInfo("Strength", 60, Instant.now(), source = "manual"),
-                    ExerciseSessionInfo("Swimming", 30, Instant.now())
+                    ExerciseSessionInfo("running", 45, Instant.now()),
+                    ExerciseSessionInfo("strength", 60, Instant.now(), source = "manual"),
+                    ExerciseSessionInfo("swimming", 30, Instant.now())
                 )
             ),
             onDateSelect = {},

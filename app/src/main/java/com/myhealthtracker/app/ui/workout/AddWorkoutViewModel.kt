@@ -24,8 +24,8 @@ class AddWorkoutViewModel(
     private val _durationStr = MutableStateFlow("")
     val durationStr: StateFlow<String> = _durationStr.asStateFlow()
 
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+    private val _errorMessage = MutableStateFlow<Int?>(null)
+    val errorMessage: StateFlow<Int?> = _errorMessage.asStateFlow()
 
     private val _isSaved = MutableStateFlow(false)
     val isSaved: StateFlow<Boolean> = _isSaved.asStateFlow()
@@ -56,19 +56,19 @@ class AddWorkoutViewModel(
     fun saveWorkout() {
         val type = _selectedType.value
         if (type == null) {
-            _errorMessage.value = "אנא בחר סוג אימון"
+            _errorMessage.value = com.myhealthtracker.app.R.string.error_select_workout_type
             return
         }
 
         val duration = _durationStr.value.toIntOrNull() ?: 0
         if (duration <= 0) {
-            _errorMessage.value = "משך האימון חייב להיות גדול מ-0 דקות"
+            _errorMessage.value = com.myhealthtracker.app.R.string.error_invalid_workout_duration
             return
         }
 
         val uid = uidProvider()
         if (uid == null) {
-            _errorMessage.value = "נדרשת התחברות מחדש."
+            _errorMessage.value = com.myhealthtracker.app.R.string.error_relogin_required
             return
         }
 
@@ -84,7 +84,7 @@ class AddWorkoutViewModel(
                 ).collect()
                 _isSaved.value = true
             } catch (e: Exception) {
-                _errorMessage.value = "שגיאה בשמירת האימון: ${e.message}"
+                _errorMessage.value = com.myhealthtracker.app.R.string.error_save_failed
             }
         }
     }

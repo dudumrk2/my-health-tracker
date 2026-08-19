@@ -76,7 +76,7 @@ fun AddWorkoutScreen(
     AddWorkoutContent(
         selectedType = selectedType,
         durationStr = durationStr,
-        errorMessage = errorMessage,
+        errorResId = errorMessage,
         onTypeSelect = { viewModel.selectType(it) },
         onDurationChange = { viewModel.onDurationChange(it) },
         onSaveClick = { viewModel.saveWorkout() },
@@ -96,25 +96,26 @@ private data class WorkoutTypeOption(
 fun AddWorkoutContent(
     selectedType: String?,
     durationStr: String,
-    errorMessage: String?,
+    errorResId: Int?,
     onTypeSelect: (String) -> Unit,
     onDurationChange: (String) -> Unit,
     onSaveClick: () -> Unit,
     onCloseClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val errorMessage = errorResId?.let { stringResource(it) }
     var searchQuery by remember { mutableStateOf("") }
     val workoutTypes = remember {
         listOf(
-            WorkoutTypeOption("פונקציונלי", R.string.workout_functional, Icons.Default.AccessibilityNew),
-            WorkoutTypeOption("זומבה", R.string.workout_zumba, Icons.Default.MusicNote),
-            WorkoutTypeOption("ספינינג", R.string.workout_spinning, Icons.Default.DirectionsBike),
-            WorkoutTypeOption("הליכה", R.string.workout_walking, Icons.Default.DirectionsWalk),
-            WorkoutTypeOption("ריצה", R.string.workout_running, Icons.Default.DirectionsRun),
-            WorkoutTypeOption("כוח", R.string.workout_strength, Icons.Default.FitnessCenter),
-            WorkoutTypeOption("יוגה", R.string.workout_yoga, Icons.Default.SelfImprovement),
-            WorkoutTypeOption("אופניים", R.string.workout_cycling, Icons.Default.DirectionsBike),
-            WorkoutTypeOption("אחר", R.string.workout_other, Icons.Default.MoreHoriz)
+            WorkoutTypeOption("functional", R.string.workout_functional, Icons.Default.AccessibilityNew),
+            WorkoutTypeOption("zumba", R.string.workout_zumba, Icons.Default.MusicNote),
+            WorkoutTypeOption("spinning", R.string.workout_spinning, Icons.Default.DirectionsBike),
+            WorkoutTypeOption("walking", R.string.workout_walking, Icons.Default.DirectionsWalk),
+            WorkoutTypeOption("running", R.string.workout_running, Icons.Default.DirectionsRun),
+            WorkoutTypeOption("strength", R.string.workout_strength, Icons.Default.FitnessCenter),
+            WorkoutTypeOption("yoga", R.string.workout_yoga, Icons.Default.SelfImprovement),
+            WorkoutTypeOption("cycling", R.string.workout_cycling, Icons.Default.DirectionsBike),
+            WorkoutTypeOption("other", R.string.workout_other, Icons.Default.MoreHoriz)
         )
     }
 
@@ -450,9 +451,9 @@ fun AddWorkoutContent(
 fun AddWorkoutScreenPreviewLight() {
     MyHealthTrackerTheme(darkTheme = false) {
         AddWorkoutContent(
-            selectedType = "ריצה",
+            selectedType = "running",
             durationStr = "30",
-            errorMessage = null,
+            errorResId = null,
             onTypeSelect = {},
             onDurationChange = {},
             onSaveClick = {},
@@ -468,7 +469,7 @@ fun AddWorkoutScreenPreviewDark() {
         AddWorkoutContent(
             selectedType = null,
             durationStr = "",
-            errorMessage = null,
+            errorResId = null,
             onTypeSelect = {},
             onDurationChange = {},
             onSaveClick = {},

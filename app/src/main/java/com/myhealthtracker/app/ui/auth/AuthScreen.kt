@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -76,10 +77,10 @@ fun AuthScreen(
                 if (idToken != null) {
                     viewModel.handleGoogleSignIn(idToken)
                 } else {
-                    viewModel.handleSignInError("לא התקבל אסימון התחברות. נסה שוב.")
+                    viewModel.handleSignInError(context.getString(R.string.error_auth_failed))
                 }
             } catch (e: ApiException) {
-                viewModel.handleSignInError("ההתחברות נכשלה (קוד ${e.statusCode}).")
+                viewModel.handleSignInError(context.getString(R.string.error_auth_failed))
             }
         }
     }
@@ -93,10 +94,10 @@ fun AuthScreen(
             )
             if (clientIdResId == 0) {
                 Log.e("AuthScreen", "default_web_client_id missing — google-services.json not configured")
-                viewModel.handleSignInError("האפליקציה אינה מוגדרת להתחברות עם Google.")
+                viewModel.handleSignInError(context.getString(R.string.error_google_not_configured))
             } else if (activity == null) {
                 Log.e("AuthScreen", "Context is not an Activity")
-                viewModel.handleSignInError("שגיאה פנימית: לא ניתן למצוא Activity.")
+                viewModel.handleSignInError(context.getString(R.string.error_no_activity))
             } else {
                 val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                     .requestIdToken(context.getString(clientIdResId))
@@ -191,7 +192,7 @@ private fun AuthScreenContent(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "המלווה החכם לבריאות שלך",
+                    text = stringResource(R.string.auth_slogan),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -201,7 +202,7 @@ private fun AuthScreenContent(
             // Banner Image (Stitch Spec)
             Image(
                 painter = painterResource(id = R.drawable.login_banner),
-                contentDescription = "סלסלת ירקות ופירות טריים לתזונה בריאה",
+                contentDescription = stringResource(R.string.auth_banner_desc),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(180.dp)
@@ -239,13 +240,13 @@ private fun AuthScreenContent(
                         ) {
                             Image(
                                 painter = painterResource(id = R.drawable.ic_google),
-                                contentDescription = "לוגו גוגל צבעוני",
+                                contentDescription = stringResource(R.string.auth_google_logo_desc),
                                 modifier = Modifier
                                     .padding(end = 12.dp)
                                     .size(22.dp)
                             )
                             Text(
-                                text = "המשך עם Google",
+                                text = stringResource(R.string.auth_continue_with_google),
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 16.sp
@@ -258,7 +259,7 @@ private fun AuthScreenContent(
 
                     // Email Login Link
                     Text(
-                        text = "כניסה באמצעות דואר אלקטרוני",
+                        text = stringResource(R.string.auth_email_login_link),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.primary
@@ -282,7 +283,7 @@ private fun AuthScreenContent(
 
             // Footer Privacy Terms Info (Stitch Spec)
             Text(
-                text = "בלחיצה על \"המשך\", הנך מסכים/ה לתנאי השימוש\nולמדיניות הפרטיות שלנו.",
+                text = stringResource(R.string.auth_terms_footer),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,

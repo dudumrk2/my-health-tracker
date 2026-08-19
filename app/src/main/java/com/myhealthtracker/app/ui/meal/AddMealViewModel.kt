@@ -34,8 +34,8 @@ class AddMealViewModel(
     val imageNote: StateFlow<String> = _imageNote.asStateFlow()
     private val _pendingImagePath = MutableStateFlow<String?>(null)
     val pendingImagePath: StateFlow<String?> = _pendingImagePath.asStateFlow()
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+    private val _errorMessage = MutableStateFlow<Int?>(null)
+    val errorMessage: StateFlow<Int?> = _errorMessage.asStateFlow()
     private val _manualCal = MutableStateFlow(""); val manualCal: StateFlow<String> = _manualCal.asStateFlow()
     private val _manualProtein = MutableStateFlow(""); val manualProtein: StateFlow<String> = _manualProtein.asStateFlow()
     private val _manualCarbs = MutableStateFlow(""); val manualCarbs: StateFlow<String> = _manualCarbs.asStateFlow()
@@ -63,7 +63,7 @@ class AddMealViewModel(
 
     fun analyzeText() {
         val desc = _mealDescription.value.trim()
-        if (desc.isEmpty()) { _errorMessage.value = "אנא הקלד תיאור של הארוחה"; return }
+        if (desc.isEmpty()) { _errorMessage.value = com.myhealthtracker.app.R.string.error_empty_description; return }
         val mealId = mealRepository.newMealId()
         mealRepository.createPendingMeal(mealId, today(), "text", desc, null, null)
         analysisLauncher.launch(MealAnalysisInput(mealId, "text", desc, null, today()))
@@ -73,7 +73,7 @@ class AddMealViewModel(
     fun sendImageForAnalysis() {
         val path = _pendingImagePath.value ?: return
         val note = _imageNote.value.trim().ifEmpty { null }
-        val description = note ?: "ארוחה מנותחת AI"
+        val description = note ?: "AI Analyzed Meal" // This is stored in DB, can be English
         val mealId = mealRepository.newMealId()
         mealRepository.createPendingMeal(mealId, today(), "image", description, note, path)
         analysisLauncher.launch(MealAnalysisInput(mealId, "image", note, path, today()))
@@ -99,12 +99,12 @@ class AddMealViewModel(
     fun saveManualMeal() {
         viewModelScope.launch {
             val cal = _manualCal.value.toIntOrNull() ?: 0
-            if (cal <= 0) { _errorMessage.value = "הקלוריות חייבות להיות גדולות מ-0"; return@launch }
-            val description = _mealDescription.value.ifEmpty { "ארוחה ידנית" }
+            if (cal <= 0) { _errorMessage.value = com.myhealthtracker.app.R.string.error_invalid_calories; return@launch }
+            val description = _mealDescription.value.ifEmpty { "Manual Meal" }
             val protein = _manualProtein.value.toIntOrNull() ?: 0
             val carbs = _manualCarbs.value.toIntOrNull() ?: 0
             val fat = _manualFat.value.toIntOrNull() ?: 0
-            val items = listOf(MealItem(description, "1 מנה", cal, protein, carbs, fat))
+            val items = listOf(MealItem(description, "1 portion", cal, protein, carbs, fat))
             mealRepository.addMeal(today(), "text", description, items, MealTotals(cal, protein, carbs, fat), null, null)
             _closeScreen.value = true
         }

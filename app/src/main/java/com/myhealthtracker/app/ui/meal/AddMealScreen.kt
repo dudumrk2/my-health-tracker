@@ -132,7 +132,7 @@ fun AddMealScreen(
                 ImagePreviewContent(
                     imagePath = pendingImagePath,
                     note = imageNote,
-                    errorMessage = errorMessage,
+                    errorResId = errorMessage,
                     onNoteChange = { viewModel.onImageNoteChange(it) },
                     onSendClick = { viewModel.sendImageForAnalysis() },
                     onCancelClick = { viewModel.cancelImagePreview() },
@@ -142,7 +142,7 @@ fun AddMealScreen(
             AddMealStep.InputSelection -> {
                 InputSelectionContent(
                     mealDescription = mealDescription,
-                    errorMessage = errorMessage,
+                    errorResId = errorMessage,
                     onDescriptionChange = { viewModel.onDescriptionChange(it) },
                     onAnalyzeTextClick = { viewModel.analyzeText() },
                     onPickImageClick = {
@@ -181,7 +181,7 @@ fun AddMealScreen(
                     protein = manualProtein,
                     carbs = manualCarbs,
                     fat = manualFat,
-                    errorMessage = errorMessage,
+                    errorResId = errorMessage,
                     onDescriptionChange = { viewModel.onDescriptionChange(it) },
                     onCalChange = { viewModel.onManualCalChange(it) },
                     onProteinChange = { viewModel.onManualProteinChange(it) },
@@ -200,7 +200,7 @@ fun AddMealScreen(
 @Composable
 private fun InputSelectionContent(
     mealDescription: String,
-    errorMessage: String?,
+    errorResId: Int?,
     onDescriptionChange: (String) -> Unit,
     onAnalyzeTextClick: () -> Unit,
     onPickImageClick: () -> Unit,
@@ -208,6 +208,7 @@ private fun InputSelectionContent(
     onManualClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val errorMessage = errorResId?.let { stringResource(it) }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -336,12 +337,13 @@ private fun InputSelectionContent(
 private fun ImagePreviewContent(
     imagePath: String?,
     note: String,
-    errorMessage: String?,
+    errorResId: Int?,
     onNoteChange: (String) -> Unit,
     onSendClick: () -> Unit,
     onCancelClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val errorMessage = errorResId?.let { stringResource(it) }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -420,7 +422,7 @@ private fun ManualFallbackContent(
     protein: String,
     carbs: String,
     fat: String,
-    errorMessage: String?,
+    errorResId: Int?,
     onDescriptionChange: (String) -> Unit,
     onCalChange: (String) -> Unit,
     onProteinChange: (String) -> Unit,
@@ -430,6 +432,7 @@ private fun ManualFallbackContent(
     onBackToAiClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val errorMessage = errorResId?.let { stringResource(it) }
     val scrollState = rememberScrollState()
 
     Column(
@@ -553,8 +556,8 @@ private fun ManualFallbackContent(
 fun AddMealScreenPreviewInput() {
     MyHealthTrackerTheme {
         InputSelectionContent(
-            mealDescription = "סלט חזה עוף מפנק",
-            errorMessage = null,
+            mealDescription = "Grilled chicken salad",
+            errorResId = null,
             onDescriptionChange = {},
             onAnalyzeTextClick = {},
             onPickImageClick = {},
@@ -570,8 +573,8 @@ fun AddMealScreenPreviewImagePreview() {
     MyHealthTrackerTheme {
         ImagePreviewContent(
             imagePath = null,
-            note = "עם רוטב טחינה",
-            errorMessage = null,
+            note = "With tahini sauce",
+            errorResId = null,
             onNoteChange = {},
             onSendClick = {},
             onCancelClick = {}

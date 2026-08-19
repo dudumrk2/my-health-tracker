@@ -106,9 +106,13 @@ private fun DashboardContent(
             .background(MaterialTheme.colorScheme.background)
     ) {
         val greeting = if (state.profile?.firstName?.isNotBlank() == true) {
-            "שלום, ${state.profile.firstName}"
+            stringResource(R.string.dashboard_greeting, state.profile.firstName)
         } else {
-            "שלום, ${state.profile?.gender?.let { if (it == "נקבה") "אלופה" else "משתמש" } ?: "משתמש"}"
+            val genderSuffix = state.profile?.gender?.let { 
+                if (it == "female" || it == "נקבה") stringResource(R.string.dashboard_greeting_female_suffix) 
+                else stringResource(R.string.dashboard_greeting_default_suffix)
+            } ?: stringResource(R.string.dashboard_greeting_default_suffix)
+            stringResource(R.string.dashboard_greeting, genderSuffix)
         }
 
         // Custom Top App Bar (Stitch Design Style)
@@ -138,7 +142,7 @@ private fun DashboardContent(
                     } else {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "רענון",
+                            contentDescription = stringResource(R.string.common_retry),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(24.dp)
                         )
@@ -147,7 +151,7 @@ private fun DashboardContent(
                 IconButton(onClick = onProfileClick) {
                     Icon(
                         imageVector = Icons.Default.AccountCircle,
-                        contentDescription = "פרופיל הגדרות",
+                        contentDescription = stringResource(R.string.profile_title),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(26.dp)
                     )
@@ -355,7 +359,7 @@ private fun DashboardContent(
                         )
                         Column(horizontalAlignment = Alignment.End) {
                             Text(
-                                text = "${sleepHours}${stringResource(R.string.dashboard_sleep).first()} ${sleepMins}${stringResource(R.string.dashboard_sleep).last()}", // Simplified h/m for now
+                                text = stringResource(R.string.dashboard_sleep_hours_mins, sleepHours, sleepMins),
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
@@ -399,7 +403,7 @@ private fun DashboardContent(
                     ) {
                         Text("🌙", fontSize = 16.sp)
                         Text(
-                            text = "המלצת AI: כדאי להימנע ממסכים 30 דקות לפני השינה לשיפור ה-REM.",
+                            text = stringResource(R.string.dashboard_ai_sleep_recommendation),
                             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Normal),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -483,7 +487,7 @@ private fun DashboardContent(
                             .padding(12.dp)
                     ) {
                         Text(
-                            text = "השבוע צרכת 15% יותר חלבון מהממוצע שלך, מה שתומך בהתאוששות השרירים שזוהתה.",
+                            text = stringResource(R.string.dashboard_ai_protein_recommendation),
                             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -568,7 +572,7 @@ private fun DashboardContent(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Text(
-                                    text = if (lastWeight != null) "${formatMeasurement(lastWeight)} ${stringResource(R.string.profile_weight).replace(" (ק״ג)", "")}" else "— ${stringResource(R.string.profile_weight).replace(" (ק״ג)", "")}",
+                                    text = if (lastWeight != null) stringResource(R.string.dashboard_weight_history_badge, formatMeasurement(lastWeight), stringResource(R.string.unit_kg)) else "— ${stringResource(R.string.unit_kg)}",
                                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -810,7 +814,7 @@ fun DashboardScreenPreviewLight() {
     MyHealthTrackerTheme(darkTheme = false) {
         DashboardContent(
             state = DashboardState(
-                profile = UserProfile(firstName = "ישראל", birthYear = 1990, weightKg = 75.0, heightCm = 178.0, gender = "זכר"),
+                profile = UserProfile(firstName = "ישראל", birthYear = 1990, weightKg = 75.0, heightCm = 178.0, gender = "male"),
                 todayHealth = DailyHealthData(steps = 8432, sleepMinutes = 435),
                 weeklySleepAvgMinutes = 450,
                 weeklyStepsList = listOf(7000L, 8000L, 8432L, 6500L, 9000L, 11000L, 8432L),
@@ -823,7 +827,7 @@ fun DashboardScreenPreviewLight() {
                     BodyMeasurement("2026-06-11", 75.2, 88.0, 102.0),
                     BodyMeasurement("2026-06-12", 74.2, 88.0, 102.0)
                 ),
-                unifiedInsight = "נראה שהשינה העמוקה שלך השתפרה ב-15% מאז שהתחלת להפחית פחמימות בארוחות הערב. השילוב עם פעילות גופנית מתונה בבוקר יוצר אפקט חיובי על קצב חילוף החומרים שלך."
+                unifiedInsight = "It looks like your deep sleep has improved by 15% since you started reducing carbs in your dinner meals."
             ),
             onRefreshClick = {},
             onProfileClick = {},
