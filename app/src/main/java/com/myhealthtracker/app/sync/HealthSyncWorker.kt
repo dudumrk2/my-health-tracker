@@ -41,6 +41,8 @@ class HealthSyncWorker(
             val zoneId = ZoneId.systemDefault()
             val today = LocalDate.now(zoneId)
             
+            var anyFailure = false
+
             // Sync last 7 days to ensure gaps are filled if app wasn't running
             for (i in 0 until 7) {
                 val date = today.minusDays(i.toLong())
@@ -54,18 +56,24 @@ class HealthSyncWorker(
                 val mapped = healthRepository.mapHealthConnectData(steps, sleep, workouts)
                 val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
-                healthRepository.saveDailyHealthData(
+                val result = healthRepository.saveDailyHealthData(
                     uid = uid,
                     date = dateStr,
                     steps = steps,
                     sleepSessions = mapped.sleepSessions,
                     workouts = mapped.workouts
                 ).first()
-                
-                Log.d("HealthSyncWorker", "Synced health data for $dateStr")
+
+                if (result.isSuccess) {
+                    Log.d("HealthSyncWorker", "Synced health data for $dateStr")
+                } else {
+                    anyFailure = true
+                    val error = result.exceptionOrNull()
+                    Log.e("HealthSyncWorker", "Failed to save health data for $dateStr: ${error?.message}")
+                }
             }
 
-            Result.success()
+            if (anyFailure) Result.retry() else Result.success()
         } catch (e: Exception) {
             Log.e("HealthSyncWorker", "Error syncing health data", e)
             Result.retry()

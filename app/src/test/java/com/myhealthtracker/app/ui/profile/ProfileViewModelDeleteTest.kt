@@ -46,7 +46,8 @@ class ProfileViewModelDeleteTest {
     private fun viewModel(account: AccountRepository) = ProfileViewModel(
         profileRepository = FakeProfileRepo(),
         uidProvider = { "uid-1" },
-        accountRepository = account
+        accountRepository = account,
+        authNameProvider = { null }
     )
 
     @Test

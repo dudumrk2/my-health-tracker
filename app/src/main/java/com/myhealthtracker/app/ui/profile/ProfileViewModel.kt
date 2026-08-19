@@ -36,7 +36,10 @@ sealed class AccountState {
 class ProfileViewModel(
     private val profileRepository: ProfileRepository = AppContainer.profileRepository,
     private val uidProvider: () -> String? = { AppContainer.currentUid() },
-    private val accountRepository: AccountRepository = AppContainer.accountRepository
+    private val accountRepository: AccountRepository = AppContainer.accountRepository,
+    private val authNameProvider: () -> String? = {
+        runCatching { AppContainer.authManager.currentUser?.displayName }.getOrNull()
+    }
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Idle)
@@ -72,7 +75,7 @@ class ProfileViewModel(
                     updateAge(profile.birthYear)
                 } else {
                     // Pre-fill name from Google Auth for new users if available
-                    val authName = AppContainer.authManager.currentUser?.displayName?.split(" ")?.firstOrNull() ?: ""
+                    val authName = authNameProvider()?.split(" ")?.firstOrNull() ?: ""
                     _uiState.value = ProfileUiState.Loaded(UserProfile(firstName = authName))
                 }
             }
