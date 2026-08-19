@@ -55,6 +55,24 @@ class ProfileAndHealthUnitTest {
         assertTrue(profileRepository.validateProfile(UserProfile(birthYear = 1995, weightKg = 70.0, heightCm = 175.0, gender = "invalid_gender")).isFailure)
     }
 
+    @Test
+    fun testProfileValidation_language() {
+        assertTrue(profileRepository.validateProfile(UserProfile(birthYear = 1995, weightKg = 70.0, heightCm = 175.0, gender = "male", language = "he")).isSuccess)
+        assertTrue(profileRepository.validateProfile(UserProfile(birthYear = 1995, weightKg = 70.0, heightCm = 175.0, gender = "male", language = "en")).isSuccess)
+        assertTrue(profileRepository.validateProfile(UserProfile(birthYear = 1995, weightKg = 70.0, heightCm = 175.0, gender = "male", language = "fr")).isFailure)
+    }
+
+    @Test
+    fun testMapProfile_language() {
+        val mapEn = mapOf<String, Any>("language" to "en")
+        val profileEn = com.myhealthtracker.app.data.profile.mapProfile(mapEn)
+        assertEquals("en", profileEn.language)
+
+        val mapDefault = mapOf<String, Any>()
+        val profileDefault = com.myhealthtracker.app.data.profile.mapProfile(mapDefault)
+        assertEquals("he", profileDefault.language)
+    }
+
     // ── Sleep aggregation ────────────────────────────────────────────────────
 
     @Test
