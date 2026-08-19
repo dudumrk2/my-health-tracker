@@ -31,28 +31,28 @@ class ProfileAndHealthUnitTest {
 
     @Test
     fun testProfileValidation() {
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "male")).isSuccess)
-        assertTrue(profileRepository.validateProfile(UserProfile(1899, 70.0, 175.0, gender = "male")).isFailure)
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 25.0, 175.0, gender = "male")).isFailure)
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 350.0, 175.0, gender = "male")).isFailure)
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 90.0, gender = "male")).isFailure)
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 260.0, gender = "male")).isFailure)
+        assertTrue(profileRepository.validateProfile(UserProfile(birthYear = 1995, weightKg = 70.0, heightCm = 175.0, gender = "male")).isSuccess)
+        assertTrue(profileRepository.validateProfile(UserProfile(birthYear = 1899, weightKg = 70.0, heightCm = 175.0, gender = "male")).isFailure)
+        assertTrue(profileRepository.validateProfile(UserProfile(birthYear = 1995, weightKg = 25.0, heightCm = 175.0, gender = "male")).isFailure)
+        assertTrue(profileRepository.validateProfile(UserProfile(birthYear = 1995, weightKg = 350.0, heightCm = 175.0, gender = "male")).isFailure)
+        assertTrue(profileRepository.validateProfile(UserProfile(birthYear = 1995, weightKg = 70.0, heightCm = 90.0, gender = "male")).isFailure)
+        assertTrue(profileRepository.validateProfile(UserProfile(birthYear = 1995, weightKg = 70.0, heightCm = 260.0, gender = "male")).isFailure)
     }
 
     @Test
     fun testProfileValidation_gender() {
         // Empty gender fails
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "")).isFailure)
-        val error = profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "")).exceptionOrNull()
+        assertTrue(profileRepository.validateProfile(UserProfile(birthYear = 1995, weightKg = 70.0, heightCm = 175.0, gender = "")).isFailure)
+        val error = profileRepository.validateProfile(UserProfile(birthYear = 1995, weightKg = 70.0, heightCm = 175.0, gender = "")).exceptionOrNull()
         assertEquals("Gender is required", error?.message)
         // Valid gender values succeed
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "male")).isSuccess)
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "female")).isSuccess)
+        assertTrue(profileRepository.validateProfile(UserProfile(birthYear = 1995, weightKg = 70.0, heightCm = 175.0, gender = "male")).isSuccess)
+        assertTrue(profileRepository.validateProfile(UserProfile(birthYear = 1995, weightKg = 70.0, heightCm = 175.0, gender = "female")).isSuccess)
         // Invalid gender values fail
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "other")).isFailure)
-        val errorOther = profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "other")).exceptionOrNull()
+        assertTrue(profileRepository.validateProfile(UserProfile(birthYear = 1995, weightKg = 70.0, heightCm = 175.0, gender = "other")).isFailure)
+        val errorOther = profileRepository.validateProfile(UserProfile(birthYear = 1995, weightKg = 70.0, heightCm = 175.0, gender = "other")).exceptionOrNull()
         assertEquals("Gender must be 'male' or 'female'", errorOther?.message)
-        assertTrue(profileRepository.validateProfile(UserProfile(1995, 70.0, 175.0, gender = "invalid_gender")).isFailure)
+        assertTrue(profileRepository.validateProfile(UserProfile(birthYear = 1995, weightKg = 70.0, heightCm = 175.0, gender = "invalid_gender")).isFailure)
     }
 
     // ── Sleep aggregation ────────────────────────────────────────────────────

@@ -61,10 +61,12 @@ class ProfileViewModelSeedTest {
             profileRepository = FakeProfileRepo(),
             uidProvider = { "uid-1" },
             accountRepository = NoopAccountRepo(),
-            bodyMeasurementRepository = bodyRepo
+            bodyMeasurementRepository = bodyRepo,
+            authNameProvider = { null }
         )
 
         vm.saveProfile(
+            firstName = "ישראל",
             birthYearStr = "1990",
             weightStr = "80.5",
             heightStr = "180",

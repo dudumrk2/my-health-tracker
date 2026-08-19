@@ -2,6 +2,7 @@ package com.myhealthtracker.app.ui
 
 import com.myhealthtracker.app.data.FakeRepository
 import com.myhealthtracker.app.data.account.AccountRepository
+import com.myhealthtracker.app.data.profile.ProfileRepository
 import com.myhealthtracker.app.ui.body.AddBodyMeasurementViewModel
 import com.myhealthtracker.app.ui.profile.ProfileUiState
 import com.myhealthtracker.app.ui.profile.ProfileViewModel
@@ -60,18 +61,54 @@ class UiValidationTests {
     }
 
     @Test
+    fun profileViewModel_newProfile_prefillsFirstNameFromAuth() = runTest {
+        val emptyProfileRepo = object : ProfileRepository {
+            override fun getUserProfile(uid: String) = kotlinx.coroutines.flow.flowOf(Result.success(null))
+            override fun saveUserProfile(uid: String, profile: com.myhealthtracker.app.data.profile.UserProfile) = kotlinx.coroutines.flow.flowOf(Result.success(Unit))
+            override fun validateProfile(profile: com.myhealthtracker.app.data.profile.UserProfile) = Result.success(Unit)
+            override fun calculateAge(birthYear: Int, currentYear: Int) = 0
+        }
+        val viewModel = ProfileViewModel(
+            profileRepository = emptyProfileRepo,
+            uidProvider = { "new-user-uid" },
+            accountRepository = fakeAccountRepository,
+            bodyMeasurementRepository = FakeRepository,
+            authNameProvider = { "ישראל ישראלי" }
+        )
+        val state = viewModel.uiState.value
+        assertTrue(state is ProfileUiState.Loaded)
+        val loadedProfile = (state as ProfileUiState.Loaded).profile
+        assertEquals("ישראל", loadedProfile.firstName)
+    }
+
+    @Test
+    fun profileViewModel_saveProfile_blankFirstName_returnsError() = runTest {
+        val viewModel = ProfileViewModel(
+            profileRepository = FakeRepository,
+            uidProvider = { "test-uid" },
+            accountRepository = fakeAccountRepository,
+            bodyMeasurementRepository = FakeRepository,
+            authNameProvider = { null }
+        )
+        viewModel.saveProfile("", "1995", "70.0", "175.0", "זכר")
+        val state = viewModel.uiState.value
+        assertTrue(state is ProfileUiState.Error)
+        assertEquals("אנא הזן את שמך", (state as ProfileUiState.Error).message)
+    }
+
+    @Test
     fun profileViewModel_saveProfile_invalidBirthYear_returnsError() = runTest {
         val viewModel = ProfileViewModel(profileRepository = FakeRepository, uidProvider = { "test-uid" }, accountRepository = fakeAccountRepository, bodyMeasurementRepository = FakeRepository)
 
         // Under 1900
-        viewModel.saveProfile("1899", "70.0", "175.0", "זכר")
+        viewModel.saveProfile("ישראל", "1899", "70.0", "175.0", "זכר")
         val state1 = viewModel.uiState.value
         assertTrue(state1 is ProfileUiState.Error)
         assertTrue((state1 as ProfileUiState.Error).message.contains("שנת הלידה חייבת להיות בין 1900 ל"))
 
         // Over current year
         val nextYear = Calendar.getInstance().get(Calendar.YEAR) + 1
-        viewModel.saveProfile(nextYear.toString(), "70.0", "175.0", "זכר")
+        viewModel.saveProfile("ישראל", nextYear.toString(), "70.0", "175.0", "זכר")
         val state2 = viewModel.uiState.value
         assertTrue(state2 is ProfileUiState.Error)
         assertTrue((state2 as ProfileUiState.Error).message.contains("שנת הלידה חייבת להיות בין 1900 ל"))
@@ -80,7 +117,7 @@ class UiValidationTests {
     @Test
     fun profileViewModel_saveProfile_emptyGender_returnsError() = runTest {
         val viewModel = ProfileViewModel(profileRepository = FakeRepository, uidProvider = { "test-uid" }, accountRepository = fakeAccountRepository, bodyMeasurementRepository = FakeRepository)
-        viewModel.saveProfile("1995", "70.0", "175.0", "")
+        viewModel.saveProfile("ישראל", "1995", "70.0", "175.0", "")
         val state = viewModel.uiState.value
         assertTrue(state is ProfileUiState.Error)
         assertEquals("אנא בחר מין", (state as ProfileUiState.Error).message)
@@ -91,13 +128,13 @@ class UiValidationTests {
         val viewModel = ProfileViewModel(profileRepository = FakeRepository, uidProvider = { "test-uid" }, accountRepository = fakeAccountRepository, bodyMeasurementRepository = FakeRepository)
 
         // Too low
-        viewModel.saveProfile("1995", "29.9", "175.0", "זכר")
+        viewModel.saveProfile("ישראל", "1995", "29.9", "175.0", "זכר")
         val state1 = viewModel.uiState.value
         assertTrue(state1 is ProfileUiState.Error)
         assertEquals("המשקל חייב להיות בין 30.0 ל-300.0 ק״ג", (state1 as ProfileUiState.Error).message)
 
         // Too high
-        viewModel.saveProfile("1995", "300.1", "175.0", "זכר")
+        viewModel.saveProfile("ישראל", "1995", "300.1", "175.0", "זכר")
         val state2 = viewModel.uiState.value
         assertTrue(state2 is ProfileUiState.Error)
         assertEquals("המשקל חייב להיות בין 30.0 ל-300.0 ק״ג", (state2 as ProfileUiState.Error).message)
@@ -108,13 +145,13 @@ class UiValidationTests {
         val viewModel = ProfileViewModel(profileRepository = FakeRepository, uidProvider = { "test-uid" }, accountRepository = fakeAccountRepository, bodyMeasurementRepository = FakeRepository)
 
         // Too low
-        viewModel.saveProfile("1995", "70.0", "99.9", "זכר")
+        viewModel.saveProfile("ישראל", "1995", "70.0", "99.9", "זכר")
         val state1 = viewModel.uiState.value
         assertTrue(state1 is ProfileUiState.Error)
         assertEquals("הגובה חייב להיות בין 100.0 ל-250.0 ס״מ", (state1 as ProfileUiState.Error).message)
 
         // Too high
-        viewModel.saveProfile("1995", "70.0", "250.1", "זכר")
+        viewModel.saveProfile("ישראל", "1995", "70.0", "250.1", "זכר")
         val state2 = viewModel.uiState.value
         assertTrue(state2 is ProfileUiState.Error)
         assertEquals("הגובה חייב להיות בין 100.0 ל-250.0 ס״מ", (state2 as ProfileUiState.Error).message)
@@ -123,14 +160,15 @@ class UiValidationTests {
     @Test
     fun profileViewModel_saveProfile_validInputs_savesProfile() = runTest {
         val viewModel = ProfileViewModel(profileRepository = FakeRepository, uidProvider = { "test-uid" }, accountRepository = fakeAccountRepository, bodyMeasurementRepository = FakeRepository)
-        viewModel.saveProfile("1990", "80.0", "180.0", "נקבה")
+        viewModel.saveProfile("ישראל", "1990", "80.0", "180.0", "נקבה")
         
         val state = viewModel.uiState.value
         assertTrue("State should be Saved or Loaded", state is ProfileUiState.Saved || state is ProfileUiState.Loaded)
 
         val profile = FakeRepository.profile.value
         assertNotNull(profile)
-        assertEquals(1990, profile!!.birthYear)
+        assertEquals("ישראל", profile!!.firstName)
+        assertEquals(1990, profile.birthYear)
         assertEquals(80.0, profile.weightKg, 0.001)
         assertEquals(180.0, profile.heightCm, 0.001)
         assertEquals("female", profile.gender)

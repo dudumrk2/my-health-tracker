@@ -40,7 +40,10 @@ class ProfileViewModel(
     private val profileRepository: ProfileRepository = AppContainer.profileRepository,
     private val uidProvider: () -> String? = { AppContainer.currentUid() },
     private val accountRepository: AccountRepository = AppContainer.accountRepository,
-    private val bodyMeasurementRepository: BodyMeasurementRepository = AppContainer.bodyMeasurementRepository
+    private val bodyMeasurementRepository: BodyMeasurementRepository = AppContainer.bodyMeasurementRepository,
+    private val authNameProvider: () -> String? = {
+        runCatching { AppContainer.authManager.currentUser?.displayName }.getOrNull()
+    }
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Idle)
@@ -75,7 +78,9 @@ class ProfileViewModel(
                     _uiState.value = ProfileUiState.Loaded(profile.copy(gender = hebrewGender))
                     updateAge(profile.birthYear)
                 } else {
-                    _uiState.value = ProfileUiState.Idle
+                    // Pre-fill name from Google Auth for new users if available
+                    val authName = authNameProvider()?.split(" ")?.firstOrNull() ?: ""
+                    _uiState.value = ProfileUiState.Loaded(UserProfile(firstName = authName))
                 }
             }
         }
@@ -123,6 +128,7 @@ class ProfileViewModel(
     }
 
     fun saveProfile(
+        firstName: String,
         birthYearStr: String,
         weightStr: String,
         heightStr: String,
@@ -137,6 +143,11 @@ class ProfileViewModel(
     ) {
         viewModelScope.launch {
             _uiState.value = ProfileUiState.Loading
+
+            if (firstName.isBlank()) {
+                _uiState.value = ProfileUiState.Error("אנא הזן את שמך")
+                return@launch
+            }
 
             val birthYear = birthYearStr.toIntOrNull()
             if (birthYear == null) {
@@ -177,6 +188,7 @@ class ProfileViewModel(
             val englishGender = toEnglishGender(gender)
 
             val profile = UserProfile(
+                firstName = firstName,
                 birthYear = birthYear,
                 weightKg = weight,
                 heightCm = height,

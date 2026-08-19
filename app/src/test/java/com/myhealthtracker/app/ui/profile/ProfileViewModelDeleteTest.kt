@@ -54,7 +54,8 @@ class ProfileViewModelDeleteTest {
         profileRepository = FakeProfileRepo(),
         uidProvider = { "uid-1" },
         accountRepository = account,
-        bodyMeasurementRepository = NoopBodyRepo()
+        bodyMeasurementRepository = NoopBodyRepo(),
+        authNameProvider = { null }
     )
 
     @Test

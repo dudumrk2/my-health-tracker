@@ -40,33 +40,40 @@ class HealthSyncWorker(
         return try {
             val zoneId = ZoneId.systemDefault()
             val today = LocalDate.now(zoneId)
-            val startOfDay = today.atStartOfDay(zoneId).toInstant()
-            val endOfDay = today.plusDays(1).atStartOfDay(zoneId).toInstant()
+            
+            var anyFailure = false
 
-            val steps = healthConnectManager.readDailySteps(startOfDay, endOfDay)
-            val sleep = healthConnectManager.readSleepSessions(startOfDay, endOfDay)
-            val workouts = healthConnectManager.readExerciseSessions(startOfDay, endOfDay)
+            // Sync last 7 days to ensure gaps are filled if app wasn't running
+            for (i in 0 until 7) {
+                val date = today.minusDays(i.toLong())
+                val startOfDay = date.atStartOfDay(zoneId).toInstant()
+                val endOfDay = date.plusDays(1).atStartOfDay(zoneId).toInstant()
 
-            val mapped = healthRepository.mapHealthConnectData(steps, sleep, workouts)
+                val steps = healthConnectManager.readDailySteps(startOfDay, endOfDay)
+                val sleep = healthConnectManager.readSleepSessions(startOfDay, endOfDay)
+                val workouts = healthConnectManager.readExerciseSessions(startOfDay, endOfDay)
 
-            val dateStr = today.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                val mapped = healthRepository.mapHealthConnectData(steps, sleep, workouts)
+                val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
-            val result = healthRepository.saveDailyHealthData(
-                uid = uid,
-                date = dateStr,
-                steps = steps,
-                sleepSessions = mapped.sleepSessions,
-                workouts = mapped.workouts
-            ).first()
+                val result = healthRepository.saveDailyHealthData(
+                    uid = uid,
+                    date = dateStr,
+                    steps = steps,
+                    sleepSessions = mapped.sleepSessions,
+                    workouts = mapped.workouts
+                ).first()
 
-            if (result.isSuccess) {
-                Log.i("HealthSyncWorker", "Successfully synced health data for $dateStr")
-                Result.success()
-            } else {
-                val error = result.exceptionOrNull()
-                Log.e("HealthSyncWorker", "Failed to save data: ${error?.message}")
-                Result.retry()
+                if (result.isSuccess) {
+                    Log.d("HealthSyncWorker", "Synced health data for $dateStr")
+                } else {
+                    anyFailure = true
+                    val error = result.exceptionOrNull()
+                    Log.e("HealthSyncWorker", "Failed to save health data for $dateStr: ${error?.message}")
+                }
             }
+
+            if (anyFailure) Result.retry() else Result.success()
         } catch (e: Exception) {
             Log.e("HealthSyncWorker", "Error syncing health data", e)
             Result.retry()

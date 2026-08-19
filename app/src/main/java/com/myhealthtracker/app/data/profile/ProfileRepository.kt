@@ -21,6 +21,7 @@ data class GoalOverrides(
 )
 
 data class UserProfile(
+    val firstName: String = "",
     val birthYear: Int = 0,
     val weightKg: Double = 0.0,
     val heightCm: Double = 0.0,
@@ -69,6 +70,7 @@ fun mapProfile(profileMap: Map<*, *>): UserProfile {
     val overridesMap = profileMap["goalOverrides"] as? Map<*, *>
     val goalOverrides = overridesMap?.let { parseGoalOverrides(it) }
     return UserProfile(
+        firstName = (profileMap["firstName"] as? String) ?: "",
         birthYear = (profileMap["birthYear"] as? Long)?.toInt() ?: 0,
         weightKg = (profileMap["weightKg"] as? Double) ?: ((profileMap["weightKg"] as? Long)?.toDouble() ?: 0.0),
         heightCm = (profileMap["heightCm"] as? Double) ?: ((profileMap["heightCm"] as? Long)?.toDouble() ?: 0.0),
@@ -142,6 +144,7 @@ class FirestoreProfileRepository(private val firestore: FirebaseFirestore = Fire
                     val finalCreatedAt = existingCreatedAt ?: Timestamp.now()
 
                     val profileData = mutableMapOf<String, Any>(
+                        "firstName" to profile.firstName,
                         "birthYear" to profile.birthYear,
                         "weightKg" to profile.weightKg,
                         "heightCm" to profile.heightCm,
