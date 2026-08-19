@@ -120,14 +120,26 @@
     <string name="profile_delete_account_confirm">האם את/ה בטוח/ה שברצונך למחוק את החשבון? כל הנתונים יימחקו לצמיתות.</string>
 
     <!-- Reminders & Notifications -->
-    <string name="reminders_title">הגדרות תזכורות</string>
-    <string name="reminders_morning_meal">תזכורת ארוחת בוקר</string>
-    <string name="reminders_noon_meal">תזכורת ארוחת צהריים</string>
-    <string name="reminders_evening_meal">תזכורת ארוחת ערב</string>
+    <string name="reminders_title">תזכורות ארוחה</string>
+    <string name="reminders_subtitle">תזכורת קופצת בזמן הארוחה כדי שתזכור לצלם ולתעד אותה</string>
+    <string name="reminders_master_enable">הפעל תזכורות</string>
+    <string name="reminders_sound">צליל התראה</string>
+    <string name="reminders_morning_meal">ארוחת בוקר</string>
+    <string name="reminders_noon_meal">ארוחת צהריים</string>
+    <string name="reminders_evening_meal">ארוחת ערב</string>
+    <string name="reminders_grant_overlay">אפשר הצגה מעל אפליקציות אחרות</string>
+    <string name="reminders_test_button">בדיקת תזכורת (ניסיון)</string>
+    <string name="reminders_test_meal_name">ארוחת ניסיון</string>
     <string name="reminders_hydration">תזכורת שתיית מים</string>
     <string name="reminders_evening_summary">תזכורת סיכום יומי</string>
+    <string name="reminder_time_to_log">📸 זמן לתעד את %1$s</string>
+    <string name="reminder_default_title">היי, לא שכחת משהו?</string>
+    <string name="reminder_default_body">אל תשכח לעדכן את הארוחה הבאה שלך</string>
+    <string name="reminder_snooze">תזכיר לי עוד 30 דק\'</string>
     <string name="notification_quick_actions_title">פעולות מהירות לבריאות</string>
     <string name="notification_quick_actions_text">רישום מהיר של מים וארוחות</string>
     <string name="notification_log_water">+250 מ״ל</string>
     <string name="notification_log_meal">ארוחה</string>
+    <string name="notification_log_workout">אימון</string>
+    <string name="notification_water_status">שתית היום: %1$d / %2$d מ״ל</string>
 </resources>

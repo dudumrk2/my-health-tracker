@@ -35,13 +35,13 @@ import com.myhealthtracker.app.ui.activity.ActivityScreen
 import com.myhealthtracker.app.ui.activity.ActivityViewModel
 import com.myhealthtracker.app.ui.food.FoodScreen
 import com.myhealthtracker.app.ui.food.FoodViewModel
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.stringResource
+import com.myhealthtracker.app.R
 
-enum class MainTab(val label: String, val icon: ImageVector) {
-    Dashboard("דשבורד", Icons.Default.Dashboard),
-    Food("אוכל", Icons.Default.Restaurant),
-    Activity("פעילות", Icons.Default.FitnessCenter)
+enum class MainTab(@param:androidx.annotation.StringRes val labelRes: Int, val icon: ImageVector) {
+    Dashboard(R.string.nav_dashboard, Icons.Default.Dashboard),
+    Food(R.string.nav_food, Icons.Default.Restaurant),
+    Activity(R.string.nav_activity, Icons.Default.FitnessCenter)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -184,6 +184,7 @@ fun CustomNavigationBar(
                         )
                     }
 
+                    val label = stringResource(tab.labelRes)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center,
@@ -191,7 +192,7 @@ fun CustomNavigationBar(
                     ) {
                         Icon(
                             imageVector = tab.icon,
-                            contentDescription = tab.label,
+                            contentDescription = label,
                             modifier = Modifier
                                 .size(24.dp)
                                 .scale(iconScale),
@@ -201,7 +202,7 @@ fun CustomNavigationBar(
                         
                         androidx.compose.animation.AnimatedVisibility(visible = isSelected) {
                             Text(
-                                text = tab.label,
+                                text = label,
                                 modifier = Modifier.padding(start = 8.dp),
                                 style = MaterialTheme.typography.labelLarge.copy(
                                     fontWeight = FontWeight.Bold,

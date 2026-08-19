@@ -55,7 +55,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:gravity="center"
-                android:text="אימון"
+                android:text="@string/notification_log_workout"
                 android:textAppearance="@style/TextAppearance.Compat.Notification" />
         </LinearLayout>
 
@@ -84,7 +84,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:gravity="center"
-                android:text="ארוחה"
+                android:text="@string/notification_log_meal"
                 android:textAppearance="@style/TextAppearance.Compat.Notification" />
         </LinearLayout>
 

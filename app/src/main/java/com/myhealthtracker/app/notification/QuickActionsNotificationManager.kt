@@ -114,7 +114,7 @@ object QuickActionsNotificationManager {
         // instead of a single, system-truncated action row. The water cell shows only an
         // enlarged drop; the daily-water progress sits above the buttons.
         val content = RemoteViews(context.packageName, R.layout.notification_quick_actions).apply {
-            setTextViewText(R.id.notification_water_status, "שתית היום: $waterMl / $targetMl מ״ל")
+            setTextViewText(R.id.notification_water_status, context.getString(R.string.notification_water_status, waterMl, targetMl))
             setOnClickPendingIntent(R.id.action_meal, mealPendingIntent)
             setOnClickPendingIntent(R.id.action_workout, workoutPendingIntent)
             setOnClickPendingIntent(R.id.action_water, waterPendingIntent)

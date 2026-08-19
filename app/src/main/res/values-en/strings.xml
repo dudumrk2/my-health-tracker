@@ -120,14 +120,26 @@
     <string name="profile_delete_account_confirm">Are you sure you want to delete your account? All data will be permanently removed.</string>
 
     <!-- Reminders & Notifications -->
-    <string name="reminders_title">Reminder Settings</string>
-    <string name="reminders_morning_meal">Breakfast Reminder</string>
-    <string name="reminders_noon_meal">Lunch Reminder</string>
-    <string name="reminders_evening_meal">Dinner Reminder</string>
+    <string name="reminders_title">Meal Reminders</string>
+    <string name="reminders_subtitle">A popup reminder at mealtime to help you remember to photograph and log it</string>
+    <string name="reminders_master_enable">Enable Reminders</string>
+    <string name="reminders_sound">Notification Sound</string>
+    <string name="reminders_morning_meal">Breakfast</string>
+    <string name="reminders_noon_meal">Lunch</string>
+    <string name="reminders_evening_meal">Dinner</string>
+    <string name="reminders_grant_overlay">Allow display over other apps</string>
+    <string name="reminders_test_button">Test Reminder (Preview)</string>
+    <string name="reminders_test_meal_name">Test Meal</string>
     <string name="reminders_hydration">Hydration Reminder</string>
     <string name="reminders_evening_summary">Daily Summary Reminder</string>
+    <string name="reminder_time_to_log">📸 Time to log %1$s</string>
+    <string name="reminder_default_title">Hey, did you forget something?</string>
+    <string name="reminder_default_body">Don\'t forget to log your next meal</string>
+    <string name="reminder_snooze">Remind me in 30 min</string>
     <string name="notification_quick_actions_title">Health Quick Actions</string>
     <string name="notification_quick_actions_text">Quick log water and meals</string>
     <string name="notification_log_water">+250ml</string>
     <string name="notification_log_meal">Meal</string>
+    <string name="notification_log_workout">Workout</string>
+    <string name="notification_water_status">Today\'s water: %1$d / %2$d ml</string>
 </resources>

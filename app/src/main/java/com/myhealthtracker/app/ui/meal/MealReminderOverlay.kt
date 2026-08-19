@@ -46,11 +46,13 @@ import androidx.compose.ui.unit.sp
 import com.myhealthtracker.app.R
 import kotlin.math.roundToInt
 
+import androidx.compose.ui.res.stringResource
+
 @Composable
 fun MealReminderOverlay(
     isVisible: Boolean,
-    title: String = "זה שוב אני...",
-    body: String = "אל תשכח לעדכן את הארוחה הבאה שלך",
+    title: String = stringResource(R.string.reminder_default_title),
+    body: String = stringResource(R.string.reminder_default_body),
     onLogMeal: () -> Unit,
     onRemindLater: () -> Unit,
     onDismiss: () -> Unit
@@ -149,7 +151,7 @@ fun MealReminderOverlay(
                             modifier = Modifier.fillMaxWidth().height(50.dp),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("רשום ארוחה", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.food_add_meal), fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         }
                         
                         Spacer(modifier = Modifier.height(12.dp))
@@ -159,13 +161,13 @@ fun MealReminderOverlay(
                             modifier = Modifier.fillMaxWidth().height(50.dp),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("תזכיר לי עוד 30 דק'")
+                            Text(stringResource(R.string.reminder_snooze))
                         }
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         
                         TextButton(onClick = onDismiss) {
-                            Text("ביטול", color = MaterialTheme.colorScheme.outline)
+                            Text(stringResource(R.string.common_cancel), color = MaterialTheme.colorScheme.outline)
                         }
                     }
                 }
