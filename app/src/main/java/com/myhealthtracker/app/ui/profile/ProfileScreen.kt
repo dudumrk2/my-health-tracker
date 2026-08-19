@@ -314,7 +314,7 @@ private fun ProfileScreenContent(
                     enabled = !isDeleting,
                     modifier = Modifier.align(Alignment.CenterStart)
                 ) {
-                    Text("ביטול", color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.common_cancel), color = MaterialTheme.colorScheme.primary)
                 }
             }
 
@@ -323,14 +323,14 @@ private fun ProfileScreenContent(
                 modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
             ) {
                 Text(
-                    text = "בוא נכיר אותך",
+                    text = stringResource(R.string.profile_welcome_title),
                     style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "הפרטים יעזרו לנו להתאים את המדדים ותובנות ה-AI במדויק בשבילך",
+                    text = stringResource(R.string.profile_welcome_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -351,8 +351,8 @@ private fun ProfileScreenContent(
                     OutlinedTextField(
                         value = firstName,
                         onValueChange = onFirstNameChange,
-                        label = { Text("שם פרטי") },
-                        placeholder = { Text("איך תרצה שנקרא לך?") },
+                        label = { Text(stringResource(R.string.profile_first_name)) },
+                        placeholder = { Text(stringResource(R.string.profile_first_name_placeholder)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp)
@@ -361,8 +361,8 @@ private fun ProfileScreenContent(
                     OutlinedTextField(
                         value = birthYearStr,
                         onValueChange = onBirthYearChange,
-                        label = { Text("שנת לידה") },
-                        placeholder = { Text("לדוגמה: 1990") },
+                        label = { Text(stringResource(R.string.profile_birth_year)) },
+                        placeholder = { Text(stringResource(R.string.profile_birth_year_placeholder)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp)
@@ -370,7 +370,7 @@ private fun ProfileScreenContent(
 
                     if (calculatedAge > 0) {
                         Text(
-                            text = "גיל מחושב: $calculatedAge שנים",
+                            text = stringResource(R.string.profile_calculated_age, calculatedAge),
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(horizontal = 4.dp)
@@ -378,9 +378,12 @@ private fun ProfileScreenContent(
                     }
 
                     Column {
-                        FieldLabel("מין")
+                        FieldLabel(stringResource(R.string.profile_gender))
                         SelectRow(
-                            options = listOf("זכר" to "זכר", "נקבה" to "נקבה"),
+                            options = listOf(
+                                "זכר" to stringResource(R.string.profile_gender_male),
+                                "נקבה" to stringResource(R.string.profile_gender_female)
+                            ),
                             selectedValue = selectedGender,
                             onSelect = onGenderSelect
                         )
@@ -389,8 +392,8 @@ private fun ProfileScreenContent(
                     OutlinedTextField(
                         value = weightStr,
                         onValueChange = onWeightChange,
-                        label = { Text("משקל (ק״ג)") },
-                        placeholder = { Text("לדוגמה: 75.5") },
+                        label = { Text(stringResource(R.string.profile_weight)) },
+                        placeholder = { Text(stringResource(R.string.profile_weight_placeholder)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp)
@@ -399,8 +402,8 @@ private fun ProfileScreenContent(
                     OutlinedTextField(
                         value = heightStr,
                         onValueChange = onHeightChange,
-                        label = { Text("גובה (ס״מ)") },
-                        placeholder = { Text("לדוגמה: 178") },
+                        label = { Text(stringResource(R.string.profile_height)) },
+                        placeholder = { Text(stringResource(R.string.profile_height_placeholder)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp)
@@ -420,12 +423,30 @@ private fun ProfileScreenContent(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Column {
-                        FieldLabel("מטרת שימוש")
-                        SelectRow(PRIMARY_GOAL_OPTIONS, primaryGoal, onPrimaryGoalSelect)
+                        FieldLabel(stringResource(R.string.profile_primary_goal_field))
+                        SelectRow(
+                            options = listOf(
+                                "lose" to stringResource(R.string.profile_goal_lose),
+                                "maintain" to stringResource(R.string.profile_goal_maintain),
+                                "gain" to stringResource(R.string.profile_goal_gain)
+                            ),
+                            selectedValue = primaryGoal,
+                            onSelect = onPrimaryGoalSelect
+                        )
                     }
                     Column {
-                        FieldLabel("רמת פעילות")
-                        SelectRow(ACTIVITY_LEVEL_OPTIONS, activityLevel, onActivityLevelSelect)
+                        FieldLabel(stringResource(R.string.profile_activity_level_field))
+                        SelectRow(
+                            options = listOf(
+                                "sedentary" to stringResource(R.string.profile_activity_sedentary),
+                                "light" to stringResource(R.string.profile_activity_light),
+                                "moderate" to stringResource(R.string.profile_activity_moderate),
+                                "very" to stringResource(R.string.profile_activity_very),
+                                "extra" to stringResource(R.string.profile_activity_extra)
+                            ),
+                            selectedValue = activityLevel,
+                            onSelect = onActivityLevelSelect
+                        )
                     }
                 }
             }
@@ -441,8 +462,13 @@ private fun ProfileScreenContent(
                     modifier = Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    FieldLabel("תחומים שחשובים לי (אופציונלי)")
-                    FOCUS_AREA_OPTIONS.forEach { (value, label) ->
+                    FieldLabel(stringResource(R.string.profile_focus_areas_title))
+                    val focusOptions = listOf(
+                        "menopause" to stringResource(R.string.profile_focus_menopause),
+                        "muscle_gain" to stringResource(R.string.profile_focus_muscle_gain),
+                        "heart_health" to stringResource(R.string.profile_focus_heart_health)
+                    )
+                    focusOptions.forEach { (value, label) ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -454,7 +480,7 @@ private fun ProfileScreenContent(
                         }
                     }
                     Text(
-                        text = HEALTH_DISCLAIMER_HE,
+                        text = stringResource(R.string.health_disclaimer),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp)
@@ -473,36 +499,58 @@ private fun ProfileScreenContent(
                     modifier = Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    FieldLabel("היעדים שלך")
+                    FieldLabel(stringResource(R.string.profile_your_goals))
                     if (goals.isGeneric) {
                         Text(
-                            text = "יעד כללי עד להשלמת פרטי הפרופיל.",
+                            text = stringResource(R.string.profile_generic_goals_notice),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     if (goals.extremeAdjustmentWarning) {
                         Text(
-                            text = "⚠ יעד הקלוריות שהוגדר חורג מ-35% מההוצאה היומית המוערכת. כדאי לשקול יעד מתון יותר.",
+                            text = stringResource(R.string.profile_extreme_adjustment_warning),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error
                         )
                     }
                     GoalLine(
-                        label = "קלוריות",
-                        value = "${goals.caloriesKcal} קק\"ל",
-                        caption = if (goals.tdee > 0) "הוצאה יומית מוערכת (TDEE): ${goals.tdee} קק\"ל" else null,
+                        label = stringResource(R.string.dashboard_calories),
+                        value = "${goals.caloriesKcal} ${stringResource(R.string.food_kcal_unit)}",
+                        caption = if (goals.tdee > 0) stringResource(R.string.profile_tdee_caption, goals.tdee) else null,
                         onEdit = { editingGoal = EditableGoal.CALORIES }
                     )
-                    GoalLine("חלבון", "${goals.proteinG} ג", onEdit = { editingGoal = EditableGoal.PROTEIN })
-                    GoalLine("שומן", "${goals.fatG} ג")
-                    GoalLine("פחמימות", "${goals.carbsG} ג")
-                    GoalLine("צעדים", "${goals.steps}", onEdit = { editingGoal = EditableGoal.STEPS })
-                    GoalLine("שינה", formatSleepGoal(goals.sleepHoursMin, goals.sleepHoursMax), onEdit = { editingGoal = EditableGoal.SLEEP })
-                    GoalLine("מים", "${goals.waterMl} מ\"ל", onEdit = { editingGoal = EditableGoal.WATER })
+                    GoalLine(
+                        label = stringResource(R.string.dashboard_protein),
+                        value = "${goals.proteinG} ${stringResource(R.string.food_macro_unit_g)}",
+                        onEdit = { editingGoal = EditableGoal.PROTEIN }
+                    )
+                    GoalLine(
+                        label = stringResource(R.string.dashboard_fat),
+                        value = "${goals.fatG} ${stringResource(R.string.food_macro_unit_g)}"
+                    )
+                    GoalLine(
+                        label = stringResource(R.string.dashboard_carbs),
+                        value = "${goals.carbsG} ${stringResource(R.string.food_macro_unit_g)}"
+                    )
+                    GoalLine(
+                        label = stringResource(R.string.dashboard_steps),
+                        value = "${goals.steps}",
+                        onEdit = { editingGoal = EditableGoal.STEPS }
+                    )
+                    GoalLine(
+                        label = stringResource(R.string.dashboard_sleep),
+                        value = formatSleepGoal(goals.sleepHoursMin, goals.sleepHoursMax, stringResource(R.string.workout_duration_minutes)),
+                        onEdit = { editingGoal = EditableGoal.SLEEP }
+                    )
+                    GoalLine(
+                        label = stringResource(R.string.dashboard_water),
+                        value = "${goals.waterMl} ml",
+                        onEdit = { editingGoal = EditableGoal.WATER }
+                    )
 
                     Text(
-                        text = HEALTH_DISCLAIMER_HE,
+                        text = stringResource(R.string.health_disclaimer),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp)
@@ -542,7 +590,7 @@ private fun ProfileScreenContent(
                         .height(56.dp)
                 ) {
                     Text(
-                        text = "סיום",
+                        text = stringResource(R.string.profile_finish_btn),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                 }
@@ -560,9 +608,13 @@ private fun ProfileScreenContent(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Column {
-                        FieldLabel("העדפת תצוגה")
+                        FieldLabel(stringResource(R.string.profile_theme))
                         SelectRow(
-                            options = listOf("system" to "מערכת", "light" to "בהירה", "dark" to "כהה"),
+                            options = listOf(
+                                "system" to stringResource(R.string.profile_theme_system),
+                                "light" to stringResource(R.string.profile_theme_light),
+                                "dark" to stringResource(R.string.profile_theme_dark)
+                            ),
                             selectedValue = themePreference,
                             onSelect = onThemeSelect
                         )
@@ -596,12 +648,12 @@ private fun ProfileScreenContent(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "התראת פעולות מהירות",
+                                text = stringResource(R.string.profile_quick_actions_title),
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "הצגת התראה קבועה להוספה מהירה של ארוחה, אימון ומים",
+                                text = stringResource(R.string.profile_quick_actions_subtitle),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -641,12 +693,12 @@ private fun ProfileScreenContent(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "תזכורות ארוחה",
+                                text = stringResource(R.string.profile_reminders_item_title),
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "תזכורת קופצת בזמן הארוחה כדי לצלם ולתעד",
+                                text = stringResource(R.string.profile_reminders_item_subtitle),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -661,12 +713,12 @@ private fun ProfileScreenContent(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "צליל חגיגות",
+                                text = stringResource(R.string.profile_celebrations_title),
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "השמעת מחיאות כפיים בעת חגיגת הישג (האנימציה תמשיך להופיע גם בכיבוי)",
+                                text = stringResource(R.string.profile_celebrations_subtitle),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -690,7 +742,7 @@ private fun ProfileScreenContent(
                     modifier = Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    FieldLabel("חשבון")
+                    FieldLabel(stringResource(R.string.profile_account_section))
 
                     OutlinedButton(
                         onClick = onLogoutClick,
@@ -698,7 +750,7 @@ private fun ProfileScreenContent(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth().height(52.dp)
                     ) {
-                        Text("התנתקות")
+                        Text(stringResource(R.string.profile_logout))
                     }
 
                     OutlinedButton(
@@ -710,7 +762,7 @@ private fun ProfileScreenContent(
                         ),
                         modifier = Modifier.fillMaxWidth().height(52.dp)
                     ) {
-                        Text("מחיקת חשבון ונתונים")
+                        Text(stringResource(R.string.profile_delete_account_and_data))
                     }
 
                     if (isDeleting) {
@@ -758,12 +810,9 @@ private fun ProfileScreenContent(
             if (showDeleteDialog) {
                 AlertDialog(
                     onDismissRequest = { if (!isDeleting) showDeleteDialog = false },
-                    title = { Text("מחיקת חשבון ונתונים") },
+                    title = { Text(stringResource(R.string.profile_delete_account_dialog_title)) },
                     text = {
-                        Text(
-                            "פעולה זו תמחק לצמיתות את כל הנתונים שלך — ארוחות, נתוני בריאות, " +
-                                "תובנות והפרופיל — וגם את החשבון. לא ניתן לבטל פעולה זו."
-                        )
+                        Text(stringResource(R.string.profile_delete_account_dialog_text))
                     },
                     confirmButton = {
                         TextButton(
@@ -773,12 +822,12 @@ private fun ProfileScreenContent(
                             },
                             enabled = !isDeleting
                         ) {
-                            Text("מחק לצמיתות", color = MaterialTheme.colorScheme.error)
+                            Text(stringResource(R.string.profile_delete_account_permanently_btn), color = MaterialTheme.colorScheme.error)
                         }
                     },
                     dismissButton = {
                         TextButton(onClick = { showDeleteDialog = false }, enabled = !isDeleting) {
-                            Text("ביטול")
+                            Text(stringResource(R.string.common_cancel))
                         }
                     }
                 )
@@ -790,12 +839,12 @@ private fun ProfileScreenContent(
 }
 
 /** Goals that map to a GoalOverrides field and can be edited via the pencil dialog. */
-private enum class EditableGoal(val title: String) {
-    CALORIES("עריכת יעד קלוריות"),
-    PROTEIN("עריכת יעד חלבון (ג)"),
-    STEPS("עריכת יעד צעדים"),
-    SLEEP("עריכת יעד שינה (שעות)"),
-    WATER("עריכת יעד מים (מ\"ל)")
+private enum class EditableGoal(@param:androidx.annotation.StringRes val titleRes: Int) {
+    CALORIES(R.string.profile_edit_goal_calories),
+    PROTEIN(R.string.profile_edit_goal_protein),
+    STEPS(R.string.profile_edit_goal_steps),
+    SLEEP(R.string.profile_edit_goal_sleep),
+    WATER(R.string.profile_edit_goal_water)
 }
 
 /**
@@ -814,7 +863,7 @@ private fun GoalEditDialog(
     var draft by remember(goal) { mutableStateOf(initialValue) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(goal.title) },
+        title = { Text(stringResource(goal.titleRes)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
@@ -826,15 +875,15 @@ private fun GoalEditDialog(
                     shape = RoundedCornerShape(8.dp)
                 )
                 TextButton(onClick = { onReset(); onDismiss() }) {
-                    Text("אפס לערך המחושב")
+                    Text(stringResource(R.string.profile_reset_to_computed))
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onApply(draft); onDismiss() }) { Text("שמירה") }
+            TextButton(onClick = { onApply(draft); onDismiss() }) { Text(stringResource(R.string.common_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("ביטול") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }
@@ -863,7 +912,7 @@ private fun GoalLine(
                     IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
                         Icon(
                             imageVector = Icons.Default.Edit,
-                            contentDescription = "עריכה",
+                            contentDescription = stringResource(R.string.common_edit),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(18.dp)
                         )

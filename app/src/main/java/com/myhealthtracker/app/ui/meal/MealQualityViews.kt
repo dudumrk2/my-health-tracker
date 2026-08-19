@@ -20,8 +20,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.myhealthtracker.app.R
 import com.myhealthtracker.app.data.model.MealQuality
 import com.myhealthtracker.app.theme.CarbsColor
 import com.myhealthtracker.app.theme.FatColor
@@ -45,7 +47,7 @@ fun MealQualityCard(quality: MealQuality, modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "איכות תזונתית (AI)",
+                text = stringResource(R.string.food_quality_title),
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary
             )
@@ -56,17 +58,17 @@ fun MealQualityCard(quality: MealQuality, modifier: Modifier = Modifier) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "רמת עיבוד מזון:",
+                    text = stringResource(R.string.food_quality_processing_level),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 val score = quality.processedScore
                 val scoreText = when (score) {
-                    1 -> "לא מעובד כלל 🥬"
-                    2 -> "מעובד מינימלית 🍎"
-                    3 -> "מעובד 🍞"
-                    4 -> "מעובד מאוד 🍕"
-                    else -> "אולטרה-מעובד 🍩"
+                    1 -> stringResource(R.string.food_quality_score_1)
+                    2 -> stringResource(R.string.food_quality_score_2)
+                    3 -> stringResource(R.string.food_quality_score_3)
+                    4 -> stringResource(R.string.food_quality_score_4)
+                    else -> stringResource(R.string.food_quality_score_5)
                 }
                 Text(
                     text = scoreText,
@@ -81,15 +83,15 @@ fun MealQualityCard(quality: MealQuality, modifier: Modifier = Modifier) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "השפעה על אינסולין:",
+                    text = stringResource(R.string.food_quality_insulin_impact),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 val impact = quality.insulinImpact
                 val impactText = when (impact) {
-                    "low" -> "נמוכה 🟢"
-                    "medium" -> "בינונית 🟡"
-                    else -> "גבוהה 🔴"
+                    "low" -> stringResource(R.string.food_quality_impact_low)
+                    "medium" -> stringResource(R.string.food_quality_impact_medium)
+                    else -> stringResource(R.string.food_quality_impact_high)
                 }
                 Text(
                     text = impactText,
@@ -108,13 +110,13 @@ fun MealQualityCard(quality: MealQuality, modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (quality.hasComplexCarbs) {
-                    SuggestionChip(onClick = {}, label = { Text("פחמימות מורכבות ✅") })
+                    SuggestionChip(onClick = {}, label = { Text(stringResource(R.string.food_quality_complex_carbs)) })
                 }
                 if (quality.hasSimpleCarbs) {
-                    SuggestionChip(onClick = {}, label = { Text("פחמימות פשוטות ⚠️") })
+                    SuggestionChip(onClick = {}, label = { Text(stringResource(R.string.food_quality_simple_carbs)) })
                 }
                 if (quality.hasHealthyFats) {
-                    SuggestionChip(onClick = {}, label = { Text("שומנים בריאים 🥑") })
+                    SuggestionChip(onClick = {}, label = { Text(stringResource(R.string.food_quality_healthy_fats)) })
                 }
             }
         }
@@ -149,7 +151,7 @@ fun MealRecommendationCard(recommendation: String, modifier: Modifier = Modifier
                     tint = MaterialTheme.colorScheme.secondary
                 )
                 Text(
-                    text = "המלצת שדרוג AI",
+                    text = stringResource(R.string.food_quality_recommendation_title),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.secondary
                 )

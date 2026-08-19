@@ -601,7 +601,7 @@ private fun DashboardContent(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = if (lastWaist != null) "${formatMeasurement(lastWaist)} ${stringResource(R.string.profile_height).replace(" (ס״מ)", "")}" else "—",
+                                text = if (lastWaist != null) "${formatMeasurement(lastWaist)} ${stringResource(R.string.unit_cm)}" else "—",
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -614,7 +614,7 @@ private fun DashboardContent(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = if (lastHips != null) "${formatMeasurement(lastHips)} ${stringResource(R.string.profile_height).replace(" (ס״מ)", "")}" else "—",
+                                text = if (lastHips != null) "${formatMeasurement(lastHips)} ${stringResource(R.string.unit_cm)}" else "—",
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )

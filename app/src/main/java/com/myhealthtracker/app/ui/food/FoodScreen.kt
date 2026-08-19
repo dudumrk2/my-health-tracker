@@ -921,7 +921,7 @@ private fun MealDetailItemCard(item: MealItem) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = item.name.ifEmpty { "פריט ללא שם" },
+                    text = item.name.ifEmpty { stringResource(R.string.food_item_no_name) },
                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
@@ -937,10 +937,10 @@ private fun MealDetailItemCard(item: MealItem) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                MealDetailItemMacro(label = "קלו׳", value = "${item.calories}")
-                MealDetailItemMacro(label = "חלבון", value = "${item.proteinG}g")
-                MealDetailItemMacro(label = "פחמימות", value = "${item.carbsG}g")
-                MealDetailItemMacro(label = "שומן", value = "${item.fatG}g")
+                MealDetailItemMacro(label = stringResource(R.string.food_kcal_unit), value = "${item.calories}")
+                MealDetailItemMacro(label = stringResource(R.string.dashboard_protein), value = "${item.proteinG}g")
+                MealDetailItemMacro(label = stringResource(R.string.dashboard_carbs), value = "${item.carbsG}g")
+                MealDetailItemMacro(label = stringResource(R.string.dashboard_fat), value = "${item.fatG}g")
             }
         }
     }
@@ -1018,7 +1018,7 @@ fun MacroProgressBar(
                 color = color
             )
             Text(
-                text = "$value / $target ג׳",
+                text = "$value / $target " + stringResource(R.string.food_macro_unit_g),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

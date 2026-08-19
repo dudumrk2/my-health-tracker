@@ -13,6 +13,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.myhealthtracker.app.data.model.MealEntry
 
+import androidx.compose.ui.res.stringResource
+import com.myhealthtracker.app.R
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MealEditScreen(
@@ -41,9 +44,9 @@ fun MealEditScreen(
         topBar = {
             TopAppBar(
                 title = { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("פרטי הארוחה", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.food_meal_details_title), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 } },
-                navigationIcon = { IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, contentDescription = "סגור") } }
+                navigationIcon = { IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_close)) } }
             )
         }
     ) { padding ->

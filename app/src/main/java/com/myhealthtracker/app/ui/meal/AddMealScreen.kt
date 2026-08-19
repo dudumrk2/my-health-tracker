@@ -24,11 +24,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.unit.LayoutDirection
 import coil.compose.AsyncImage
-import com.myhealthtracker.app.theme.*
+import com.myhealthtracker.app.theme.MyHealthTrackerTheme
+import com.myhealthtracker.app.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,7 +69,6 @@ fun AddMealScreen(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            // Re-trigger the camera logic if granted
             val file = createCameraImageFile(context)
             val uri = androidx.core.content.FileProvider.getUriForFile(
                 context, "com.myhealthtracker.app.fileprovider", file
@@ -78,7 +77,6 @@ fun AddMealScreen(
             pendingCameraUri = uri
             cameraLauncher.launch(uri)
         } else {
-            // Handle permission denied
             android.util.Log.e("AddMealScreen", "Camera permission denied")
         }
     }
@@ -96,35 +94,34 @@ fun AddMealScreen(
         if (closeScreen) { onDismiss(); viewModel.reset() }
     }
 
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        Scaffold(
-            modifier = modifier.fillMaxSize(),
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            Text("הוספת ארוחה", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                        }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onDismiss) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "סגור",
-                                tint = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    },
-                    actions = {
-                        Spacer(modifier = Modifier.width(48.dp))
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background
-                    )
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Text(stringResource(R.string.food_add_meal), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = stringResource(R.string.common_close),
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                },
+                actions = {
+                    Spacer(modifier = Modifier.width(48.dp))
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
                 )
-            }
-        ) { paddingValues ->
+            )
+        }
+    ) { paddingValues ->
         val contentModifier = Modifier
             .fillMaxSize()
             .padding(paddingValues)
@@ -198,7 +195,6 @@ fun AddMealScreen(
         }
     }
 }
-}
 
 // 1. Input Selection Step Layout
 @Composable
@@ -212,15 +208,13 @@ private fun InputSelectionContent(
     onManualClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            // Text Input Card
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -232,7 +226,7 @@ private fun InputSelectionContent(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "מה אכלת?",
+                        text = stringResource(R.string.food_what_did_you_eat),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -240,7 +234,7 @@ private fun InputSelectionContent(
                     OutlinedTextField(
                         value = mealDescription,
                         onValueChange = onDescriptionChange,
-                        placeholder = { Text("תאר את הארוחה בפירוט... (למשל: סלט חזה עוף עם רוטב טחינה)") },
+                        placeholder = { Text(stringResource(R.string.food_describe_input_hint)) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(120.dp),
@@ -261,12 +255,11 @@ private fun InputSelectionContent(
                         ),
                         modifier = Modifier.fillMaxWidth().height(48.dp)
                     ) {
-                        Text("שלח לניתוח AI 🚀", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(stringResource(R.string.food_send_to_ai_btn), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                 }
             }
 
-            // Image upload Card
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -278,7 +271,7 @@ private fun InputSelectionContent(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "או צלם תמונה של הארוחה",
+                        text = stringResource(R.string.food_or_take_photo),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -294,7 +287,7 @@ private fun InputSelectionContent(
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
                             modifier = Modifier.weight(1f).height(44.dp)
                         ) {
-                            Text("📷 צילום", fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.food_camera_btn), fontWeight = FontWeight.Bold)
                         }
                         OutlinedButton(
                             onClick = onPickImageClick,
@@ -303,7 +296,7 @@ private fun InputSelectionContent(
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
                             modifier = Modifier.weight(1f).height(44.dp)
                         ) {
-                            Text("🖼️ גלריה", fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.food_gallery_btn), fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -311,7 +304,6 @@ private fun InputSelectionContent(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Error display
             if (errorMessage != null) {
                 Text(
                     text = errorMessage,
@@ -322,13 +314,12 @@ private fun InputSelectionContent(
                 )
             }
 
-            // Manual Entry Fallback Link
             Box(
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "הזנה ידנית (ללא AI)",
+                    text = stringResource(R.string.food_manual_entry_link),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -339,10 +330,8 @@ private fun InputSelectionContent(
                 )
             }
         }
-    }
 }
 
-// 1b. Image Preview Step — show the chosen photo + optional note before AI analysis
 @Composable
 private fun ImagePreviewContent(
     imagePath: String?,
@@ -353,17 +342,16 @@ private fun ImagePreviewContent(
     onCancelClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
             Text(
-                text = "תצוגה מקדימה",
+                text = stringResource(R.string.food_preview_image_title),
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary
             )
@@ -371,7 +359,7 @@ private fun ImagePreviewContent(
             if (imagePath != null) {
                 AsyncImage(
                     model = java.io.File(imagePath),
-                    contentDescription = "תצוגה מקדימה של הארוחה",
+                    contentDescription = stringResource(R.string.food_preview_image_title),
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                     modifier = Modifier.fillMaxWidth().height(240.dp)
                         .clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surface)
@@ -381,7 +369,7 @@ private fun ImagePreviewContent(
             OutlinedTextField(
                 value = note,
                 onValueChange = { if (it.length <= 500) onNoteChange(it) },
-                placeholder = { Text("משהו שכדאי לדעת על המנה? (אופציונלי)") },
+                placeholder = { Text(stringResource(R.string.food_preview_note_hint)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp),
@@ -412,7 +400,7 @@ private fun ImagePreviewContent(
                 ),
                 modifier = Modifier.fillMaxWidth().height(50.dp)
             ) {
-                Text("שלח לניתוח AI 🚀", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(stringResource(R.string.food_send_to_ai_btn), fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
 
             TextButton(
@@ -420,13 +408,11 @@ private fun ImagePreviewContent(
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text("חזרה", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.common_back), fontWeight = FontWeight.Bold)
             }
         }
-    }
 }
 
-// 4. Manual Fallback Step Layout
 @Composable
 private fun ManualFallbackContent(
     description: String,
@@ -446,25 +432,23 @@ private fun ManualFallbackContent(
 ) {
     val scrollState = rememberScrollState()
 
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-        Column(
-            modifier = modifier
-                .padding(24.dp)
-                .verticalScroll(scrollState),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+    Column(
+        modifier = modifier
+            .padding(24.dp)
+            .verticalScroll(scrollState),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
             Text(
-                text = "הזנת ארוחה ידנית",
+                text = stringResource(R.string.food_manual_title),
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary
             )
 
-            // Description
             OutlinedTextField(
                 value = description,
                 onValueChange = onDescriptionChange,
-                label = { Text("תיאור הארוחה") },
-                placeholder = { Text("לדוגמה: כריך אבוקדו וביצה קשה") },
+                label = { Text(stringResource(R.string.food_manual_description_label)) },
+                placeholder = { Text(stringResource(R.string.food_describe_placeholder)) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -473,11 +457,10 @@ private fun ManualFallbackContent(
                 shape = RoundedCornerShape(8.dp)
             )
 
-            // Calories
             OutlinedTextField(
                 value = cal,
                 onValueChange = onCalChange,
-                label = { Text("קלוריות (קק״ל)") },
+                label = { Text(stringResource(R.string.food_manual_calories_label)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -491,11 +474,10 @@ private fun ManualFallbackContent(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Protein
                 OutlinedTextField(
                     value = protein,
                     onValueChange = onProteinChange,
-                    label = { Text("חלבון (ג׳)") },
+                    label = { Text(stringResource(R.string.food_manual_protein_label)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -504,11 +486,10 @@ private fun ManualFallbackContent(
                     ),
                     shape = RoundedCornerShape(8.dp)
                 )
-                // Carbs
                 OutlinedTextField(
                     value = carbs,
                     onValueChange = onCarbsChange,
-                    label = { Text("פחמימות (ג׳)") },
+                    label = { Text(stringResource(R.string.food_manual_carbs_label)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -517,11 +498,10 @@ private fun ManualFallbackContent(
                     ),
                     shape = RoundedCornerShape(8.dp)
                 )
-                // Fat
                 OutlinedTextField(
                     value = fat,
                     onValueChange = onFatChange,
-                    label = { Text("שומן (ג׳)") },
+                    label = { Text(stringResource(R.string.food_manual_fat_label)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -555,7 +535,7 @@ private fun ManualFallbackContent(
                     .fillMaxWidth()
                     .height(56.dp)
             ) {
-                Text("שמירה", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.common_save), fontWeight = FontWeight.Bold)
             }
 
             TextButton(
@@ -563,10 +543,9 @@ private fun ManualFallbackContent(
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text("חזור לניתוח AI")
+                Text(stringResource(R.string.food_back_to_ai))
             }
         }
-    }
 }
 
 @Preview(showBackground = true, name = "Input Selection Step")

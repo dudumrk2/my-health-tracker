@@ -42,7 +42,8 @@ import com.myhealthtracker.app.theme.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import java.text.NumberFormat
+import androidx.compose.ui.res.stringResource
+import com.myhealthtracker.app.R
 
 private const val DAILY_STEP_GOAL = 10_000L
 
@@ -57,13 +58,14 @@ data class DisplayWorkoutInfo(
     val isManual: Boolean
 )
 
+@Composable
 fun getDisplayWorkoutInfo(workout: ExerciseSessionInfo): DisplayWorkoutInfo {
     val isManual = workout.source == "manual"
-    val durationText = "${workout.durationMin} דק׳"
+    val durationText = stringResource(R.string.activity_minutes_short, workout.durationMin)
     return when (workout.type) {
         "Running", "ריצה" -> DisplayWorkoutInfo(
-            title = "ריצת בוקר",
-            subtitle = "07:15 • פארק הירקון",
+            title = stringResource(R.string.activity_morning_run),
+            subtitle = "07:15",
             durationText = durationText,
             detailText = "GPS",
             hasGps = true,
@@ -72,20 +74,20 @@ fun getDisplayWorkoutInfo(workout: ExerciseSessionInfo): DisplayWorkoutInfo {
             isManual = isManual
         )
         "Strength", "כוח" -> DisplayWorkoutInfo(
-            title = "אימון כוח",
-            subtitle = "18:30 • הולמס פלייס",
+            title = stringResource(R.string.activity_strength_workout),
+            subtitle = "18:30",
             durationText = durationText,
-            detailText = "${workout.durationMin * 8} קל׳",
+            detailText = stringResource(R.string.activity_calories_short, workout.durationMin * 8),
             hasGps = false,
             icon = "🏋️",
             iconBgColor = Color(0xFFFFF3E0), // Light Orange/Amber
             isManual = isManual
         )
         "Swimming", "שחייה" -> DisplayWorkoutInfo(
-            title = "שחייה",
-            subtitle = "אתמול • בריכה עירונית",
+            title = stringResource(R.string.activity_swimming),
+            subtitle = "08:00",
             durationText = durationText,
-            detailText = "${workout.durationMin * 9} קל׳",
+            detailText = stringResource(R.string.activity_calories_short, workout.durationMin * 9),
             hasGps = false,
             icon = "🏊",
             iconBgColor = Color(0xFFE1F5FE), // Light Blue
@@ -95,9 +97,9 @@ fun getDisplayWorkoutInfo(workout: ExerciseSessionInfo): DisplayWorkoutInfo {
             val calories = workout.durationMin * 7
             DisplayWorkoutInfo(
                 title = workout.type,
-                subtitle = "אימון יומי",
+                subtitle = stringResource(R.string.activity_daily_workout),
                 durationText = durationText,
-                detailText = "$calories קל׳",
+                detailText = stringResource(R.string.activity_calories_short, calories),
                 hasGps = false,
                 icon = "💪",
                 iconBgColor = Color(0xFFF5F5F5), // Light Gray
@@ -107,16 +109,20 @@ fun getDisplayWorkoutInfo(workout: ExerciseSessionInfo): DisplayWorkoutInfo {
     }
 }
 
-fun getHebrewDayName(date: LocalDate): String {
-    return when (date.dayOfWeek.value) {
-        1 -> "ב׳"
-        2 -> "ג׳"
-        3 -> "ד׳"
-        4 -> "ה׳"
-        5 -> "ו׳"
-        6 -> "ש׳"
-        7 -> "א׳"
-        else -> ""
+fun getLocalizedDayName(date: LocalDate): String {
+    return if (Locale.getDefault().language == "he") {
+        when (date.dayOfWeek.value) {
+            1 -> "ב׳"
+            2 -> "ג׳"
+            3 -> "ד׳"
+            4 -> "ה׳"
+            5 -> "ו׳"
+            6 -> "ש׳"
+            7 -> "א׳"
+            else -> ""
+        }
+    } else {
+        date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Locale.getDefault())
     }
 }
 
@@ -182,14 +188,14 @@ private fun ActivityContent(
                 ExtendedFloatingActionButton(
                     onClick = onAddWorkoutClick,
                     icon = { Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                    text = { Text("הוספת אימון", fontWeight = FontWeight.Bold, fontSize = 14.sp) },
+                    text = { Text(stringResource(R.string.activity_add_workout), fontWeight = FontWeight.Bold, fontSize = 14.sp) },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     shape = RoundedCornerShape(24.dp)
                 )
             }
         },
-        floatingActionButtonPosition = FabPosition.Start, // Positions it on the left in RTL
+        floatingActionButtonPosition = FabPosition.Start,
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
@@ -212,7 +218,7 @@ private fun ActivityContent(
                     } else {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "רענון",
+                            contentDescription = stringResource(R.string.common_retry),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(24.dp)
                         )
@@ -220,7 +226,7 @@ private fun ActivityContent(
                 }
 
                 Text(
-                    text = "פעילות",
+                    text = stringResource(R.string.nav_activity),
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp
@@ -232,7 +238,7 @@ private fun ActivityContent(
                 IconButton(onClick = onProfileClick) {
                     Icon(
                         imageVector = Icons.Default.AccountCircle,
-                        contentDescription = "פרופיל הגדרות",
+                        contentDescription = stringResource(R.string.profile_title),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(26.dp)
                     )
@@ -250,7 +256,7 @@ private fun ActivityContent(
                 items(dateList) { date ->
                     val isSelected = date == state.selectedDate
                     val isCurrentDay = date == LocalDate.now()
-                    val dayName = getHebrewDayName(date)
+                    val dayName = getLocalizedDayName(date)
                     val dayNumber = date.dayOfMonth.toString()
 
                     // White reads better than the theme's onPrimary on the slate
@@ -300,7 +306,7 @@ private fun ActivityContent(
                 targetState = state.selectedDate,
                 transitionSpec = {
                     // Later day → slide in from the right (toward the tapped card);
-                    // earlier day → slide in from the left. Strip is forced LTR.
+                    // earlier day → slide in from the left.
                     val direction = if (targetState.isAfter(initialState)) {
                         AnimatedContentTransitionScope.SlideDirection.Left
                     } else {
@@ -337,7 +343,7 @@ private fun ActivityContent(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = "צעדים",
+                                        text = stringResource(R.string.dashboard_steps),
                                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
@@ -360,7 +366,7 @@ private fun ActivityContent(
                                         modifier = Modifier.fillMaxSize()
                                     )
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        val formattedSteps = NumberFormat.getNumberInstance(Locale.US).format(state.steps)
+                                        val formattedSteps = java.text.NumberFormat.getNumberInstance(Locale.US).format(state.steps)
                                         Text(
                                             text = formattedSteps,
                                             style = MaterialTheme.typography.headlineMedium.copy(
@@ -369,7 +375,7 @@ private fun ActivityContent(
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
-                                            text = "מתוך ${NumberFormat.getNumberInstance(Locale.US).format(stepGoal)}",
+                                            text = stringResource(R.string.dashboard_steps_of, java.text.NumberFormat.getNumberInstance(Locale.US).format(stepGoal)),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -398,7 +404,7 @@ private fun ActivityContent(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(text = "ק״מ", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text(text = stringResource(R.string.activity_km_unit), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text(
                                             text = String.format(Locale.US, "%.1f", state.steps * 0.0007f),
@@ -409,7 +415,7 @@ private fun ActivityContent(
                                     }
                                     Box(modifier = Modifier.width(1.dp).height(24.dp).background(MaterialTheme.colorScheme.outlineVariant))
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(text = "קלוריות", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text(text = stringResource(R.string.dashboard_calories), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text(
                                             text = "${(state.steps * 0.05f).toInt()}",
@@ -420,7 +426,7 @@ private fun ActivityContent(
                                     }
                                     Box(modifier = Modifier.width(1.dp).height(24.dp).background(MaterialTheme.colorScheme.outlineVariant))
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(text = "דקות", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text(text = stringResource(R.string.activity_minutes_unit), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text(
                                             text = "${(state.steps / 130).toInt()}",
@@ -459,13 +465,13 @@ private fun ActivityContent(
                                     ) {
                                         Text("🌙", fontSize = 20.sp)
                                         Text(
-                                            text = "שינת הלילה",
+                                            text = stringResource(R.string.activity_night_sleep),
                                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                     Text(
-                                        text = "${hours}ש׳ ${mins}ד׳",
+                                        text = stringResource(R.string.activity_sleep_hours_mins, hours, mins),
                                         style = MaterialTheme.typography.titleMedium.copy(
                                             fontWeight = FontWeight.Bold,
                                             color = WaterColor
@@ -504,10 +510,10 @@ private fun ActivityContent(
                                         }
                                     }
 
-                                    LegendItem(label = "עמוקה", color = MaterialTheme.colorScheme.primary)
-                                    LegendItem(label = "קלה", color = WaterColor)
-                                    LegendItem(label = "REM", color = CarbsColor)
-                                    LegendItem(label = "ערות", color = ProteinColor.copy(alpha = 0.5f))
+                                    LegendItem(label = stringResource(R.string.dashboard_sleep_deep), color = MaterialTheme.colorScheme.primary)
+                                    LegendItem(label = stringResource(R.string.dashboard_sleep_light), color = WaterColor)
+                                    LegendItem(label = stringResource(R.string.dashboard_sleep_rem), color = CarbsColor)
+                                    LegendItem(label = stringResource(R.string.dashboard_sleep_awake), color = ProteinColor.copy(alpha = 0.5f))
                                 }
                             }
                         }
@@ -521,12 +527,12 @@ private fun ActivityContent(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "אימונים אחרונים",
+                                text = stringResource(R.string.activity_recent_workouts),
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "הצג הכל",
+                                text = stringResource(R.string.activity_show_all),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary,
@@ -545,7 +551,7 @@ private fun ActivityContent(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    text = "אין אימונים רשומים ליום זה",
+                                    text = stringResource(R.string.activity_no_workouts_date),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(20.dp),
@@ -597,7 +603,7 @@ private fun ActivityContent(
                                                             .padding(horizontal = 6.dp, vertical = 2.dp)
                                                     ) {
                                                         Text(
-                                                            text = "ידני",
+                                                            text = stringResource(R.string.activity_manual_tag),
                                                             fontSize = 10.sp,
                                                             color = MaterialTheme.colorScheme.primary,
                                                             fontWeight = FontWeight.Bold

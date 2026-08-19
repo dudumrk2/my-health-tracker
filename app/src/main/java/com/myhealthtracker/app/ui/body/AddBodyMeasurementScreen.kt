@@ -41,6 +41,9 @@ import com.myhealthtracker.app.theme.MyHealthTrackerTheme
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
+import androidx.compose.ui.res.stringResource
+import com.myhealthtracker.app.R
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddBodyMeasurementScreen(
@@ -103,14 +106,14 @@ private fun AddBodyMeasurementContent(
             TopAppBar(
                 title = {
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text("הוספת מדידה", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Text(stringResource(R.string.body_add_measurement_title), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onCloseClick) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "סגור",
+                            contentDescription = stringResource(R.string.common_close),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(24.dp)
                         )
@@ -147,12 +150,12 @@ private fun AddBodyMeasurementContent(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "עדכון מדדי גוף",
+                        text = stringResource(R.string.body_update_metrics_title),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "הזן את המדידות העדכניות שלך למעקב מדויק",
+                        text = stringResource(R.string.body_update_metrics_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -171,7 +174,7 @@ private fun AddBodyMeasurementContent(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "תאריך המדידה",
+                        text = stringResource(R.string.body_measurement_date),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -208,7 +211,7 @@ private fun AddBodyMeasurementContent(
                     MeasurementInputField(
                         value = waistStr,
                         onValueChange = onWaistChange,
-                        label = "מותניים (ס״מ)",
+                        label = stringResource(R.string.body_waist_cm),
                         icon = Icons.Default.Straighten,
                         placeholder = "00"
                     )
@@ -217,7 +220,7 @@ private fun AddBodyMeasurementContent(
                     MeasurementInputField(
                         value = hipsStr,
                         onValueChange = onHipsChange,
-                        label = "ירכיים (ס״מ)",
+                        label = stringResource(R.string.body_hips_cm),
                         icon = Icons.Default.Accessibility,
                         placeholder = "00"
                     )
@@ -226,7 +229,7 @@ private fun AddBodyMeasurementContent(
                     MeasurementInputField(
                         value = weightStr,
                         onValueChange = onWeightChange,
-                        label = "משקל (ק״ג)",
+                        label = stringResource(R.string.body_weight_kg),
                         icon = Icons.Default.MonitorWeight,
                         placeholder = "00.0"
                     )
@@ -254,8 +257,8 @@ private fun AddBodyMeasurementContent(
             OutlinedTextField(
                 value = note,
                 onValueChange = onNoteChange,
-                label = { Text("הערה אישית (אופציונלי)", style = MaterialTheme.typography.bodySmall) },
-                placeholder = { Text("למשל: נמדד אחרי אימון") },
+                label = { Text(stringResource(R.string.body_note_label), style = MaterialTheme.typography.bodySmall) },
+                placeholder = { Text(stringResource(R.string.body_note_placeholder)) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -293,7 +296,7 @@ private fun AddBodyMeasurementContent(
                         )
                     }
                     Text(
-                        text = "טיפ: כדאי לבצע את המדידה בבוקר, מיד לאחר היקיצה ובמצב צום לקבלת התוצאות המדויקות ביותר.",
+                        text = stringResource(R.string.body_measurement_tip),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f)
@@ -328,7 +331,7 @@ private fun AddBodyMeasurementContent(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("שמירה", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                    Text(stringResource(R.string.common_save), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
                         contentDescription = null,
