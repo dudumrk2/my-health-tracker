@@ -43,8 +43,32 @@
     <string name="dashboard_streak_days">%1$d ימי רצף</string>
     <string name="dashboard_aerobic_minutes">דק׳ אירובי</string>
     <string name="dashboard_strength_workouts">אימוני כוח</string>
-    <string name="dashboard_no_insights_yet">התובנות היומיות יתעדכנו לאחר תיעוד ארוחות ופעילות.</string>
+    <string name="dashboard_weekly_sleep_avg">ממוצע שבועי</string>
+    <string name="dashboard_daily_activity">פעילות יומית</string>
+    <string name="dashboard_aerobic_weekly">אירובי שבועי</string>
+    <string name="dashboard_strength_weekly">אימוני כוח שבועיים</string>
+    <string name="dashboard_steps_of">מתוך %1$s</string>
+    <string name="dashboard_steps_goal_reached">כל הכבוד! עברת את יעד הצעדים היומי שלך היום.</string>
+    <string name="dashboard_steps_missing">חסרים לך רק %1$d צעדים ליעד היומי. הליכה קצרה עכשיו תשפר את העיכול.</string>
+    <string name="dashboard_sleep_deep">עמוקה</string>
+    <string name="dashboard_sleep_light">קלה</string>
+    <string name="dashboard_sleep_rem">REM</string>
+    <string name="dashboard_sleep_awake">ערות</string>
+    <string name="dashboard_nutrition_weekly_summary">סיכום תזונה שבועי</string>
+    <string name="dashboard_avg_calories">קלוריות (ממוצע)</string>
+    <string name="dashboard_body_metrics">מדדי גוף</string>
+    <string name="dashboard_waist">היקף מותניים</string>
+    <string name="dashboard_hips">היקף ירכיים</string>
+    <string name="dashboard_weight_change_down">ירידה של %1$s ק״ג</string>
+    <string name="dashboard_weight_change_up">עלייה של %1$s ק״ג</string>
+    <string name="dashboard_greeting_female">שלום, אלופה</string>
+    <string name="dashboard_greeting_male">שלום, %1$s</string>
+    <string name="dashboard_greeting_default">שלום, משתמש</string>
+    <string name="dashboard_ai_insight_title">תובנת AI חכמה</string>
+    <string name="dashboard_calculating_insights">מחשב תובנות בריאות...</string>
+    <string name="dashboard_add_measurement">הוספת מדידה</string>
 
+    <string name="dashboard_no_insights_yet">התובנות היומיות יתעדכנו לאחר תיעוד ארוחות ופעילות.</string>
     <!-- Food / Meals -->
     <string name="food_title">יומן אכילה</string>
     <string name="food_add_meal">הוספת ארוחה</string>
@@ -65,7 +89,28 @@
     <string name="food_no_meals_today">לא נרשמו ארוחות היום.</string>
     <string name="food_delete_meal_confirm">האם למחוק ארוחה זו?</string>
     <string name="food_edit_item">עריכת פריט</string>
-    <string name="food_note_placeholder">הערה לארוחה (למשל: רוטב בצד, כמות מופחתת)...</string>
+    <string name="meal_breakfast">ארוחת בוקר</string>
+    <string name="meal_lunch">ארוחת צהריים</string>
+    <string name="meal_dinner">ארוחת ערב</string>
+    <string name="meal_snack">נשנוש</string>
+    <string name="meal_generic">ארוחה</string>
+    <string name="food_no_meals_date">לא נרשמו ארוחות ביום זה</string>
+    <string name="food_failed_meals_banner">יש %1$d מנות שלא נותחו — הקש על המנה האדומה ביומן כדי לנסות שוב</string>
+    <string name="food_ai_recommendation_title">המלצה חכמה להיום</string>
+    <string name="food_calculating_recommendation">מחשב המלצות...</string>
+    <string name="food_remaining_calories">נותרו עוד</string>
+    <string name="food_out_of_target">מתוך %1$d</string>
+    <string name="food_water_intake">שתיית מים</string>
+    <string name="food_water_liters">%1$s / %2$s ליטר</string>
+    <string name="food_meal_journal">יומן ארוחות</string>
+    <string name="food_meal_no_description">ארוחה ללא תיאור</string>
+    <string name="food_status_analyzing">⏳ מנתח…</string>
+    <string name="food_status_failed">⚠️ נכשל — הקש לתיקון</string>
+    <string name="food_total_calories">סה״כ קלוריות</string>
+    <string name="food_meal_ingredients">מרכיבי הארוחה</string>
+    <string name="food_item_no_name">פריט ללא שם</string>
+    <string name="food_macro_unit_g">ג׳</string>
+    <string name="food_kcal_unit">קק״ל</string>
 
     <!-- Activity & Workouts -->
     <string name="activity_title">פעילות וספורט</string>

@@ -43,8 +43,32 @@
     <string name="dashboard_streak_days">%1$d Day Streak</string>
     <string name="dashboard_aerobic_minutes">Aerobic Min</string>
     <string name="dashboard_strength_workouts">Strength Workouts</string>
-    <string name="dashboard_no_insights_yet">Daily insights will appear after logging meals and activity.</string>
+    <string name="dashboard_weekly_sleep_avg">Weekly Average</string>
+    <string name="dashboard_daily_activity">Daily Activity</string>
+    <string name="dashboard_aerobic_weekly">Weekly Aerobic</string>
+    <string name="dashboard_strength_weekly">Weekly Strength</string>
+    <string name="dashboard_steps_of">out of %1$s</string>
+    <string name="dashboard_steps_goal_reached">Great job! You\'ve reached your daily step goal today.</string>
+    <string name="dashboard_steps_missing">Only %1$d steps left to your daily goal. A short walk now will improve digestion.</string>
+    <string name="dashboard_sleep_deep">Deep</string>
+    <string name="dashboard_sleep_light">Light</string>
+    <string name="dashboard_sleep_rem">REM</string>
+    <string name="dashboard_sleep_awake">Awake</string>
+    <string name="dashboard_nutrition_weekly_summary">Weekly Nutrition Summary</string>
+    <string name="dashboard_avg_calories">Calories (Average)</string>
+    <string name="dashboard_body_metrics">Body Metrics</string>
+    <string name="dashboard_waist">Waist Circumference</string>
+    <string name="dashboard_hips">Hip Circumference</string>
+    <string name="dashboard_weight_change_down">%1$s kg decrease</string>
+    <string name="dashboard_weight_change_up">%1$s kg increase</string>
+    <string name="dashboard_greeting_female">Hello, Champ</string>
+    <string name="dashboard_greeting_male">Hello, %1$s</string>
+    <string name="dashboard_greeting_default">Hello, User</string>
+    <string name="dashboard_ai_insight_title">Smart AI Insight</string>
+    <string name="dashboard_calculating_insights">Calculating health insights...</string>
+    <string name="dashboard_add_measurement">Add Measurement</string>
 
+    <string name="dashboard_no_insights_yet">Daily insights will update after logging meals and activity.</string>
     <!-- Food / Meals -->
     <string name="food_title">Meal Log</string>
     <string name="food_add_meal">Add Meal</string>
@@ -65,7 +89,28 @@
     <string name="food_no_meals_today">No meals logged today.</string>
     <string name="food_delete_meal_confirm">Delete this meal?</string>
     <string name="food_edit_item">Edit Item</string>
-    <string name="food_note_placeholder">Meal note (e.g., dressing on side, smaller portion)...</string>
+    <string name="meal_breakfast">Breakfast</string>
+    <string name="meal_lunch">Lunch</string>
+    <string name="meal_dinner">Dinner</string>
+    <string name="meal_snack">Snack</string>
+    <string name="meal_generic">Meal</string>
+    <string name="food_no_meals_date">No meals logged on this date</string>
+    <string name="food_failed_meals_banner">There are %1$d unanalyzed meals — tap the red meal to retry</string>
+    <string name="food_ai_recommendation_title">Smart Recommendation</string>
+    <string name="food_calculating_recommendation">Calculating recommendations...</string>
+    <string name="food_remaining_calories">Remaining</string>
+    <string name="food_out_of_target">out of %1$d</string>
+    <string name="food_water_intake">Water Intake</string>
+    <string name="food_water_liters">%1$s / %2$s Liters</string>
+    <string name="food_meal_journal">Meal Journal</string>
+    <string name="food_meal_no_description">Meal without description</string>
+    <string name="food_status_analyzing">⏳ Analyzing…</string>
+    <string name="food_status_failed">⚠️ Failed — Tap to fix</string>
+    <string name="food_total_calories">Total Calories</string>
+    <string name="food_meal_ingredients">Meal Ingredients</string>
+    <string name="food_item_no_name">Unnamed item</string>
+    <string name="food_macro_unit_g">g</string>
+    <string name="food_kcal_unit">kcal</string>
 
     <!-- Activity & Workouts -->
     <string name="activity_title">Activity &amp; Exercise</string>
