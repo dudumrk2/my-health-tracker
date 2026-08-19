@@ -34,6 +34,8 @@ import com.myhealthtracker.app.data.goals.PRIMARY_GOAL_OPTIONS
 import com.myhealthtracker.app.data.profile.GoalOverrides
 import com.myhealthtracker.app.data.profile.UserProfile
 import com.myhealthtracker.app.theme.MyHealthTrackerTheme
+import androidx.compose.ui.res.stringResource
+import com.myhealthtracker.app.R
 
 @Composable
 fun ProfileScreen(
@@ -54,6 +56,7 @@ fun ProfileScreen(
     var heightStr by remember { mutableStateOf("") }
     var selectedGender by remember { mutableStateOf("") }
     var themePreference by remember { mutableStateOf("system") }
+    var language by remember { mutableStateOf("he") }
     var primaryGoal by remember { mutableStateOf("maintain") }
     var activityLevel by remember { mutableStateOf("moderate") }
     var focusAreas by remember { mutableStateOf(setOf<String>()) }
@@ -75,6 +78,7 @@ fun ProfileScreen(
             heightStr = if (profile.heightCm > 0.0) profile.heightCm.toString() else ""
             selectedGender = profile.gender
             themePreference = profile.themePreference
+            language = profile.language
             primaryGoal = profile.primaryGoal
             activityLevel = profile.activityLevel
             focusAreas = profile.focusAreas.toSet()
@@ -125,6 +129,7 @@ fun ProfileScreen(
         heightStr = heightStr,
         selectedGender = selectedGender,
         themePreference = themePreference,
+        language = language,
         primaryGoal = primaryGoal,
         activityLevel = activityLevel,
         focusAreas = focusAreas,
@@ -144,6 +149,7 @@ fun ProfileScreen(
         onHeightChange = { heightStr = it },
         onGenderSelect = { selectedGender = it },
         onThemeSelect = { themePreference = it },
+        onLanguageSelect = { language = it },
         onPrimaryGoalSelect = { primaryGoal = it },
         onActivityLevelSelect = { activityLevel = it },
         onFocusAreaToggle = { value ->
@@ -156,7 +162,7 @@ fun ProfileScreen(
         onSleepOverrideChange = { sleepOverride = it },
         onSaveClick = {
             viewModel.saveProfile(
-                firstName, birthYearStr, weightStr, heightStr, selectedGender, themePreference,
+                firstName, birthYearStr, weightStr, heightStr, selectedGender, themePreference, language,
                 primaryGoal, activityLevel, focusAreas.toList(), buildOverrides(),
                 quickActionsEnabled, celebrationSoundEnabled
             )
@@ -234,6 +240,7 @@ private fun ProfileScreenContent(
     heightStr: String,
     selectedGender: String,
     themePreference: String,
+    language: String,
     primaryGoal: String,
     activityLevel: String,
     focusAreas: Set<String>,
@@ -250,6 +257,7 @@ private fun ProfileScreenContent(
     onHeightChange: (String) -> Unit,
     onGenderSelect: (String) -> Unit,
     onThemeSelect: (String) -> Unit,
+    onLanguageSelect: (String) -> Unit,
     onPrimaryGoalSelect: (String) -> Unit,
     onActivityLevelSelect: (String) -> Unit,
     onFocusAreaToggle: (String) -> Unit,
@@ -557,6 +565,18 @@ private fun ProfileScreenContent(
                             options = listOf("system" to "מערכת", "light" to "בהירה", "dark" to "כהה"),
                             selectedValue = themePreference,
                             onSelect = onThemeSelect
+                        )
+                    }
+
+                    Column {
+                        FieldLabel(stringResource(R.string.profile_language))
+                        SelectRow(
+                            options = listOf(
+                                "he" to stringResource(R.string.profile_language_he),
+                                "en" to stringResource(R.string.profile_language_en)
+                            ),
+                            selectedValue = language,
+                            onSelect = onLanguageSelect
                         )
                     }
 
@@ -874,6 +894,7 @@ fun ProfileScreenPreviewLight() {
             heightStr = "178.0",
             selectedGender = "זכר",
             themePreference = "light",
+            language = "he",
             primaryGoal = "maintain",
             activityLevel = "moderate",
             focusAreas = emptySet(),
@@ -886,7 +907,7 @@ fun ProfileScreenPreviewLight() {
             calculatedAge = 31,
             onFirstNameChange = {},
             onBirthYearChange = {}, onWeightChange = {}, onHeightChange = {}, onGenderSelect = {},
-            onThemeSelect = {}, onPrimaryGoalSelect = {}, onActivityLevelSelect = {}, onFocusAreaToggle = {},
+            onThemeSelect = {}, onLanguageSelect = {}, onPrimaryGoalSelect = {}, onActivityLevelSelect = {}, onFocusAreaToggle = {},
             onCaloriesOverrideChange = {}, onStepsOverrideChange = {}, onProteinOverrideChange = {},
             onWaterOverrideChange = {}, onSleepOverrideChange = {}, onSaveClick = {}, onBackClick = {},
             quickActionsEnabled = true, onQuickActionsEnabledChange = {},
