@@ -43,12 +43,12 @@ data class UserProfile(
 
 ## 2. Android UI & Localization
 
-### 2.1 String Resources
-Extract hardcoded Hebrew strings into:
+### 2.1 String Resources — Scope
+Extract **user-visible hardcoded Hebrew strings** into:
 - `app/src/main/res/values/strings.xml` (Hebrew default strings)
 - `app/src/main/res/values-en/strings.xml` (English translated strings)
 
-Categories of strings to extract:
+**In scope** — strings shown in the UI:
 - General / Navigation labels (Dashboard, Food, Activity, Profile, Reminders, etc.)
 - Dashboard metric cards, progress bars, insight cards, empty states
 - Food / Meal screens (Add meal, photo, notes, item edits, nutrition summary, quality badges)
@@ -56,31 +56,53 @@ Categories of strings to extract:
 - Profile / Settings screens (Personal details, goals, preferences, sound, theme, language selector, delete account)
 - Reminders / Notifications (Reminder titles, quick action notification actions, water quick-log buttons)
 
-### 2.2 Dynamic Locale and Direction
-- In `MainActivity.kt`:
-  When `profileData` emits a change in `language`:
-  ```kotlin
-  val appLocale = if (language == "en") "en" else "he"
-  val currentLocales = AppCompatDelegate.getApplicationLocales()
-  if (currentLocales.toLanguageTags() != appLocale) {
-      AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(appLocale))
-  }
-  ```
-- In `Theme.kt`:
-  Set `LocalLayoutDirection` dynamically:
-  ```kotlin
-  val isRtl = (language == "he") // or based on Configuration/Locale
-  val layoutDirection = if (isRtl) LayoutDirection.Rtl else LayoutDirection.Ltr
-  CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
-      content()
-  }
-  ```
+**Out of scope** — internal strings (never extracted):
+- Firestore field keys / enum values (e.g. `"lose"`, `"maintain"`, `"gain"`)
+- Log messages and analytics event names
+- AI prompt copy in Cloud Functions (handled separately in Section 3)
 
-### 2.3 Profile Screen Language Selector
-Add a language selector in `ProfileScreen.kt` under "העדפות ממשק / Interface Preferences":
-- Label: `שפת ממשק` / `App Language`
-- Options: `עברית` (Hebrew), `English` (English)
-- Segmented buttons / dropdown matching the existing `themePreference` selector pattern.
+### 2.2 Dynamic Locale and Direction
+Use **`AppCompatDelegate.setApplicationLocales`** exclusively. This API:
+- Replaces the app locale at runtime without restarting the process on API 33+
+- Falls back gracefully to a full Activity restart on API 28–32
+- Automatically sets `LocalLayoutDirection` for Compose (RTL for `he`, LTR for `en`) — **no manual `LocalLayoutDirection` override in Theme.kt is needed or wanted.**
+
+In `MainActivity.kt`, react to `profileData.language` changes:
+```kotlin
+LaunchedEffect(language) {
+    val tag = if (language == "en") "en" else "he"
+    val current = AppCompatDelegate.getApplicationLocales().toLanguageTags()
+    if (current != tag) {
+        AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tag))
+    }
+}
+```
+
+**Remove** the existing `CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl)` block from `Theme.kt` so that the system-managed locale controls layout direction.
+
+### 2.3 Manifest — `locale_config.xml`
+`AppCompatDelegate.setApplicationLocales` requires an explicit locale config:
+
+**New file** `app/src/main/res/xml/locale_config.xml`:
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="he"/>
+    <locale android:name="en"/>
+</locale-config>
+```
+
+**Add to `AndroidManifest.xml`** `<application>` element:
+```xml
+android:localeConfig="@xml/locale_config"
+```
+
+### 2.4 Profile Screen Language Selector
+Add a language selector in `ProfileScreen.kt` under the existing "preferences" section (same area as `themePreference`):
+- Label: `שפת ממשק` (Hebrew mode) / `App Language` (English mode) — use the language-aware string resource.
+- Options: `עברית` (Hebrew), `English` (English).
+- Pattern: segmented button row matching the existing `themePreference` selector.
+- On selection: call `viewModel.setLanguage(newLanguage)` → saves to Firestore → `MainActivity` `LaunchedEffect` fires `setApplicationLocales`.
 
 ---
 
@@ -89,35 +111,39 @@ Add a language selector in `ProfileScreen.kt` under "העדפות ממשק / Int
 ### 3.1 `prompts.ts`
 - **`ProfileContext`**: Add `language?: string`.
 - **`buildMealSystemInstruction(profile: ProfileContext | null)`**:
-  - Check `profile?.language === "en"`:
-    - Instruct model: `Write the 'name' and 'quantity' fields in English. Keep all numeric values as plain numbers.`
+  - When `profile?.language === "en"`:
+    - `Write the 'name' and 'quantity' fields in English. Keep all numeric values as plain numbers.`
     - `Quantity is a short human-readable string in English (e.g. '150g', '1 cup').`
-    - `In the 'recommendation' field, provide a single, focused, actionable recommendation in English for adding an ingredient or side dish...`
-  - When `profile?.language !== "en"` (default Hebrew):
-    - Maintain existing Hebrew instructions.
+    - `In the 'recommendation' field, provide a single, focused, actionable recommendation in English...`
+  - When `profile?.language !== "en"` (default Hebrew): maintain existing Hebrew instructions unchanged.
 - **`buildInsightsSystemInstruction(language: string = "he")`**:
   - When `language === "en"`:
-    - Instruct model: `Write every sentence in English. Each field is exactly ONE short, focused sentence.`
+    - `Write every sentence in English. Each field is exactly ONE short, focused sentence.`
     - Tailor safety guidelines in English (`Prefer suggestions ('you might consider') over commands ('you must')`).
-  - When `language === "he"`:
-    - Maintain existing Hebrew instructions.
+  - When `language === "he"`: maintain existing Hebrew instructions unchanged.
 - **`buildInsightsUserPrompt(day: DayData, language: string = "he")`**:
-  - Tailor closing prompt directive: `Produce focused, supportive one-sentence insights per the schema, in English.` (or in Hebrew).
+  - Closing directive: `Produce focused, supportive one-sentence insights per the schema, in English.` (or in Hebrew).
 
-### 3.2 `insightsParse.ts`
-- Add `DISCLAIMER_EN = "Insights are general information only and do not constitute medical or nutritional advice. For health decisions, consult a qualified professional."`
-- Update `parseInsights(raw: string, language: string = "he"): ParsedInsights` to attach `DISCLAIMER_EN` or `DISCLAIMER_HE` based on `language`.
+### 3.2 `insights/aggregate.ts` — Expose `language` in `DayData`
+`DayData.profile` already carries `primaryGoal`, `focusAreas`, etc. Add `language?: string` to the profile sub-object so that the scheduled (`runForAllUsers`) and on-demand (`generateInsightsTrigger`) paths both have access to the user's language without extra Firestore reads.
 
-### 3.3 `fallback.ts`
-- Update `buildFallbackInsights(day: DayData, language: string = "he"): ParsedInsights`:
-  - When `language === "en"`:
-    - Provide fallback strings in English for general, nutrition, activity, and sleep.
-  - When `language === "he"`:
-    - Use existing Hebrew fallback copy.
+### 3.3 `insightsParse.ts`
+- Add:
+  ```ts
+  export const DISCLAIMER_EN =
+    "Insights are general information only and do not constitute medical or nutritional advice. For health decisions, consult a qualified professional.";
+  ```
+- Update signature: `parseInsights(raw: string, language: string = "he"): ParsedInsights`
+  — attaches `DISCLAIMER_EN` or `DISCLAIMER_HE` based on `language`.
 
-### 3.4 Integration in `analyzeMeal.ts` & `generateInsights.ts`
-- `analyzeMeal.ts`: `readProfile` reads `language` from Firestore profile (`profile.language as string | undefined`) and includes it in `ProfileContext`.
-- `generateInsights.ts`: `runInsightsForUser` passes user's `profile.language` down to prompt generators, parsers, and fallback generators.
+### 3.4 `fallback.ts`
+- Update signature: `buildFallbackInsights(day: DayData, language: string = "he"): ParsedInsights`
+  - When `language === "en"`: English fallback copy for general, nutrition, activity, sleep, and disclaimer.
+  - When `language === "he"`: existing Hebrew copy unchanged.
+
+### 3.5 Integration — `analyzeMeal.ts` & `generateInsights.ts`
+- `analyzeMeal.ts` → `readProfile`: also read `language` from Firestore → include in `ProfileContext`.
+- `generateInsights.ts` → `runInsightsForUser`: `DayData.profile.language` flows through to all prompt builders, `parseInsights`, and `buildFallbackInsights`. No extra Firestore read needed.
 
 ---
 
@@ -125,15 +151,17 @@ Add a language selector in `ProfileScreen.kt` under "העדפות ממשק / Int
 
 ### Automated Tests
 1. **Unit Tests (Android / Kotlin):**
-   - `ProfileRepositoryTest`: Test `mapProfile` parsing and serialization with `language = "en"` and default `"he"`.
-   - String resource completeness test or verification that keys exist in both `values/strings.xml` and `values-en/strings.xml`.
+   - `ProfileRepositoryTest`: `mapProfile` with `language = "en"` and missing-key fallback to `"he"`.
+   - `ProfileRepositoryTest`: `saveUserProfile` serializes `language` field.
 2. **Unit Tests (Cloud Functions / TypeScript):**
-   - `prompts.test.ts`: Verify `buildMealSystemInstruction`, `buildInsightsSystemInstruction`, and `buildInsightsUserPrompt` produce correct English / Hebrew instructions.
-   - `insightsParse.test.ts`: Verify disclaimer selection for `"en"` and `"he"`.
-   - `fallback.test.ts`: Verify English and Hebrew fallback outputs.
+   - `prompts.test.ts`: `buildMealSystemInstruction`, `buildInsightsSystemInstruction`, `buildInsightsUserPrompt` — verify English and Hebrew branches.
+   - `insightsParse.test.ts`: disclaimer selection for `"en"` and `"he"`.
+   - `fallback.test.ts`: English and Hebrew fallback copy.
 
 ### Manual Verification
-- Launch app, verify Hebrew layout & RTL.
-- Change language to English in Profile Settings and save.
-- Verify instant UI update to English, LTR layout direction, and all screens render in English.
-- Log a meal or trigger insight refresh and verify generated output is in English.
+1. Launch app → Hebrew layout (RTL), all strings in Hebrew.
+2. In Profile → change language to English → save.
+3. App switches to English, LTR layout, all visible strings in English.
+4. Log a meal → verify AI-generated item names, quantities, and recommendation are in English.
+5. Trigger insight refresh → verify all insight fields and disclaimer are in English.
+6. Switch back to Hebrew → verify everything reverts.
