@@ -101,6 +101,12 @@ private fun DashboardContent(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
+        val greeting = if (state.profile?.firstName?.isNotBlank() == true) {
+            "שלום, ${state.profile.firstName}"
+        } else {
+            "שלום, ${state.profile?.gender?.let { if (it == "נקבה") "אלופה" else "משתמש" } ?: "משתמש"}"
+        }
+
         // Custom Top App Bar (Stitch Design Style)
         Row(
             modifier = Modifier
@@ -110,7 +116,7 @@ private fun DashboardContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "שלום, ${state.profile?.gender?.let { if (it == "נקבה") "אלופה" else "משתמש" } ?: "משתמש"}",
+                text = greeting,
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontWeight = FontWeight.Bold,
                     fontSize = 22.sp
@@ -229,9 +235,9 @@ private fun DashboardContent(
                         )
                     }
 
-                    // Steps Bar Chart representing 7 days (mocked with today highlighted)
+                    // Steps Bar Chart representing 7 days
                     StepsBarChart(
-                        todaySteps = state.todayHealth.steps,
+                        stepsList = state.weeklyStepsList,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(100.dp)
@@ -327,8 +333,8 @@ private fun DashboardContent(
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                val sleepHours = state.todayHealth.sleepMinutes / 60
-                val sleepMins = state.todayHealth.sleepMinutes % 60
+                val sleepHours = state.weeklySleepAvgMinutes / 60
+                val sleepMins = state.weeklySleepAvgMinutes % 60
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -609,10 +615,9 @@ private fun DashboardContent(
 
 @Composable
 fun StepsBarChart(
-    todaySteps: Long,
+    stepsList: List<Long>,
     modifier: Modifier = Modifier
 ) {
-    val stepsList = listOf(3500L, todaySteps.coerceAtLeast(100L), 6200L, 2200L, 5900L, 5100L, 4100L)
     val maxSteps = stepsList.maxOrNull()?.coerceAtLeast(1L)?.toFloat() ?: 10000f
 
     Row(
@@ -622,7 +627,7 @@ fun StepsBarChart(
     ) {
         stepsList.forEachIndexed { index, steps ->
             val heightPercent = (steps.toFloat() / maxSteps).coerceIn(0.1f, 1f)
-            val isToday = index == 1 // Highlighting index 1 to match highlighted column in Stitch mockup
+            val isToday = index == stepsList.size - 1
 
             Box(
                 modifier = Modifier
@@ -786,8 +791,10 @@ fun DashboardScreenPreviewLight() {
     MyHealthTrackerTheme(darkTheme = false) {
         DashboardContent(
             state = DashboardState(
-                profile = UserProfile(birthYear = 1990, weightKg = 75.0, heightCm = 178.0, gender = "זכר"),
+                profile = UserProfile(firstName = "ישראל", birthYear = 1990, weightKg = 75.0, heightCm = 178.0, gender = "זכר"),
                 todayHealth = DailyHealthData(steps = 8432, sleepMinutes = 435),
+                weeklySleepAvgMinutes = 450,
+                weeklyStepsList = listOf(7000L, 8000L, 8432L, 6500L, 9000L, 11000L, 8432L),
                 meals = listOf(
                     MealEntry(mealId = "1", date = "2026-06-12", loggedAt = Instant.now(), inputType = "text", description = "", items = emptyList(), totals = MealTotals(430, 21, 38, 21)),
                     MealEntry(mealId = "2", date = "2026-06-12", loggedAt = Instant.now(), inputType = "text", description = "", items = emptyList(), totals = MealTotals(500, 53, 55, 5))

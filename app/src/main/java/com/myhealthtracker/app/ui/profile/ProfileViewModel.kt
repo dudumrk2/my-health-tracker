@@ -71,7 +71,9 @@ class ProfileViewModel(
                     _uiState.value = ProfileUiState.Loaded(profile.copy(gender = hebrewGender))
                     updateAge(profile.birthYear)
                 } else {
-                    _uiState.value = ProfileUiState.Idle
+                    // Pre-fill name from Google Auth for new users if available
+                    val authName = AppContainer.authManager.currentUser?.displayName?.split(" ")?.firstOrNull() ?: ""
+                    _uiState.value = ProfileUiState.Loaded(UserProfile(firstName = authName))
                 }
             }
         }
@@ -119,6 +121,7 @@ class ProfileViewModel(
     }
 
     fun saveProfile(
+        firstName: String,
         birthYearStr: String,
         weightStr: String,
         heightStr: String,
@@ -133,6 +136,11 @@ class ProfileViewModel(
     ) {
         viewModelScope.launch {
             _uiState.value = ProfileUiState.Loading
+
+            if (firstName.isBlank()) {
+                _uiState.value = ProfileUiState.Error("אנא הזן את שמך")
+                return@launch
+            }
 
             val birthYear = birthYearStr.toIntOrNull()
             if (birthYear == null) {
@@ -173,6 +181,7 @@ class ProfileViewModel(
             val englishGender = toEnglishGender(gender)
 
             val profile = UserProfile(
+                firstName = firstName,
                 birthYear = birthYear,
                 weightKg = weight,
                 heightCm = height,

@@ -38,6 +38,8 @@ data class DashboardState(
     val unifiedInsight: String = "",
     val weeklyAerobicMinutes: Int = 0,
     val weeklyStrengthWorkouts: Int = 0,
+    val weeklySleepAvgMinutes: Int = 0,
+    val weeklyStepsList: List<Long> = emptyList(),
     val isRefreshing: Boolean = false
 )
 
@@ -87,7 +89,8 @@ class DashboardViewModel(
         val todayStr = today.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
         @Suppress("UNCHECKED_CAST")
-        val healthList = (array[1] as Result<List<DailyHealthData>>).getOrNull() ?: emptyList()
+        val healthList = ((array[1] as Result<List<DailyHealthData>>).getOrNull() ?: emptyList())
+            .sortedBy { it.date }
         val todayHealth = healthList.find { it.date == todayStr } ?: DailyHealthData(date = todayStr)
 
         @Suppress("UNCHECKED_CAST")
@@ -96,6 +99,18 @@ class DashboardViewModel(
         val bodyMeasurements = array[3] as List<BodyMeasurement>
         val insights = array[4] as? com.myhealthtracker.app.data.insights.model.DailyInsights
         val isRefreshing = array[5] as Boolean
+
+        // Weekly steps list for the chart (last 7 days, including today)
+        val weeklyStepsList = (0..6).map { i ->
+            val d = today.minusDays((6 - i).toLong()).format(DateTimeFormatter.ISO_LOCAL_DATE)
+            healthList.find { it.date == d }?.steps ?: 0L
+        }
+
+        // Weekly average sleep (excluding today if it's 0, to avoid dragging average down before wake-up)
+        val sleepDays = healthList.filter { it.date != todayStr || it.sleepMinutes > 0 }
+        val weeklySleepAvgMinutes = if (sleepDays.isNotEmpty()) {
+            sleepDays.sumOf { it.sleepMinutes } / sleepDays.size
+        } else 0
 
         // Filter meals for this week (last 7 days)
         val weeklyMeals = meals.filter { meal ->
@@ -164,6 +179,8 @@ class DashboardViewModel(
             unifiedInsight = unifiedInsight,
             weeklyAerobicMinutes = weeklyAerobicMinutes,
             weeklyStrengthWorkouts = weeklyStrengthWorkouts,
+            weeklySleepAvgMinutes = weeklySleepAvgMinutes,
+            weeklyStepsList = weeklyStepsList,
             isRefreshing = isRefreshing
         )
     }.stateIn(

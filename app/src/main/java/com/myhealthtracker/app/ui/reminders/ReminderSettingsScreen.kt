@@ -1,6 +1,7 @@
 package com.myhealthtracker.app.ui.reminders
 
 import android.app.TimePickerDialog
+import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -8,8 +9,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.myhealthtracker.app.di.AppContainer
+import com.myhealthtracker.app.notification.ReminderActivity
 import com.myhealthtracker.app.notification.ReminderScheduler
 import java.time.format.DateTimeFormatter
 
@@ -39,6 +43,7 @@ fun ReminderSettingsScreen(
     }
     val settings by vm.settings.collectAsState()
     val fmt = DateTimeFormatter.ofPattern("HH:mm")
+    val hasOverlayPermission = AndroidSettings.canDrawOverlays(context)
 
     Column(modifier = modifier.fillMaxWidth().padding(16.dp)) {
         Text(
@@ -97,11 +102,30 @@ fun ReminderSettingsScreen(
         }
 
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
-        Button(onClick = onGrantOverlay, modifier = Modifier.padding(top = 8.dp)) {
-            Text("אפשר הצגה מעל אפליקציות אחרות")
+
+        if (!hasOverlayPermission) {
+            Button(
+                onClick = onGrantOverlay,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("אפשר הצגה מעל אפליקציות אחרות")
+            }
         }
-        Button(onClick = onBack, modifier = Modifier.padding(top = 8.dp)) {
+
+        OutlinedButton(
+            onClick = {
+                ReminderActivity.start(context, "ארוחת ניסיון", -1, settings.soundEnabled)
+            },
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            enabled = hasOverlayPermission
+        ) {
+            Text("בדיקת תזכורת (ניסיון)")
+        }
+
+        Button(onClick = onBack, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
             Text("חזרה")
         }
     }
 }
+

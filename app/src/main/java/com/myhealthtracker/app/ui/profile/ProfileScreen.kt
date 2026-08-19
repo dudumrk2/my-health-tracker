@@ -48,6 +48,7 @@ fun ProfileScreen(
     val calculatedAge by viewModel.calculatedAge.collectAsState()
     val accountState by viewModel.accountState.collectAsState()
 
+    var firstName by remember { mutableStateOf("") }
     var birthYearStr by remember { mutableStateOf("") }
     var weightStr by remember { mutableStateOf("") }
     var heightStr by remember { mutableStateOf("") }
@@ -68,6 +69,7 @@ fun ProfileScreen(
     LaunchedEffect(uiState) {
         if (uiState is ProfileUiState.Loaded) {
             val profile = (uiState as ProfileUiState.Loaded).profile
+            firstName = profile.firstName
             birthYearStr = if (profile.birthYear > 0) profile.birthYear.toString() else ""
             weightStr = if (profile.weightKg > 0.0) profile.weightKg.toString() else ""
             heightStr = if (profile.heightCm > 0.0) profile.heightCm.toString() else ""
@@ -117,6 +119,7 @@ fun ProfileScreen(
 
     ProfileScreenContent(
         uiState = uiState,
+        firstName = firstName,
         birthYearStr = birthYearStr,
         weightStr = weightStr,
         heightStr = heightStr,
@@ -132,6 +135,7 @@ fun ProfileScreen(
         sleepOverride = sleepOverride,
         goals = goals,
         calculatedAge = calculatedAge,
+        onFirstNameChange = { firstName = it },
         onBirthYearChange = {
             birthYearStr = it
             it.toIntOrNull()?.let { year -> viewModel.updateAge(year) }
@@ -152,7 +156,7 @@ fun ProfileScreen(
         onSleepOverrideChange = { sleepOverride = it },
         onSaveClick = {
             viewModel.saveProfile(
-                birthYearStr, weightStr, heightStr, selectedGender, themePreference,
+                firstName, birthYearStr, weightStr, heightStr, selectedGender, themePreference,
                 primaryGoal, activityLevel, focusAreas.toList(), buildOverrides(),
                 quickActionsEnabled, celebrationSoundEnabled
             )
@@ -224,6 +228,7 @@ private fun FieldLabel(text: String) {
 @Composable
 private fun ProfileScreenContent(
     uiState: ProfileUiState,
+    firstName: String,
     birthYearStr: String,
     weightStr: String,
     heightStr: String,
@@ -239,6 +244,7 @@ private fun ProfileScreenContent(
     sleepOverride: String,
     goals: HealthGoals,
     calculatedAge: Int,
+    onFirstNameChange: (String) -> Unit,
     onBirthYearChange: (String) -> Unit,
     onWeightChange: (String) -> Unit,
     onHeightChange: (String) -> Unit,
@@ -334,6 +340,16 @@ private fun ProfileScreenContent(
                     modifier = Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    OutlinedTextField(
+                        value = firstName,
+                        onValueChange = onFirstNameChange,
+                        label = { Text("שם פרטי") },
+                        placeholder = { Text("איך תרצה שנקרא לך?") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+
                     OutlinedTextField(
                         value = birthYearStr,
                         onValueChange = onBirthYearChange,
@@ -852,6 +868,7 @@ fun ProfileScreenPreviewLight() {
     MyHealthTrackerTheme(darkTheme = false) {
         ProfileScreenContent(
             uiState = ProfileUiState.Idle,
+            firstName = "ישראל",
             birthYearStr = "1995",
             weightStr = "75.0",
             heightStr = "178.0",
@@ -867,6 +884,7 @@ fun ProfileScreenPreviewLight() {
             sleepOverride = "",
             goals = GoalCalculator.compute(UserProfile(birthYear = 1995, weightKg = 75.0, heightCm = 178.0, gender = "male")),
             calculatedAge = 31,
+            onFirstNameChange = {},
             onBirthYearChange = {}, onWeightChange = {}, onHeightChange = {}, onGenderSelect = {},
             onThemeSelect = {}, onPrimaryGoalSelect = {}, onActivityLevelSelect = {}, onFocusAreaToggle = {},
             onCaloriesOverrideChange = {}, onStepsOverrideChange = {}, onProteinOverrideChange = {},
