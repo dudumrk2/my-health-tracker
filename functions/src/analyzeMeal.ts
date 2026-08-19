@@ -33,6 +33,7 @@ async function readProfile(uid: string): Promise<ProfileContext | null> {
       weightKg: typeof profile.weightKg === "number" ? profile.weightKg : undefined,
       heightCm: typeof profile.heightCm === "number" ? profile.heightCm : undefined,
       gender: typeof profile.gender === "string" ? profile.gender : undefined,
+      language: typeof profile.language === "string" ? profile.language : undefined,
     };
   } catch {
     return null; // best-effort

@@ -42,7 +42,7 @@ class ReminderActivity : ComponentActivity() {
             MyHealthTrackerTheme {
                 MealReminderOverlay(
                     isVisible = visible.value,
-                    title = if (mealLabel.isNotBlank()) "📸 זמן לתעד את $mealLabel" else "היי, לא שכחת משהו?",
+                    title = if (mealLabel.isNotBlank()) getString(com.myhealthtracker.app.R.string.reminder_time_to_log, mealLabel) else getString(com.myhealthtracker.app.R.string.reminder_default_title),
                     onLogMeal = { openAddMeal(); dismiss() },
                     onRemindLater = {
                         if (slotIndex >= 0) ReminderScheduler.snooze(applicationContext, slotIndex)

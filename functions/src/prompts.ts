@@ -19,6 +19,7 @@ export interface ProfileContext {
   weightKg?: number;
   heightCm?: number;
   gender?: string;
+  language?: string;
 }
 
 export const MEAL_RESPONSE_SCHEMA = {
@@ -57,18 +58,31 @@ export const MEAL_RESPONSE_SCHEMA = {
 } as const;
 
 export function buildMealSystemInstruction(profile: ProfileContext | null): string {
+  const isEn = profile?.language === "en";
   const profileLine = profile
     ? `User context for portion estimation: weight ${profile.weightKg ?? "?"} kg, height ${profile.heightCm ?? "?"} cm, gender ${profile.gender ?? "?"}.`
     : "No user profile available.";
+
+  const langRule = isEn
+    ? "- Write the 'name' and 'quantity' fields in English. Keep all numeric values as plain numbers."
+    : "- Write the 'name' and 'quantity' fields in Hebrew (the product language). Keep all numeric values as plain numbers.";
+
+  const quantityRule = isEn
+    ? "- Use metric units. Quantity is a short human-readable string in English (e.g. '150g', '1 cup')."
+    : "- Use metric units. Quantity is a short human-readable string in Hebrew (e.g. '150 גרם', '1 כוס').";
+
+  const recRule = isEn
+    ? "- In the 'recommendation' field, provide a single, focused, actionable recommendation in English for adding an ingredient or side dish that would upgrade the meal nutritionally (e.g. adding protein, healthy fats, fiber, vegetables, or balancing the glycemic index). Limit it to one short sentence. If the input contains no food, set the recommendation field to an empty string."
+    : "- In the 'recommendation' field, provide a single, focused, actionable recommendation in Hebrew (product language) for adding an ingredient or side dish that would upgrade the meal nutritionally (e.g. adding protein, healthy fats, fiber, vegetables, or balancing the glycemic index). Limit it to one short sentence. If the input contains no food, set the recommendation field to an empty string.";
 
   return [
     "You are a nutrition analyzer. Identify food items and estimate their nutritional values.",
     profileLine,
     "Rules:",
     "- Respond with JSON only, matching the provided schema. No markdown, no wrapping text.",
-    "- Write the 'name' and 'quantity' fields in Hebrew (the product language). Keep all numeric values as plain numbers.",
-    "- Use metric units. Quantity is a short human-readable string in Hebrew (e.g. '150 גרם', '1 כוס').",
-    "- In the 'recommendation' field, provide a single, focused, actionable recommendation in Hebrew (product language) for adding an ingredient or side dish that would upgrade the meal nutritionally (e.g. adding protein, healthy fats, fiber, vegetables, or balancing the glycemic index). Limit it to one short sentence. If the input contains no food, set the recommendation field to an empty string.",
+    langRule,
+    quantityRule,
+    recRule,
     "- In the 'quality' object, evaluate the nutritional quality of the whole meal:",
     "  * processedScore: 1 (fully unprocessed/whole foods like raw fruit/vegetables/pure meat) to 5 (highly ultra-processed foods like snacks/sweet drinks/processed meats).",
     "  * hasComplexCarbs: true if the meal contains whole grains, legumes, or starchy vegetables.",
@@ -99,7 +113,7 @@ export function mealImagePrompt(note?: string): string {
 /**
  * Split response schema. The model returns one focused sentence per category.
  * The `disclaimer` is NOT requested from the model — it is a fixed server-side
- * constant (see insights/insightsParse.DISCLAIMER_HE).
+ * constant (see insights/insightsParse.DISCLAIMER_HE / DISCLAIMER_EN).
  */
 export const INSIGHTS_RESPONSE_SCHEMA = {
   type: SchemaType.OBJECT,
@@ -127,18 +141,27 @@ export const INSIGHTS_RESPONSE_SCHEMA = {
   required: ["today", "tomorrow"],
 } as const;
 
-/** Contract B — supportive daily-feedback coach. Output language is Hebrew (product language). */
-export function buildInsightsSystemInstruction(): string {
+/** Contract B — supportive daily-feedback coach. Output language is configurable (default Hebrew). */
+export function buildInsightsSystemInstruction(language: string = "he"): string {
+  const isEn = language === "en";
+  const langRule = isEn
+    ? "- Write every sentence in English. Each field is exactly ONE short, focused sentence."
+    : "- Write every sentence in Hebrew. Each field is exactly ONE short, focused sentence.";
+
+  const toneRule = isEn
+    ? "- Supportive and non-judgmental. Prefer suggestions ('you might consider') over commands ('you must')."
+    : "- Supportive and non-judgmental. Prefer suggestions ('כדאי לשקול') over commands ('אתה חייב').";
+
   return [
     "You are a supportive personal health coach giving general daily feedback.",
     "You speak to a single private user about their own day.",
     "Output rules:",
     "- Respond with JSON only, matching the provided schema. No markdown, no wrapping text.",
-    "- Write every sentence in Hebrew. Each field is exactly ONE short, focused sentence.",
+    langRule,
     "- 'today' summarizes how the day went so far; 'tomorrow' gives gentle emphases/prep for the next day.",
     "- 'general' (today only) is a one-sentence overall reflection across nutrition, activity and sleep.",
     "Tone & safety:",
-    "- Supportive and non-judgmental. Prefer suggestions ('כדאי לשקול') over commands ('אתה חייב').",
+    toneRule,
     "- Base feedback ONLY on the data provided below. Do not invent numbers or hard targets that were not given.",
     "- This is NOT medical or personalized dietary advice. Do not diagnose or prescribe diets.",
     "- If a category has no data, give a gentle, encouraging note for that category rather than a number.",
@@ -161,7 +184,7 @@ export function buildInsightsSystemInstruction(): string {
 }
 
 /** Compact, deterministic data summary fed to the model as the user turn. */
-export function buildInsightsUserPrompt(day: DayData): string {
+export function buildInsightsUserPrompt(day: DayData, language: string = "he"): string {
   const p = day.profile;
   const profileLine = p
     ? `Profile: gender ${p.gender ?? "?"}, age ${p.age ?? "?"}, weight ${p.weightKg ?? "?"} kg, height ${p.heightCm ?? "?"} cm.`
@@ -188,6 +211,11 @@ export function buildInsightsUserPrompt(day: DayData): string {
       ? `${day.meals.count} meal(s), totals ~${t.calories} kcal, protein ${t.proteinG} g, carbs ${t.carbsG} g, fat ${t.fatG} g`
       : "no meals logged yet";
 
+  const isEn = language === "en";
+  const closingDirective = isEn
+    ? "Produce focused, supportive one-sentence insights per the schema, in English."
+    : "Produce focused, supportive one-sentence insights per the schema, in Hebrew.";
+
   return [
     `Date: ${day.date}.`,
     profileLine,
@@ -198,6 +226,6 @@ export function buildInsightsUserPrompt(day: DayData): string {
     `Sleep: ${day.sleepMinutes} minutes${day.sleepMinutes === 0 ? " (no sleep data)" : ""}.`,
     `Nutrition: ${mealLine}.`,
     `Water: ${day.waterMl} ml.`,
-    "Produce focused, supportive one-sentence insights per the schema, in Hebrew.",
+    closingDirective,
   ].join("\n");
 }

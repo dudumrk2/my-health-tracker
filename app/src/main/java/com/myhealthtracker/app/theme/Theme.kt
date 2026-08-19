@@ -52,9 +52,7 @@ fun MyHealthTrackerTheme(
     }
 
   MaterialTheme(colorScheme = colorScheme, typography = Typography) {
-      CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-          content()
-      }
+      content()
   }
 }
 

@@ -27,6 +27,7 @@ data class UserProfile(
     val heightCm: Double = 0.0,
     val gender: String = "",
     val themePreference: String = "system",
+    val language: String = "he", // "he" | "en"
     // Self-declared usage goal. Chosen by the user at registration, never inferred.
     val primaryGoal: String = "maintain",      // "lose" | "maintain" | "gain"
     // TDEE activity coefficient selector, chosen by the user.
@@ -76,6 +77,7 @@ fun mapProfile(profileMap: Map<*, *>): UserProfile {
         heightCm = (profileMap["heightCm"] as? Double) ?: ((profileMap["heightCm"] as? Long)?.toDouble() ?: 0.0),
         gender = (profileMap["gender"] as? String) ?: "",
         themePreference = (profileMap["themePreference"] as? String) ?: "system",
+        language = (profileMap["language"] as? String) ?: "he",
         primaryGoal = (profileMap["primaryGoal"] as? String) ?: "maintain",
         activityLevel = (profileMap["activityLevel"] as? String) ?: "moderate",
         focusAreas = focusAreas,
@@ -150,6 +152,7 @@ class FirestoreProfileRepository(private val firestore: FirebaseFirestore = Fire
                         "heightCm" to profile.heightCm,
                         "gender" to profile.gender,
                         "themePreference" to profile.themePreference,
+                        "language" to profile.language,
                         "primaryGoal" to profile.primaryGoal,
                         "activityLevel" to profile.activityLevel,
                         "focusAreas" to profile.focusAreas,
@@ -209,6 +212,9 @@ class FirestoreProfileRepository(private val firestore: FirebaseFirestore = Fire
         }
         if (profile.heightCm < 100.0 || profile.heightCm > 250.0) {
             return Result.failure(IllegalArgumentException("Height must be between 100.0 cm and 250.0 cm"))
+        }
+        if (profile.language != "he" && profile.language != "en") {
+            return Result.failure(IllegalArgumentException("Language must be 'he' or 'en'"))
         }
         return Result.success(Unit)
     }

@@ -36,6 +36,9 @@ import com.myhealthtracker.app.notification.ReminderActivity
 import com.myhealthtracker.app.notification.ReminderScheduler
 import java.time.format.DateTimeFormatter
 
+import androidx.compose.ui.res.stringResource
+import com.myhealthtracker.app.R
+
 @Composable
 fun ReminderSettingsScreen(
     onBack: () -> Unit,
@@ -67,11 +70,11 @@ fun ReminderSettingsScreen(
 
     Column(modifier = modifier.fillMaxWidth().padding(16.dp)) {
         Text(
-            text = "תזכורות ארוחה",
+            text = stringResource(R.string.reminders_title),
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
         )
         Text(
-            text = "תזכורת קופצת בזמן הארוחה כדי שתזכור לצלם ולתעד אותה",
+            text = stringResource(R.string.reminders_subtitle),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
@@ -82,7 +85,7 @@ fun ReminderSettingsScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("הפעל תזכורות", fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.reminders_master_enable), fontWeight = FontWeight.Bold)
             Switch(checked = settings.masterEnabled, onCheckedChange = { vm.setMasterEnabled(it) })
         }
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
@@ -92,18 +95,24 @@ fun ReminderSettingsScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("צליל התראה", fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.reminders_sound), fontWeight = FontWeight.Bold)
             Switch(checked = settings.soundEnabled, onCheckedChange = { vm.setSoundEnabled(it) })
         }
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
 
         settings.slots.forEachIndexed { index, slot ->
+            val label = when (slot.mealLabel) {
+                "ארוחת בוקר", "Breakfast" -> stringResource(R.string.reminders_morning_meal)
+                "ארוחת צהריים", "Lunch" -> stringResource(R.string.reminders_noon_meal)
+                "ארוחת ערב", "Dinner" -> stringResource(R.string.reminders_evening_meal)
+                else -> slot.mealLabel
+            }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(slot.mealLabel, modifier = Modifier.weight(1f))
+                Text(label, modifier = Modifier.weight(1f))
                 Text(
                     text = slot.time.format(fmt),
                     style = MaterialTheme.typography.titleMedium,
@@ -129,22 +138,23 @@ fun ReminderSettingsScreen(
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) {
-                Text("אפשר הצגה מעל אפליקציות אחרות")
+                Text(stringResource(R.string.reminders_grant_overlay))
             }
         }
 
+        val testMealName = stringResource(R.string.reminders_test_meal_name)
         OutlinedButton(
             onClick = {
-                ReminderActivity.start(context, "ארוחת ניסיון", -1, settings.soundEnabled)
+                ReminderActivity.start(context, testMealName, -1, settings.soundEnabled)
             },
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             enabled = hasOverlayPermission
         ) {
-            Text("בדיקת תזכורת (ניסיון)")
+            Text(stringResource(R.string.reminders_test_button))
         }
 
         Button(onClick = onBack, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
-            Text("חזרה")
+            Text(stringResource(R.string.common_back))
         }
     }
 }

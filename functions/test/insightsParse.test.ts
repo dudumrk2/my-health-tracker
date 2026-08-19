@@ -1,4 +1,4 @@
-import { parseInsights, InsightsParseError, DISCLAIMER_HE } from "../src/insights/insightsParse";
+import { parseInsights, InsightsParseError, DISCLAIMER_HE, DISCLAIMER_EN } from "../src/insights/insightsParse";
 
 const validRaw = () =>
   JSON.stringify({
@@ -32,6 +32,12 @@ describe("parseInsights", () => {
     withModelDisclaimer.disclaimer = "תתייעץ עם רופא מיד!!"; // model output must be ignored
     const r = parseInsights(JSON.stringify(withModelDisclaimer));
     expect(r.disclaimer).toBe(DISCLAIMER_HE);
+  });
+
+  it("attaches DISCLAIMER_EN when language is 'en'", () => {
+    const r = parseInsights(validRaw(), "en");
+    expect(r.disclaimer).toBe(DISCLAIMER_EN);
+    expect(r.disclaimer).toContain("medical or nutritional advice");
   });
 
   it("throws on non-JSON output", () => {

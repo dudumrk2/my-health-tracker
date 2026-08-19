@@ -22,7 +22,7 @@ describe("buildDayData", () => {
     });
 
     expect(d.date).toBe("2026-06-13");
-    expect(d.profile).toEqual({ gender: "male", weightKg: 80, heightCm: 180, age: 36 });
+    expect(d.profile).toEqual({ gender: "male", weightKg: 80, heightCm: 180, age: 36, language: "he" });
     expect(d.steps).toBe(8500);
     expect(d.sleepMinutes).toBe(420);
     expect(d.workouts).toEqual([
@@ -60,6 +60,28 @@ describe("buildDayData", () => {
     expect(d.profile?.focusAreas).toEqual(["menopause", "heart_health"]);
   });
 
+  it("carries language onto the profile, defaulting to 'he'", () => {
+    const dEn = buildDayData({
+      date: "2026-06-13",
+      currentYear: 2026,
+      userDoc: { profile: { language: "en" } },
+      healthDaily: null,
+      meals: [],
+      water: null,
+    });
+    expect(dEn.profile?.language).toBe("en");
+
+    const dDefault = buildDayData({
+      date: "2026-06-13",
+      currentYear: 2026,
+      userDoc: { profile: {} },
+      healthDaily: null,
+      meals: [],
+      water: null,
+    });
+    expect(dDefault.profile?.language).toBe("he");
+  });
+
   it("handles a partial day (meals only, no health/water/profile)", () => {
     const d = buildDayData({
       date: "2026-06-13",
@@ -92,7 +114,7 @@ describe("buildDayData", () => {
       water: null,
     });
 
-    expect(d.profile).toEqual({ gender: "female", weightKg: 60, heightCm: 165, age: 36 });
+    expect(d.profile).toEqual({ gender: "female", weightKg: 60, heightCm: 165, age: 36, language: "he" });
     expect(d.meals.count).toBe(0);
     expect(d.meals.totals).toEqual({ calories: 0, proteinG: 0, carbsG: 0, fatG: 0 });
     expect(d.hasHealthData).toBe(false);
@@ -135,7 +157,7 @@ describe("buildDayData", () => {
       water: { amountMl: "nope" } as never,
     });
 
-    expect(d.profile).toEqual({ gender: "female", weightKg: undefined, heightCm: undefined, age: undefined });
+    expect(d.profile).toEqual({ gender: "female", weightKg: undefined, heightCm: undefined, age: undefined, language: "he" });
     expect(d.steps).toBe(0);
     expect(d.workouts).toEqual([]);
     expect(d.meals.count).toBe(1);

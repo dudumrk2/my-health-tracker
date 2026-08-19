@@ -52,8 +52,19 @@ class MainActivity : ComponentActivity() {
             }.collectAsState(initial = Result.success(null))
 
             val themePreference = profileData.getOrNull()?.themePreference ?: "system"
+            val language = profileData.getOrNull()?.language ?: "he"
             val quickActionsEnabled = profileData.getOrNull()?.quickActionsEnabled ?: true
             val celebrationSoundEnabled = profileData.getOrNull()?.celebrationSoundEnabled ?: true
+
+            androidx.compose.runtime.LaunchedEffect(language) {
+                val tag = if (language == "en") "en" else "he"
+                val current = androidx.appcompat.app.AppCompatDelegate.getApplicationLocales().toLanguageTags()
+                if (current != tag) {
+                    androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
+                        androidx.core.os.LocaleListCompat.forLanguageTags(tag)
+                    )
+                }
+            }
 
             val darkTheme = when (themePreference) {
                 "light" -> false
