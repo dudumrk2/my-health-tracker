@@ -73,19 +73,20 @@ async function runForAllUsers(date: string, mode: WriteMode, trigger: string, sk
   // timeout — switch to a fan-out architecture (Cloud Tasks / Pub/Sub) so user
   // batches run in parallel.
   const users = await getFirestore().collection("users").get();
-  let written = 0, skipped = 0, failed = 0;
+  let written = 0, skipped = 0, failed = 0, fallback = 0;
   for (const userDoc of users.docs) {
     try {
       const r = await runInsightsForUser(userDoc.id, date, { mode, trigger, skipEmpty }, prodDeps());
       if (r.status === "written") written++;
       else if (r.status === "skipped") skipped++;
+      else if (r.status === "fallback") fallback++;
       else failed++;
     } catch (e) {
       failed++;
       logger.error("insights user iteration error", { uid: userDoc.id, trigger, message: (e as Error).message });
     }
   }
-  logger.info("insights batch complete", { trigger, date, users: users.size, written, skipped, failed });
+  logger.info("insights batch complete", { trigger, date, users: users.size, written, skipped, fallback, failed });
 }
 
 export function mapInsightsError(e: unknown): HttpsError {

@@ -40,6 +40,13 @@ class ProfileViewModelDeleteTest {
         }
     }
 
+    private class NoopBodyRepo : com.myhealthtracker.app.data.body.BodyMeasurementRepository {
+        override val bodyMeasurements =
+            kotlinx.coroutines.flow.MutableStateFlow<List<com.myhealthtracker.app.data.model.BodyMeasurement>>(emptyList())
+        override fun addBodyMeasurement(date: String, weight: Double?, waist: Double?, hips: Double?, note: String) {}
+        override fun seedWeight(date: String, weight: Double) {}
+    }
+
     @Before fun setUp() { Dispatchers.setMain(dispatcher) }
     @After fun tearDown() { Dispatchers.resetMain() }
 
@@ -47,6 +54,7 @@ class ProfileViewModelDeleteTest {
         profileRepository = FakeProfileRepo(),
         uidProvider = { "uid-1" },
         accountRepository = account,
+        bodyMeasurementRepository = NoopBodyRepo(),
         authNameProvider = { null }
     )
 

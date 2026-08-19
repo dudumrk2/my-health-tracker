@@ -16,6 +16,21 @@ const fullDay = (): DayData => ({
   weeklyStrengthWorkouts: 0,
 });
 
+const noMealsDay = (): DayData => ({
+  date: "2026-06-13",
+  profile: { gender: "male", weightKg: 80, heightCm: 180, age: 36 },
+  steps: 9000,
+  sleepMinutes: 400,
+  workouts: [{ type: "Running", durationMin: 30 }],
+  meals: { count: 0, totals: { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 } },
+  waterMl: 1000,
+  hasHealthData: true,
+  hasMeals: false,
+  isEmpty: false,
+  weeklyAerobicMinutes: 60,
+  weeklyStrengthWorkouts: 1,
+});
+
 const emptyDay = (): DayData => ({
   date: "2026-06-13",
   profile: null,
@@ -96,10 +111,72 @@ describe("runInsightsForUser", () => {
     expect(writes).toHaveLength(0);
   });
 
-  it("still runs on an empty day when skipEmpty=false (evening must author tomorrow)", async () => {
+  it("still produces output on an empty day when skipEmpty=false (evening fallback note)", async () => {
     const { d, writes } = deps({ fetchDayData: async () => emptyDay() });
     const r = await runInsightsForUser("u1", "2026-06-13", { mode: "evening", trigger: "evening", skipEmpty: false }, d);
+    expect(r.status).toBe("fallback");
+    expect(writes).toHaveLength(1);
+  });
+
+  it("no meals: writes the fallback note WITHOUT calling Gemini", async () => {
+    let generated = false;
+    const { d, writes } = deps({
+      fetchDayData: async () => noMealsDay(),
+      generate: async () => {
+        generated = true;
+        return validModelOutput;
+      },
+    });
+    const r = await runInsightsForUser("u1", "2026-06-13", { mode: "evening", trigger: "evening", skipEmpty: false }, d);
+    expect(r.status).toBe("fallback");
+    expect(generated).toBe(false);
+    expect(writes).toHaveLength(1);
+    const [, , parsed, mode] = writes[0] as [string, string, { today: { activity: string } }, string, string];
+    expect(mode).toBe("evening");
+    expect(parsed.today.activity).toContain("9000"); // goal-linked activity from the day
+  });
+
+  it("empty day at midday still skips before the meal gate", async () => {
+    let generated = false;
+    const { d, writes } = deps({
+      fetchDayData: async () => emptyDay(),
+      generate: async () => {
+        generated = true;
+        return validModelOutput;
+      },
+    });
+    const r = await runInsightsForUser("u1", "2026-06-13", { mode: "todayOnly", trigger: "midday", skipEmpty: true }, d);
+    expect(r.status).toBe("skipped");
+    expect(generated).toBe(false);
+    expect(writes).toHaveLength(0);
+  });
+
+  it("empty day at evening writes the fallback note (no Gemini)", async () => {
+    let generated = false;
+    const { d, writes } = deps({
+      fetchDayData: async () => emptyDay(),
+      generate: async () => {
+        generated = true;
+        return validModelOutput;
+      },
+    });
+    const r = await runInsightsForUser("u1", "2026-06-13", { mode: "evening", trigger: "evening", skipEmpty: false }, d);
+    expect(r.status).toBe("fallback");
+    expect(generated).toBe(false);
+    expect(writes).toHaveLength(1);
+  });
+
+  it("a day with meals still calls Gemini (AI path unchanged)", async () => {
+    let generated = false;
+    const { d, writes } = deps({
+      generate: async () => {
+        generated = true;
+        return validModelOutput;
+      },
+    });
+    const r = await runInsightsForUser("u1", "2026-06-13", { mode: "evening", trigger: "evening", skipEmpty: false }, d);
     expect(r.status).toBe("written");
+    expect(generated).toBe(true);
     expect(writes).toHaveLength(1);
   });
 });

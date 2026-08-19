@@ -78,7 +78,7 @@ Field content:
   daily summary can be produced.
 - **today.nutrition** — gentle prompt to log today's meals; mention water.
 - **today.activity** — goal-linked:
-  - Steps vs daily steps goal.
+  - Steps vs the user's daily steps goal (from settings — see §3).
   - Weekly aerobic minutes vs 150 min, weekly strength workouts vs 2.
   - When activity exists, acknowledge progress; when it does not, gently nudge
     toward the goals.
@@ -88,17 +88,26 @@ Field content:
 
 ### 3. Server-side goals — new `functions/src/insights/goals.ts`
 
+**The daily steps goal comes from the user's settings.** The user's customized
+goal is persisted at `users/{uid}.profile.goalOverrides.steps`
+(`ProfileRepository`), and that is the value the fallback note uses. The shared
+default is used **only** when the user has not set a custom goal — which is
+exactly what the client itself displays in that case (client
+`GoalCalculator.DEFAULT_STEPS`). There is no profile-derived step computation;
+the only "user setting" for steps is `goalOverrides.steps`.
+
+Resolution: `stepsGoal = day.profile?.stepsGoalOverride ?? DEFAULT_STEPS_GOAL`.
+
 Extract goal constants reused by both the insights prompt and the fallback:
 
 - `WEEKLY_AEROBIC_GOAL_MIN = 150`
 - `WEEKLY_STRENGTH_GOAL = 2`
-- `DAILY_STEPS_GOAL = 8000` (mirrors client `GoalCalculator.DEFAULT_STEPS`)
-
-The daily steps goal honors `profile.goalOverrides.steps` when present; the
-weekly goals stay fixed constants (matching today's hardcoded prompt values).
+- `DEFAULT_STEPS_GOAL = 8000` — fallback default only, mirrors client
+  `GoalCalculator.DEFAULT_STEPS`. The weekly goals stay fixed constants
+  (matching today's hardcoded prompt values).
 
 Supporting change: extend `aggregate.ts` so `buildProfile` extracts
-`goalOverrides.steps` into `DayProfile` (new optional field, e.g.
+`goalOverrides.steps` into `DayProfile` (new optional field
 `stepsGoalOverride?: number`). `prompts.ts` `buildInsightsUserPrompt` /
 `buildInsightsSystemInstruction` reference the new constants instead of inline
 `150` / `2` literals so there is a single source of truth.
@@ -131,8 +140,8 @@ existing insights document for the next run, exactly as the AI path does.
     fixed disclaimer.
   - Activity field reflects goal progress when activity exists, and nudges when
     it does not.
-  - `goalOverrides.steps` overrides the default daily steps goal in the activity
-    line.
+  - The activity line uses `goalOverrides.steps` (user setting) when present, and
+    falls back to `DEFAULT_STEPS_GOAL` only when it is absent.
 - Update `functions/test/prompt.test.ts` if assertions depend on the inline
   `150` / `2` literals now sourced from `goals.ts`.
 
