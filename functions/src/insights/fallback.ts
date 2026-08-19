@@ -1,16 +1,41 @@
 import { DayData } from "./aggregate";
-import { ParsedInsights, DISCLAIMER_HE } from "./insightsParse";
+import { ParsedInsights, DISCLAIMER_HE, DISCLAIMER_EN } from "./insightsParse";
 import { WEEKLY_AEROBIC_GOAL_MIN, WEEKLY_STRENGTH_GOAL, dailyStepsGoal } from "./goals";
 
 /**
  * Deterministic, non-AI insights for a day with no logged meals.
  * Returns the same shape as parsed Gemini output so it flows through writeInsights
- * unchanged. All copy is Hebrew (product language); the activity line is linked to
- * the user's daily steps goal and the fixed weekly exercise goals.
+ * unchanged. Supports both Hebrew and English based on the language parameter.
  */
-export function buildFallbackInsights(day: DayData): ParsedInsights {
+export function buildFallbackInsights(day: DayData, language: string = "he"): ParsedInsights {
   const stepsGoal = dailyStepsGoal(day.profile);
   const hasActivity = day.steps > 0 || day.workouts.length > 0;
+  const isEn = language === "en";
+
+  if (isEn) {
+    const activity = hasActivity
+      ? `Great job on staying active today! You recorded ${day.steps} steps towards your goal of ${stepsGoal}, and this week ${day.weeklyAerobicMinutes} of ${WEEKLY_AEROBIC_GOAL_MIN} aerobic minutes and ${day.weeklyStrengthWorkouts} of ${WEEKLY_STRENGTH_GOAL} strength workouts — keep it up!`
+      : `No activity recorded yet today; every bit of movement counts — aim for ${stepsGoal} steps daily, ${WEEKLY_AEROBIC_GOAL_MIN} aerobic min and ${WEEKLY_STRENGTH_GOAL} strength workouts weekly.`;
+
+    return {
+      today: {
+        general:
+          "You haven't logged any meals today yet, so there is not enough data for a nutrition summary — remember to log your meals and water for personalized insights.",
+        nutrition:
+          "No meals recorded today; consider logging what you ate and updating your water intake so we can provide nutritional feedback.",
+        activity,
+        sleep:
+          "Consistent, quality sleep supports energy and focus — try to maintain regular sleep hours.",
+      },
+      tomorrow: {
+        nutrition:
+          "Tomorrow, try to log your meals and water throughout the day to get a complete nutrition picture.",
+        activity: `Continue aiming for ${WEEKLY_AEROBIC_GOAL_MIN} minutes of aerobic exercise and ${WEEKLY_STRENGTH_GOAL} strength workouts per week.`,
+        sleep: "Aim for a consistent bedtime to wake up feeling refreshed.",
+      },
+      disclaimer: DISCLAIMER_EN,
+    };
+  }
 
   const activity = hasActivity
     ? `כל הכבוד על הפעילות היום! צברת ${day.steps} צעדים מתוך יעד של ${stepsGoal}, והשבוע ${day.weeklyAerobicMinutes} מתוך ${WEEKLY_AEROBIC_GOAL_MIN} דק' אירובי ו-${day.weeklyStrengthWorkouts} מתוך ${WEEKLY_STRENGTH_GOAL} אימוני כוח — שווה להמשיך כך.`

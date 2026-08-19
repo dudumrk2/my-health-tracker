@@ -30,6 +30,18 @@ describe("buildFallbackInsights", () => {
     expect(r.disclaimer).toBe(DISCLAIMER_HE);
   });
 
+  it("returns English fallback insights when language is 'en'", () => {
+    const r = buildFallbackInsights(baseNoMealsDay(), "en");
+    for (const v of [r.today.general, r.today.nutrition, r.today.activity, r.today.sleep,
+      r.tomorrow.nutrition, r.tomorrow.activity, r.tomorrow.sleep]) {
+      expect(typeof v).toBe("string");
+      expect(v.trim().length).toBeGreaterThan(0);
+      expect(v).not.toMatch(/[֐-׿]/); // no Hebrew characters
+    }
+    expect(r.today.general).toContain("logged");
+    expect(r.disclaimer).toContain("medical or nutritional advice");
+  });
+
   it("today.general and today.nutrition prompt logging meals and water", () => {
     const r = buildFallbackInsights(baseNoMealsDay());
     const combined = `${r.today.general} ${r.today.nutrition}`;

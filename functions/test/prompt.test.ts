@@ -9,12 +9,20 @@ import {
 import { DayData } from "../src/insights/aggregate";
 
 describe("buildMealSystemInstruction", () => {
-  it("includes Contract A safety constraints", () => {
+  it("includes Contract A safety constraints in Hebrew by default", () => {
     const s = buildMealSystemInstruction(null);
     expect(s).toMatch(/JSON/i);
     expect(s).toMatch(/items/);
     expect(s).toMatch(/lowConfidence/);
     expect(s.toLowerCase()).toContain("empty");
+    expect(s).toContain("Hebrew");
+  });
+
+  it("includes English output instructions when language is 'en'", () => {
+    const s = buildMealSystemInstruction({ language: "en" });
+    expect(s).toContain("Write the 'name' and 'quantity' fields in English");
+    expect(s).toContain("recommendation in English");
+    expect(s).not.toContain("Hebrew");
   });
 
   it("includes profile context when provided", () => {
@@ -33,13 +41,20 @@ describe("MEAL_RESPONSE_SCHEMA", () => {
 });
 
 describe("buildInsightsSystemInstruction (self-declared focus, no auto-demographics)", () => {
-  const s = buildInsightsSystemInstruction();
+  const s = buildInsightsSystemInstruction("he");
+  const sEn = buildInsightsSystemInstruction("en");
+
+  it("instructs Hebrew output by default", () => {
+    expect(s).toContain("Write every sentence in Hebrew");
+    expect(sEn).toContain("Write every sentence in English");
+  });
 
   it("never infers a medical state from age or gender", () => {
     expect(s).not.toMatch(/aged 40/i);
     expect(s).not.toMatch(/40 or older/i);
     expect(s.toLowerCase()).not.toContain("pre-menopause");
     expect(s.toLowerCase()).toContain("never infer");
+    expect(sEn.toLowerCase()).toContain("never infer");
   });
 
   it("treats focusAreas as the only trigger for sensitive content", () => {
@@ -79,6 +94,16 @@ describe("buildInsightsUserPrompt (goal + declared focus)", () => {
     );
     expect(p).toMatch(/lose/);
     expect(p).toMatch(/menopause/);
+    expect(p).toContain("in Hebrew");
+  });
+
+  it("requests English output when language is 'en'", () => {
+    const p = buildInsightsUserPrompt(
+      emptyDay({ gender: "male", age: 30, primaryGoal: "maintain" }),
+      "en"
+    );
+    expect(p).toContain("in English");
+    expect(p).not.toContain("in Hebrew");
   });
 
   it("omits the focus-areas line when none were declared", () => {

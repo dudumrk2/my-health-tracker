@@ -49,8 +49,10 @@ export async function runInsightsForUser(
       return { status: "skipped" };
     }
 
+    const lang = day.profile?.language || "he";
+
     if (!day.hasMeals) {
-      const fallback = buildFallbackInsights(day);
+      const fallback = buildFallbackInsights(day, lang);
       await deps.write(uid, date, fallback, opts.mode, opts.trigger);
       logger.info("insights fallback note written", {
         uid, date, mode: opts.mode, trigger: opts.trigger, durationMs: Date.now() - started,
@@ -58,8 +60,8 @@ export async function runInsightsForUser(
       return { status: "fallback" };
     }
 
-    const raw = await deps.generate(buildInsightsSystemInstruction(), buildInsightsUserPrompt(day));
-    const parsed = parseInsights(raw);
+    const raw = await deps.generate(buildInsightsSystemInstruction(lang), buildInsightsUserPrompt(day, lang));
+    const parsed = parseInsights(raw, lang);
     await deps.write(uid, date, parsed, opts.mode, opts.trigger);
 
     logger.info("insights written", {

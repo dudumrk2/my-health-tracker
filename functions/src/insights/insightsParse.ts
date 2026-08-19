@@ -19,9 +19,13 @@ export interface ParsedInsights {
   disclaimer: string;
 }
 
-/** Fixed, non-medical disclaimer. Always written server-side, never taken from model output. */
+/** Fixed, non-medical disclaimer in Hebrew. */
 export const DISCLAIMER_HE =
   "התובנות הן מידע כללי בלבד ואינן מהוות ייעוץ רפואי או תזונתי. להחלטות בריאות יש להתייעץ עם איש מקצוע מוסמך.";
+
+/** Fixed, non-medical disclaimer in English. */
+export const DISCLAIMER_EN =
+  "Insights are general information only and do not constitute medical or nutritional advice. For health decisions, consult a qualified professional.";
 
 function requireSentence(obj: Record<string, unknown>, block: string, field: string): string {
   const v = obj[field];
@@ -39,8 +43,8 @@ function requireObject(parent: Record<string, unknown>, key: string): Record<str
   return v as Record<string, unknown>;
 }
 
-/** Parses the split model output, validating every category field, and attaches the fixed disclaimer. */
-export function parseInsights(raw: string): ParsedInsights {
+/** Parses the split model output, validating every category field, and attaches the fixed disclaimer based on language. */
+export function parseInsights(raw: string, language: string = "he"): ParsedInsights {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -68,5 +72,6 @@ export function parseInsights(raw: string): ParsedInsights {
     sleep: requireSentence(tomorrowRaw, "tomorrow", "sleep"),
   };
 
-  return { today, tomorrow, disclaimer: DISCLAIMER_HE };
+  const disclaimer = language === "en" ? DISCLAIMER_EN : DISCLAIMER_HE;
+  return { today, tomorrow, disclaimer };
 }
