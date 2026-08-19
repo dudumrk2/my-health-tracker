@@ -23,6 +23,7 @@ datastore = "1.1.7"
 lottie = "6.6.6"
 
 [libraries]
+androidx-appcompat = { module = "androidx.appcompat:appcompat", version = "1.7.0" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidxActivity" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "androidxComposeBom" }
