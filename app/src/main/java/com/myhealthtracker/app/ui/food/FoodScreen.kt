@@ -58,6 +58,7 @@ import com.myhealthtracker.app.R
 import com.myhealthtracker.app.data.goals.GoalCalculator
 import com.myhealthtracker.app.data.goals.HealthGoals
 import com.myhealthtracker.app.data.model.MealEntry
+import com.myhealthtracker.app.ui.components.MainTopAppBar
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
 import com.myhealthtracker.app.data.model.MealQuality
@@ -205,7 +206,7 @@ private fun FoodContent(
 
     val isToday = remember(state.selectedDate) { state.selectedDate == LocalDate.now() }
 
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+    Box {
         Scaffold(
             modifier = modifier.fillMaxSize(),
             floatingActionButton = {
@@ -229,50 +230,15 @@ private fun FoodContent(
                     .background(MaterialTheme.colorScheme.background)
             ) {
                 // Top Bar
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Right in RTL = Refresh (circular arrow)
-                    IconButton(
-                        onClick = onRefreshClick,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        if (state.isRefreshing) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = stringResource(R.string.common_retry),
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
+                MainTopAppBar(
+                    title = stringResource(R.string.food_title),
+                    isRefreshing = state.isRefreshing,
+                    onRefreshClick = onRefreshClick,
+                    onProfileClick = onProfileClick
+                )
 
-                    // Center = Title
-                    Text(
-                        text = stringResource(R.string.food_title),
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    // Left in RTL = Profile
-                    IconButton(onClick = onProfileClick) {
-                        Icon(
-                            imageVector = Icons.Default.AccountCircle,
-                            contentDescription = stringResource(R.string.nav_profile),
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
-
-                // Horizontal calendar strip (forcing LTR so it goes from left to right chronologically)
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                // Horizontal calendar strip
+                Box {
                     LazyRow(
                         modifier = Modifier
                             .fillMaxWidth()
