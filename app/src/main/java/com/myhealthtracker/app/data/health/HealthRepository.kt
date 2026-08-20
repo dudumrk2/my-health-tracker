@@ -159,43 +159,67 @@ class FirestoreHealthRepository(
             .collection("healthDaily")
             .document(date)
 
-        val sleepMinutes = aggregateSleepMinutes(sleepSessions)
+        docRef.get().addOnSuccessListener { snapshot ->
+            try {
+                // To avoid overwriting manual workouts, we fetch the existing ones and merge.
+                val dto = if (snapshot.exists()) snapshot.toObject(DailyHealthDataDto::class.java) else null
+                val manualWorkouts = dto?.workouts?.filter { it.source == "manual" }?.map {
+                    ExerciseSessionInfo(
+                        type = it.type ?: "Exercise",
+                        durationMin = it.durationMin ?: 0,
+                        startTime = it.startTime?.toDate()?.toInstant() ?: Instant.now(),
+                        source = "manual"
+                    )
+                } ?: emptyList()
 
-        val hasHC = workouts.any { it.source == "health_connect" }
-        val hasManual = workouts.any { it.source == "manual" }
-        val docSource = when {
-            hasHC && hasManual -> "mixed"
-            hasManual -> "manual"
-            else -> "health_connect"
+                // Health Connect workouts passed in the 'workouts' param are considered authoritative
+                // for the HC source. Manual workouts are preserved.
+                val combinedWorkouts = workouts.filter { it.source != "manual" } + manualWorkouts
+
+                val sleepMinutes = aggregateSleepMinutes(sleepSessions)
+                val hasHC = combinedWorkouts.any { it.source == "health_connect" }
+                val hasManual = combinedWorkouts.any { it.source == "manual" }
+                val docSource = when {
+                    hasHC && hasManual -> "mixed"
+                    hasManual -> "manual"
+                    else -> "health_connect"
+                }
+
+                val data = mapOf(
+                    "date" to date,
+                    "steps" to steps,
+                    "sleepMinutes" to sleepMinutes,
+                    "sleepSessions" to sleepSessions.map { mapOf(
+                        "start" to Timestamp(it.start.epochSecond, it.start.nano), 
+                        "end" to Timestamp(it.end.epochSecond, it.end.nano)
+                    ) },
+                    "workouts" to combinedWorkouts.map { mapOf(
+                        "type" to it.type, 
+                        "durationMin" to it.durationMin, 
+                        "startTime" to Timestamp(it.startTime.epochSecond, it.startTime.nano), 
+                        "source" to it.source
+                    ) },
+                    "syncedAt" to Timestamp.now(),
+                    "source" to docSource
+                )
+
+                docRef.set(data, SetOptions.merge())
+                    .addOnSuccessListener {
+                        trySend(Result.success(Unit))
+                        close()
+                    }
+                    .addOnFailureListener { exception ->
+                        trySend(Result.failure(exception))
+                        close()
+                    }
+            } catch (e: Exception) {
+                trySend(Result.failure(e))
+                close()
+            }
+        }.addOnFailureListener { e ->
+            trySend(Result.failure(e))
+            close()
         }
-
-        val data = mapOf(
-            "date" to date,
-            "steps" to steps,
-            "sleepMinutes" to sleepMinutes,
-            "sleepSessions" to sleepSessions.map { mapOf(
-                "start" to Timestamp(it.start.epochSecond, it.start.nano), 
-                "end" to Timestamp(it.end.epochSecond, it.end.nano)
-            ) },
-            "workouts" to workouts.map { mapOf(
-                "type" to it.type, 
-                "durationMin" to it.durationMin, 
-                "startTime" to Timestamp(it.startTime.epochSecond, it.startTime.nano), 
-                "source" to it.source
-            ) },
-            "syncedAt" to Timestamp.now(),
-            "source" to docSource
-        )
-
-        docRef.set(data, SetOptions.merge())
-            .addOnSuccessListener {
-                trySend(Result.success(Unit))
-                close()
-            }
-            .addOnFailureListener { exception ->
-                trySend(Result.failure(exception))
-                close()
-            }
         awaitClose()
     }
 

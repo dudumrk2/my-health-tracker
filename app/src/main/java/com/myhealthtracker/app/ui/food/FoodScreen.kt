@@ -112,8 +112,20 @@ private fun formatLiters(ml: Int): String {
 }
 
 @Composable
-private fun getMealTitle(description: String, index: Int): String {
-    val descLower = description.lowercase()
+private fun getMealTitle(meal: MealEntry, index: Int): String {
+    val type = meal.mealType
+    if (type != null) {
+        return when (type) {
+            "breakfast" -> stringResource(R.string.meal_breakfast)
+            "lunch" -> stringResource(R.string.meal_lunch)
+            "dinner" -> stringResource(R.string.meal_dinner)
+            "snack" -> stringResource(R.string.meal_snack)
+            else -> stringResource(R.string.meal_generic)
+        }
+    }
+    
+    // Legacy heuristic fallback
+    val descLower = meal.description.lowercase()
     return when {
         descLower.contains("בוקר") || descLower.contains("יוגורט") || descLower.contains("breakfast") -> stringResource(R.string.meal_breakfast)
         descLower.contains("צהריים") || descLower.contains("עוף") || descLower.contains("חזה") || descLower.contains("lunch") -> stringResource(R.string.meal_lunch)
@@ -208,7 +220,7 @@ private fun FoodContent(
                     )
                 }
             },
-            floatingActionButtonPosition = FabPosition.Start
+            floatingActionButtonPosition = FabPosition.End
         ) { paddingValues ->
             Column(
                 modifier = Modifier
@@ -603,7 +615,7 @@ private fun FoodContent(
                             }
                         } else {
                             itemsIndexed(state.meals) { index, meal ->
-                                val mealTitle = getMealTitle(meal.description, index)
+                                val mealTitle = getMealTitle(meal, index)
                                 Card(
                                     shape = RoundedCornerShape(16.dp),
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),

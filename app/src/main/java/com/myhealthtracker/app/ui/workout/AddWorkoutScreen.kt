@@ -61,6 +61,8 @@ fun AddWorkoutScreen(
     val viewModel: AddWorkoutViewModel = viewModel()
     val selectedType by viewModel.selectedType.collectAsState()
     val durationStr by viewModel.durationStr.collectAsState()
+    val selectedDate by viewModel.selectedDate.collectAsState()
+    val selectedTime by viewModel.selectedTime.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val isSaved by viewModel.isSaved.collectAsState()
 
@@ -76,9 +78,13 @@ fun AddWorkoutScreen(
     AddWorkoutContent(
         selectedType = selectedType,
         durationStr = durationStr,
+        selectedDate = selectedDate,
+        selectedTime = selectedTime,
         errorResId = errorMessage,
         onTypeSelect = { viewModel.selectType(it) },
         onDurationChange = { viewModel.onDurationChange(it) },
+        onDateChange = { viewModel.onDateChange(it) },
+        onTimeChange = { viewModel.onTimeChange(it) },
         onSaveClick = { viewModel.saveWorkout() },
         onCloseClick = onDismiss,
         modifier = modifier
@@ -96,9 +102,13 @@ private data class WorkoutTypeOption(
 fun AddWorkoutContent(
     selectedType: String?,
     durationStr: String,
+    selectedDate: LocalDate,
+    selectedTime: LocalTime,
     errorResId: Int?,
     onTypeSelect: (String) -> Unit,
     onDurationChange: (String) -> Unit,
+    onDateChange: (LocalDate) -> Unit,
+    onTimeChange: (LocalTime) -> Unit,
     onSaveClick: () -> Unit,
     onCloseClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -120,6 +130,32 @@ fun AddWorkoutContent(
     }
 
     val context = androidx.compose.ui.platform.LocalContext.current
+    
+    // Date Picker Dialog
+    val datePickerDialog = remember {
+        android.app.DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                onDateChange(LocalDate.of(year, month + 1, dayOfMonth))
+            },
+            selectedDate.year,
+            selectedDate.monthValue - 1,
+            selectedDate.dayOfMonth
+        )
+    }
+
+    // Time Picker Dialog
+    val timePickerDialog = remember {
+        android.app.TimePickerDialog(
+            context,
+            { _, hourOfDay, minute ->
+                onTimeChange(LocalTime.of(hourOfDay, minute))
+            },
+            selectedTime.hour,
+            selectedTime.minute,
+            true // is24HourView
+        )
+    }
     val filteredWorkoutTypes = remember(searchQuery, workoutTypes) {
         if (searchQuery.isBlank()) {
             workoutTypes
@@ -313,7 +349,9 @@ fun AddWorkoutContent(
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { datePickerDialog.show() }
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
@@ -327,7 +365,7 @@ fun AddWorkoutContent(
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
-                                text = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                                text = selectedDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 14.sp
@@ -347,7 +385,9 @@ fun AddWorkoutContent(
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { timePickerDialog.show() }
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
@@ -361,7 +401,7 @@ fun AddWorkoutContent(
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
-                                text = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")),
+                                text = selectedTime.format(DateTimeFormatter.ofPattern("HH:mm")),
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 14.sp
@@ -453,9 +493,13 @@ fun AddWorkoutScreenPreviewLight() {
         AddWorkoutContent(
             selectedType = "running",
             durationStr = "30",
+            selectedDate = LocalDate.now(),
+            selectedTime = LocalTime.now(),
             errorResId = null,
             onTypeSelect = {},
             onDurationChange = {},
+            onDateChange = {},
+            onTimeChange = {},
             onSaveClick = {},
             onCloseClick = {}
         )
@@ -469,9 +513,13 @@ fun AddWorkoutScreenPreviewDark() {
         AddWorkoutContent(
             selectedType = null,
             durationStr = "",
+            selectedDate = LocalDate.now(),
+            selectedTime = LocalTime.now(),
             errorResId = null,
             onTypeSelect = {},
             onDurationChange = {},
+            onDateChange = {},
+            onTimeChange = {},
             onSaveClick = {},
             onCloseClick = {}
         )

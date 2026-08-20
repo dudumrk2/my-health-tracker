@@ -11,10 +11,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -25,6 +28,8 @@ import android.os.Build
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import com.myhealthtracker.app.data.goals.ACTIVITY_LEVEL_OPTIONS
 import com.myhealthtracker.app.data.goals.FOCUS_AREA_OPTIONS
 import com.myhealthtracker.app.data.goals.GoalCalculator
@@ -50,46 +55,55 @@ fun ProfileScreen(
     val calculatedAge by viewModel.calculatedAge.collectAsState()
     val accountState by viewModel.accountState.collectAsState()
 
-    var firstName by remember { mutableStateOf("") }
-    var birthYearStr by remember { mutableStateOf("") }
-    var weightStr by remember { mutableStateOf("") }
-    var heightStr by remember { mutableStateOf("") }
-    var selectedGender by remember { mutableStateOf("") }
-    var themePreference by remember { mutableStateOf("system") }
-    var language by remember { mutableStateOf("he") }
-    var primaryGoal by remember { mutableStateOf("maintain") }
-    var activityLevel by remember { mutableStateOf("moderate") }
-    var focusAreas by remember { mutableStateOf(setOf<String>()) }
-    var quickActionsEnabled by remember { mutableStateOf(true) }
-    var celebrationSoundEnabled by remember { mutableStateOf(true) }
+    var firstName by rememberSaveable { mutableStateOf("") }
+    var birthYearStr by rememberSaveable { mutableStateOf("") }
+    var weightStr by rememberSaveable { mutableStateOf("") }
+    var heightStr by rememberSaveable { mutableStateOf("") }
+    var selectedGender by rememberSaveable { mutableStateOf("") }
+    var themePreference by rememberSaveable { mutableStateOf("system") }
+    var language by rememberSaveable { mutableStateOf("he") }
+    var primaryGoal by rememberSaveable { mutableStateOf("maintain") }
+    var activityLevel by rememberSaveable { mutableStateOf("moderate") }
+    var focusAreas by rememberSaveable { mutableStateOf(setOf<String>()) }
+    var quickActionsEnabled by rememberSaveable { mutableStateOf(true) }
+    var celebrationSoundEnabled by rememberSaveable { mutableStateOf(true) }
     // Manual goal overrides (blank = use computed value).
-    var caloriesOverride by remember { mutableStateOf("") }
-    var stepsOverride by remember { mutableStateOf("") }
-    var proteinOverride by remember { mutableStateOf("") }
-    var waterOverride by remember { mutableStateOf("") }
-    var sleepOverride by remember { mutableStateOf("") }
+    var caloriesOverride by rememberSaveable { mutableStateOf("") }
+    var stepsOverride by rememberSaveable { mutableStateOf("") }
+    var proteinOverride by rememberSaveable { mutableStateOf("") }
+    var waterOverride by rememberSaveable { mutableStateOf("") }
+    var sleepOverride by rememberSaveable { mutableStateOf("") }
+
+    // Tracks whether the user has manually interacted with certain fields, to prevent 
+    // the background sync/recreation from overwriting their unsaved changes.
+    var hasToggledLanguage by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(uiState) {
         if (uiState is ProfileUiState.Loaded) {
             val profile = (uiState as ProfileUiState.Loaded).profile
-            firstName = profile.firstName
-            birthYearStr = if (profile.birthYear > 0) profile.birthYear.toString() else ""
-            weightStr = if (profile.weightKg > 0.0) profile.weightKg.toString() else ""
-            heightStr = if (profile.heightCm > 0.0) profile.heightCm.toString() else ""
-            selectedGender = profile.gender
-            themePreference = profile.themePreference
-            language = profile.language
-            primaryGoal = profile.primaryGoal
-            activityLevel = profile.activityLevel
-            focusAreas = profile.focusAreas.toSet()
+            // Only update local state if it's currently empty/default or hasn't been touched,
+            // to avoid overwriting user's unsaved edits during a sync or recreation.
+            if (firstName.isEmpty()) firstName = profile.firstName
+            if (birthYearStr.isEmpty()) birthYearStr = if (profile.birthYear > 0) profile.birthYear.toString() else ""
+            if (weightStr.isEmpty()) weightStr = if (profile.weightKg > 0.0) profile.weightKg.toString() else ""
+            if (heightStr.isEmpty()) heightStr = if (profile.heightCm > 0.0) profile.heightCm.toString() else ""
+            if (selectedGender.isEmpty()) selectedGender = profile.gender
+            
+            if (themePreference == "system") themePreference = profile.themePreference
+            if (!hasToggledLanguage) language = profile.language
+            if (primaryGoal == "maintain") primaryGoal = profile.primaryGoal
+            if (activityLevel == "moderate") activityLevel = profile.activityLevel
+            if (focusAreas.isEmpty()) focusAreas = profile.focusAreas.toSet()
+
             quickActionsEnabled = profile.quickActionsEnabled
             celebrationSoundEnabled = profile.celebrationSoundEnabled
+            
             profile.goalOverrides?.let { o ->
-                caloriesOverride = o.caloriesKcal?.toString() ?: ""
-                stepsOverride = o.steps?.toString() ?: ""
-                proteinOverride = o.proteinG?.toString() ?: ""
-                waterOverride = o.waterMl?.toString() ?: ""
-                sleepOverride = o.sleepHours?.toString() ?: ""
+                if (caloriesOverride.isEmpty()) caloriesOverride = o.caloriesKcal?.toString() ?: ""
+                if (stepsOverride.isEmpty()) stepsOverride = o.steps?.toString() ?: ""
+                if (proteinOverride.isEmpty()) proteinOverride = o.proteinG?.toString() ?: ""
+                if (waterOverride.isEmpty()) waterOverride = o.waterMl?.toString() ?: ""
+                if (sleepOverride.isEmpty()) sleepOverride = o.sleepHours?.toString() ?: ""
             }
             viewModel.updateAge(profile.birthYear)
         } else if (uiState is ProfileUiState.Saved) {
@@ -149,7 +163,10 @@ fun ProfileScreen(
         onHeightChange = { heightStr = it },
         onGenderSelect = { selectedGender = it },
         onThemeSelect = { themePreference = it },
-        onLanguageSelect = { language = it },
+        onLanguageSelect = { 
+            language = it
+            hasToggledLanguage = true
+        },
         onPrimaryGoalSelect = { primaryGoal = it },
         onActivityLevelSelect = { activityLevel = it },
         onFocusAreaToggle = { value ->
@@ -834,6 +851,22 @@ private fun ProfileScreenContent(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        if (isSaving || uiState is ProfileUiState.Loading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .pointerInput(Unit) { }, // Block touches behind overlay
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(64.dp),
+                    strokeWidth = 6.dp
+                )
+            }
         }
     }
 }

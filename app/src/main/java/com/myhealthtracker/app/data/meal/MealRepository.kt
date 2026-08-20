@@ -15,7 +15,8 @@ interface MealRepository {
     /** Writes a doc with status="analyzing", seen=false, empty items/totals. */
     fun createPendingMeal(
         mealId: String, date: String, inputType: String,
-        description: String, note: String?, localImagePath: String?
+        description: String, note: String?, localImagePath: String?,
+        mealType: String? = null
     )
 
     fun completeMeal(
@@ -36,7 +37,8 @@ interface MealRepository {
     fun addMeal(
         date: String, inputType: String, description: String,
         items: List<MealItem>, totals: MealTotals,
-        recommendation: String? = null, quality: MealQuality? = null
+        recommendation: String? = null, quality: MealQuality? = null,
+        mealType: String? = null
     )
 
     fun deleteMeal(mealId: String)

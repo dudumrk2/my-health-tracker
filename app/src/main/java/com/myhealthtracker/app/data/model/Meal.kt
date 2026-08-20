@@ -56,5 +56,6 @@ data class MealEntry(
     val localImagePath: String? = null,
     val note: String? = null,
     val failureReason: String? = null,
-    val seen: Boolean = true
+    val seen: Boolean = true,
+    val mealType: String? = null
 )

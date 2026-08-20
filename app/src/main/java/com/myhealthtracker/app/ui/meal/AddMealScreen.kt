@@ -45,6 +45,7 @@ fun AddMealScreen(
     val manualFat by viewModel.manualFat.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val closeScreen by viewModel.closeScreen.collectAsState()
+    val selectedMealType by viewModel.selectedMealType.collectAsState()
     val pendingImagePath by viewModel.pendingImagePath.collectAsState()
     val imageNote by viewModel.imageNote.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -132,8 +133,10 @@ fun AddMealScreen(
                 ImagePreviewContent(
                     imagePath = pendingImagePath,
                     note = imageNote,
+                    selectedMealType = selectedMealType,
                     errorResId = errorMessage,
                     onNoteChange = { viewModel.onImageNoteChange(it) },
+                    onMealTypeSelect = { viewModel.onMealTypeSelect(it) },
                     onSendClick = { viewModel.sendImageForAnalysis() },
                     onCancelClick = { viewModel.cancelImagePreview() },
                     modifier = contentModifier
@@ -142,8 +145,10 @@ fun AddMealScreen(
             AddMealStep.InputSelection -> {
                 InputSelectionContent(
                     mealDescription = mealDescription,
+                    selectedMealType = selectedMealType,
                     errorResId = errorMessage,
                     onDescriptionChange = { viewModel.onDescriptionChange(it) },
+                    onMealTypeSelect = { viewModel.onMealTypeSelect(it) },
                     onAnalyzeTextClick = { viewModel.analyzeText() },
                     onPickImageClick = {
                         galleryLauncher.launch(
@@ -181,8 +186,10 @@ fun AddMealScreen(
                     protein = manualProtein,
                     carbs = manualCarbs,
                     fat = manualFat,
+                    selectedMealType = selectedMealType,
                     errorResId = errorMessage,
                     onDescriptionChange = { viewModel.onDescriptionChange(it) },
+                    onMealTypeSelect = { viewModel.onMealTypeSelect(it) },
                     onCalChange = { viewModel.onManualCalChange(it) },
                     onProteinChange = { viewModel.onManualProteinChange(it) },
                     onCarbsChange = { viewModel.onManualCarbsChange(it) },
@@ -200,8 +207,10 @@ fun AddMealScreen(
 @Composable
 private fun InputSelectionContent(
     mealDescription: String,
+    selectedMealType: String?,
     errorResId: Int?,
     onDescriptionChange: (String) -> Unit,
+    onMealTypeSelect: (String) -> Unit,
     onAnalyzeTextClick: () -> Unit,
     onPickImageClick: () -> Unit,
     onCameraClick: () -> Unit,
@@ -214,7 +223,7 @@ private fun InputSelectionContent(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
             Card(
                 shape = RoundedCornerShape(16.dp),
@@ -232,18 +241,20 @@ private fun InputSelectionContent(
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
+                    MealTypeSelector(selectedType = selectedMealType, onTypeSelect = onMealTypeSelect)
+
                     OutlinedTextField(
                         value = mealDescription,
                         onValueChange = onDescriptionChange,
                         placeholder = { Text(stringResource(R.string.food_describe_input_hint)) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(120.dp),
+                            .height(100.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                         ),
-                        maxLines = 5,
+                        maxLines = 4,
                         shape = RoundedCornerShape(12.dp)
                     )
 
@@ -337,8 +348,10 @@ private fun InputSelectionContent(
 private fun ImagePreviewContent(
     imagePath: String?,
     note: String,
+    selectedMealType: String?,
     errorResId: Int?,
     onNoteChange: (String) -> Unit,
+    onMealTypeSelect: (String) -> Unit,
     onSendClick: () -> Unit,
     onCancelClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -368,18 +381,25 @@ private fun ImagePreviewContent(
                 )
             }
 
+            Text(
+                text = stringResource(R.string.activity_workout_type), // Using existing string for "Type"
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            MealTypeSelector(selectedType = selectedMealType, onTypeSelect = onMealTypeSelect)
+
             OutlinedTextField(
                 value = note,
                 onValueChange = { if (it.length <= 500) onNoteChange(it) },
                 placeholder = { Text(stringResource(R.string.food_preview_note_hint)) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp),
+                    .height(100.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                 ),
-                maxLines = 5,
+                maxLines = 4,
                 shape = RoundedCornerShape(12.dp)
             )
 
@@ -422,8 +442,10 @@ private fun ManualFallbackContent(
     protein: String,
     carbs: String,
     fat: String,
+    selectedMealType: String?,
     errorResId: Int?,
     onDescriptionChange: (String) -> Unit,
+    onMealTypeSelect: (String) -> Unit,
     onCalChange: (String) -> Unit,
     onProteinChange: (String) -> Unit,
     onCarbsChange: (String) -> Unit,
@@ -446,6 +468,8 @@ private fun ManualFallbackContent(
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary
             )
+
+            MealTypeSelector(selectedType = selectedMealType, onTypeSelect = onMealTypeSelect)
 
             OutlinedTextField(
                 value = description,
@@ -551,14 +575,57 @@ private fun ManualFallbackContent(
         }
 }
 
+@Composable
+private fun MealTypeSelector(
+    selectedType: String?,
+    onTypeSelect: (String) -> Unit
+) {
+    val types = listOf(
+        "breakfast" to stringResource(R.string.meal_breakfast),
+        "lunch" to stringResource(R.string.meal_lunch),
+        "dinner" to stringResource(R.string.meal_dinner),
+        "snack" to stringResource(R.string.meal_snack)
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        types.forEach { (id, label) ->
+            val isSelected = selectedType == id
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onTypeSelect(id) },
+                shape = RoundedCornerShape(20.dp),
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Text(
+                    text = label,
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        fontSize = 11.sp
+                    ),
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true, name = "Input Selection Step")
 @Composable
 fun AddMealScreenPreviewInput() {
     MyHealthTrackerTheme {
         InputSelectionContent(
             mealDescription = "Grilled chicken salad",
+            selectedMealType = "lunch",
             errorResId = null,
             onDescriptionChange = {},
+            onMealTypeSelect = {},
             onAnalyzeTextClick = {},
             onPickImageClick = {},
             onCameraClick = {},
@@ -574,8 +641,10 @@ fun AddMealScreenPreviewImagePreview() {
         ImagePreviewContent(
             imagePath = null,
             note = "With tahini sauce",
+            selectedMealType = "lunch",
             errorResId = null,
             onNoteChange = {},
+            onMealTypeSelect = {},
             onSendClick = {},
             onCancelClick = {}
         )

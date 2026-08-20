@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 class AddWorkoutViewModel(
@@ -23,6 +25,12 @@ class AddWorkoutViewModel(
 
     private val _durationStr = MutableStateFlow("")
     val durationStr: StateFlow<String> = _durationStr.asStateFlow()
+
+    private val _selectedDate = MutableStateFlow(LocalDate.now())
+    val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
+
+    private val _selectedTime = MutableStateFlow(LocalTime.now())
+    val selectedTime: StateFlow<LocalTime> = _selectedTime.asStateFlow()
 
     private val _errorMessage = MutableStateFlow<Int?>(null)
     val errorMessage: StateFlow<Int?> = _errorMessage.asStateFlow()
@@ -39,6 +47,8 @@ class AddWorkoutViewModel(
     fun reset() {
         _selectedType.value = null
         _durationStr.value = ""
+        _selectedDate.value = LocalDate.now()
+        _selectedTime.value = LocalTime.now()
         _errorMessage.value = null
         _isSaved.value = false
     }
@@ -51,6 +61,14 @@ class AddWorkoutViewModel(
     fun onDurationChange(duration: String) {
         _durationStr.value = duration
         _errorMessage.value = null
+    }
+
+    fun onDateChange(date: LocalDate) {
+        _selectedDate.value = date
+    }
+
+    fun onTimeChange(time: LocalTime) {
+        _selectedTime.value = time
     }
 
     fun saveWorkout() {
@@ -74,13 +92,21 @@ class AddWorkoutViewModel(
 
         viewModelScope.launch {
             try {
-                val todayStr = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+                val date = _selectedDate.value
+                val time = _selectedTime.value
+                val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                
+                // Combine date and time into an Instant
+                val startInstant = date.atTime(time)
+                    .atZone(ZoneId.systemDefault())
+                    .toInstant()
+
                 healthRepository.saveManualWorkout(
                     uid = uid,
-                    date = todayStr,
+                    date = dateStr,
                     type = type,
                     durationMin = duration,
-                    startTime = Instant.now()
+                    startTime = startInstant
                 ).collect()
                 _isSaved.value = true
             } catch (e: Exception) {

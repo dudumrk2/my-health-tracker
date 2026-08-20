@@ -80,7 +80,7 @@ class ActivityViewModel(
             selectedDate = date,
             steps = healthData.steps,
             sleepMinutes = healthData.sleepMinutes,
-            workouts = healthData.workouts,
+            workouts = healthData.workouts.sortedBy { it.startTime },
             isRefreshing = isRefreshing
         )
     }.stateIn(

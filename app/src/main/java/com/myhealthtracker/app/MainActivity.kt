@@ -4,7 +4,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -23,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.navigationevent.NavigationEventDispatcherOwner
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import com.myhealthtracker.app.di.AppContainer
 import com.myhealthtracker.app.ui.celebration.CelebrationOverlay
 import com.myhealthtracker.app.notification.QuickActionsNotificationManager
@@ -30,10 +33,9 @@ import com.myhealthtracker.app.notification.ReminderScheduler
 import com.myhealthtracker.app.theme.MyHealthTrackerTheme
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     private val intentState = mutableStateOf<Intent?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,15 +53,23 @@ class MainActivity : ComponentActivity() {
                 }
             }.collectAsState(initial = Result.success(null))
 
-            val themePreference = profileData.getOrNull()?.themePreference ?: "system"
-            val language = profileData.getOrNull()?.language ?: "he"
-            val quickActionsEnabled = profileData.getOrNull()?.quickActionsEnabled ?: true
-            val celebrationSoundEnabled = profileData.getOrNull()?.celebrationSoundEnabled ?: true
+            val profile = profileData.getOrNull()
+            val themePreference = profile?.themePreference ?: "system"
+            val language = profile?.language
+            val quickActionsEnabled = profile?.quickActionsEnabled ?: true
+            val celebrationSoundEnabled = profile?.celebrationSoundEnabled ?: true
 
+            val context = LocalContext.current
+            
+            // Sync app locale with profile preference. Only applies if the local app locale
+            // differs from the one stored in the user profile.
             androidx.compose.runtime.LaunchedEffect(language) {
+                if (language == null) return@LaunchedEffect
                 val tag = if (language == "en") "en" else "he"
-                val current = androidx.appcompat.app.AppCompatDelegate.getApplicationLocales().toLanguageTags()
-                if (current != tag) {
+                val appLocales = androidx.appcompat.app.AppCompatDelegate.getApplicationLocales()
+                val currentTag = if (appLocales.isEmpty) "" else appLocales.get(0)?.language ?: ""
+                if (currentTag != tag) {
+                    android.util.Log.i("LocaleSwitch", "Syncing locale to profile: $tag (was: $currentTag)")
                     androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
                         androidx.core.os.LocaleListCompat.forLanguageTags(tag)
                     )
@@ -72,7 +82,6 @@ class MainActivity : ComponentActivity() {
                 else -> isSystemInDarkTheme()
             }
 
-            val context = LocalContext.current
             // Posts the system permission dialog (Android 13+) and reacts to the result:
             // start the notification on grant, stop it on denial.
             val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -113,18 +122,22 @@ class MainActivity : ComponentActivity() {
             }
 
             MyHealthTrackerTheme(darkTheme = darkTheme) {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        val currentIntent by intentState
-                        MainNavigation(
-                            intent = currentIntent,
-                            onIntentHandled = {
-                                intentState.value = null
-                                setIntent(Intent())
-                            }
-                        )
-                        // Root-hosted so celebrations overlay every screen.
-                        CelebrationOverlay(soundEnabled = celebrationSoundEnabled)
+                CompositionLocalProvider(
+                    LocalNavigationEventDispatcherOwner provides (context as NavigationEventDispatcherOwner)
+                ) {
+                    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            val currentIntent by intentState
+                            MainNavigation(
+                                intent = currentIntent,
+                                onIntentHandled = {
+                                    intentState.value = null
+                                    setIntent(Intent())
+                                }
+                            )
+                            // Root-hosted so celebrations overlay every screen.
+                            CelebrationOverlay(soundEnabled = celebrationSoundEnabled)
+                        }
                     }
                 }
             }
