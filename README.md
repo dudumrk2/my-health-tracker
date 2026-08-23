@@ -2,6 +2,7 @@
 
 **AI-Powered Health & Nutrition Tracker — Native Android App**
 
+
 A modern Android health & wellness app that combines automated fitness tracking with multimodal AI nutrition analysis, built end-to-end with Kotlin, Jetpack Compose, and Google Gemini AI.
 
 ![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=flat&logo=kotlin&logoColor=white)
@@ -10,6 +11,10 @@ A modern Android health & wellness app that combines automated fitness tracking 
 ![Gemini](https://img.shields.io/badge/Gemini%20AI-8E75B2?style=flat&logo=googlegemini&logoColor=white)
 
 ---
+
+
+![MyHealthTracker Demo](./docs/screenshots/upwork_portfolio.gif)
+
 
 ## The Problem
 
@@ -53,10 +58,6 @@ Manual food-diary logging is tedious and has high drop-off rates. Most nutrition
 | Health Data | Android Health Connect API |
 | Auth | Firebase Authentication |
 
-## Screenshots
-
-![MyHealthTracker Demo](./docs/screenshots/upwork_portfolio.gif)
-
 ## Development Process
 
 This project was built using an AI-assisted, spec-driven development workflow — detailed planning documents and phased implementation prompts are available in [`docs/`](./docs) and [`prompts/`](./prompts) for anyone curious about the process.
@@ -67,4 +68,4 @@ Actively in development. Core tracking, AI meal logging, and insights generation
 
 ---
 
-*Built by [Your Name] — [portfolio/contact link]*
+*Built by Dudu Mark — https://www.linkedin.com/in/dudu-mark-4422206/*
