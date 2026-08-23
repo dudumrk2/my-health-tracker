@@ -12,6 +12,7 @@ import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
 import com.myhealthtracker.app.data.model.MealQuality
 import com.myhealthtracker.app.data.model.MealStatus
+import com.myhealthtracker.app.data.model.MealType
 import com.myhealthtracker.app.data.profile.ProfileRepository
 import com.myhealthtracker.app.data.profile.UserProfile
 import com.myhealthtracker.app.data.water.WaterRepository
@@ -260,7 +261,8 @@ object FakeRepository : ProfileRepository, HealthRepository, MealRepository, Wat
         items: List<MealItem>,
         totals: MealTotals,
         recommendation: String?,
-        quality: MealQuality?
+        quality: MealQuality?,
+        mealType: MealType?
     ) {
         val entry = MealEntry(
             mealId = UUID.randomUUID().toString(),
@@ -271,7 +273,8 @@ object FakeRepository : ProfileRepository, HealthRepository, MealRepository, Wat
             items = items,
             totals = totals,
             recommendation = recommendation,
-            quality = quality
+            quality = quality,
+            mealType = mealType
         )
         _meals.value = _meals.value + entry
     }
@@ -284,12 +287,14 @@ object FakeRepository : ProfileRepository, HealthRepository, MealRepository, Wat
 
     override fun createPendingMeal(
         mealId: String, date: String, inputType: String,
-        description: String, note: String?, localImagePath: String?
+        description: String, note: String?, localImagePath: String?,
+        mealType: MealType?
     ) {
         _meals.value = _meals.value + MealEntry(
             mealId = mealId, date = date, loggedAt = Instant.now(), inputType = inputType,
             description = description, items = emptyList(), totals = MealTotals(0, 0, 0, 0),
-            status = MealStatus.ANALYZING, seen = false, note = note, localImagePath = localImagePath
+            status = MealStatus.ANALYZING, seen = false, note = note, localImagePath = localImagePath,
+            mealType = mealType
         )
     }
 

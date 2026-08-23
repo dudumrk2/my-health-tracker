@@ -118,7 +118,7 @@ fun CelebrationOverlay(
                 }
             }
             Text(
-                text = visuals.message,
+                text = androidx.compose.ui.res.stringResource(visuals.messageRes),
                 style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                 color = Color.White,
                 textAlign = TextAlign.Center,

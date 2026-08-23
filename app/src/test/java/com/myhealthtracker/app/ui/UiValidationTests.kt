@@ -1,5 +1,6 @@
 package com.myhealthtracker.app.ui
 
+import com.myhealthtracker.app.R
 import com.myhealthtracker.app.data.FakeRepository
 import com.myhealthtracker.app.data.account.AccountRepository
 import com.myhealthtracker.app.data.profile.ProfileRepository
@@ -182,7 +183,7 @@ class UiValidationTests {
         viewModel.onDurationChange("30")
         viewModel.saveWorkout()
         
-        assertEquals("אנא בחר סוג אימון", viewModel.errorMessage.value)
+        assertEquals(R.string.error_select_workout_type, viewModel.errorMessage.value)
         assertEquals(false, viewModel.isSaved.value)
     }
 
@@ -194,19 +195,19 @@ class UiValidationTests {
         // Duration 0
         viewModel.onDurationChange("0")
         viewModel.saveWorkout()
-        assertEquals("משך האימון חייב להיות גדול מ-0 דקות", viewModel.errorMessage.value)
+        assertEquals(R.string.error_invalid_workout_duration, viewModel.errorMessage.value)
         assertEquals(false, viewModel.isSaved.value)
 
         // Negative duration
         viewModel.onDurationChange("-5")
         viewModel.saveWorkout()
-        assertEquals("משך האימון חייב להיות גדול מ-0 דקות", viewModel.errorMessage.value)
+        assertEquals(R.string.error_invalid_workout_duration, viewModel.errorMessage.value)
         assertEquals(false, viewModel.isSaved.value)
 
         // Non-number duration
         viewModel.onDurationChange("abc")
         viewModel.saveWorkout()
-        assertEquals("משך האימון חייב להיות גדול מ-0 דקות", viewModel.errorMessage.value)
+        assertEquals(R.string.error_invalid_workout_duration, viewModel.errorMessage.value)
         assertEquals(false, viewModel.isSaved.value)
     }
 
@@ -253,12 +254,12 @@ class UiValidationTests {
         
         viewModel.onWeightChange("-1.0")
         viewModel.saveMeasurement()
-        assertEquals("המשקל חייב להיות בין 0 ל-500 ק״ג", viewModel.errorMessage.value)
+        assertEquals(R.string.error_weight_range, viewModel.errorMessage.value)
         assertEquals(false, viewModel.isSaved.value)
 
         viewModel.onWeightChange("501.0")
         viewModel.saveMeasurement()
-        assertEquals("המשקל חייב להיות בין 0 ל-500 ק״ג", viewModel.errorMessage.value)
+        assertEquals(R.string.error_weight_range, viewModel.errorMessage.value)
         assertEquals(false, viewModel.isSaved.value)
     }
 
@@ -268,12 +269,12 @@ class UiValidationTests {
         
         viewModel.onWaistChange("-1.0")
         viewModel.saveMeasurement()
-        assertEquals("היקף המותן חייב להיות בין 0 ל-300 ס״מ", viewModel.errorMessage.value)
+        assertEquals(R.string.error_waist_range, viewModel.errorMessage.value)
         assertEquals(false, viewModel.isSaved.value)
 
         viewModel.onWaistChange("301.0")
         viewModel.saveMeasurement()
-        assertEquals("היקף המותן חייב להיות בין 0 ל-300 ס״מ", viewModel.errorMessage.value)
+        assertEquals(R.string.error_waist_range, viewModel.errorMessage.value)
         assertEquals(false, viewModel.isSaved.value)
     }
 
@@ -283,12 +284,12 @@ class UiValidationTests {
         
         viewModel.onHipsChange("-1.0")
         viewModel.saveMeasurement()
-        assertEquals("היקף הירכיים חייב להיות בין 0 ל-300 ס״מ", viewModel.errorMessage.value)
+        assertEquals(R.string.error_hips_range, viewModel.errorMessage.value)
         assertEquals(false, viewModel.isSaved.value)
 
         viewModel.onHipsChange("301.0")
         viewModel.saveMeasurement()
-        assertEquals("היקף הירכיים חייב להיות בין 0 ל-300 ס״מ", viewModel.errorMessage.value)
+        assertEquals(R.string.error_hips_range, viewModel.errorMessage.value)
         assertEquals(false, viewModel.isSaved.value)
     }
 

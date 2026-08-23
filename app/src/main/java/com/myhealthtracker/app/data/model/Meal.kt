@@ -41,6 +41,20 @@ data class MealQuality(
     val insulinImpact: String = "low"
 )
 
+enum class MealType(val key: String) {
+    BREAKFAST("breakfast"),
+    LUNCH("lunch"),
+    DINNER("dinner"),
+    SNACK("snack");
+
+    companion object {
+        fun fromKey(key: String?): MealType? {
+            if (key == null) return null
+            return entries.firstOrNull { it.key.equals(key, ignoreCase = true) }
+        }
+    }
+}
+
 data class MealEntry(
     val mealId: String,
     val date: String, // yyyy-MM-dd
@@ -56,5 +70,6 @@ data class MealEntry(
     val localImagePath: String? = null,
     val note: String? = null,
     val failureReason: String? = null,
-    val seen: Boolean = true
+    val seen: Boolean = true,
+    val mealType: MealType? = null
 )

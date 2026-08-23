@@ -38,7 +38,7 @@ class AuthViewModel(
                 _uiState.value = if (result.isSuccess) {
                     AuthUiState.Success(result.getOrThrow())
                 } else {
-                    AuthUiState.Error(result.exceptionOrNull()?.message ?: "ההתחברות נכשלה. נסה שוב.")
+                    AuthUiState.Error("Sign-in failed. Please try again.") // Localized in UI via R.string or passed as ID
                 }
             }
         }

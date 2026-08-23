@@ -28,10 +28,13 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import com.myhealthtracker.app.ui.components.MainTopAppBar
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.myhealthtracker.app.R
 import com.myhealthtracker.app.data.model.BodyMeasurement
 import com.myhealthtracker.app.data.model.MealEntry
 import com.myhealthtracker.app.data.model.MealTotals
@@ -39,6 +42,8 @@ import com.myhealthtracker.app.data.health.DailyHealthData
 import java.time.Instant
 import com.myhealthtracker.app.data.profile.UserProfile
 import com.myhealthtracker.app.theme.*
+import java.util.Locale
+import java.text.NumberFormat
 
 private const val DAILY_STEP_GOAL = 10_000L
 
@@ -54,22 +59,6 @@ fun DashboardScreen(
     val state by viewModel.state.collectAsState()
 
     Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = onNavigateToAddMeasurement,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = CircleShape,
-                modifier = Modifier.size(56.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "הוספת מדידה",
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-        },
-        floatingActionButtonPosition = FabPosition.Start, // Positions it on the left in RTL
         containerColor = MaterialTheme.colorScheme.background,
         modifier = modifier
     ) { paddingValues ->
@@ -102,54 +91,21 @@ private fun DashboardContent(
             .background(MaterialTheme.colorScheme.background)
     ) {
         val greeting = if (state.profile?.firstName?.isNotBlank() == true) {
-            "שלום, ${state.profile.firstName}"
+            stringResource(R.string.dashboard_greeting, state.profile.firstName)
         } else {
-            "שלום, ${state.profile?.gender?.let { if (it == "נקבה") "אלופה" else "משתמש" } ?: "משתמש"}"
+            val genderSuffix = state.profile?.gender?.let { 
+                if (it == "female" || it == "נקבה") stringResource(R.string.dashboard_greeting_female_suffix) 
+                else stringResource(R.string.dashboard_greeting_default_suffix)
+            } ?: stringResource(R.string.dashboard_greeting_default_suffix)
+            stringResource(R.string.dashboard_greeting, genderSuffix)
         }
 
-        // Custom Top App Bar (Stitch Design Style)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = greeting,
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 22.sp
-                ),
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                IconButton(onClick = onRefreshClick) {
-                    if (state.isRefreshing) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "רענון",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
-                IconButton(onClick = onProfileClick) {
-                    Icon(
-                        imageVector = Icons.Default.AccountCircle,
-                        contentDescription = "פרופיל הגדרות",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(26.dp)
-                    )
-                }
-            }
-        }
+        MainTopAppBar(
+            title = greeting,
+            isRefreshing = state.isRefreshing,
+            onRefreshClick = onRefreshClick,
+            onProfileClick = onProfileClick
+        )
 
         Column(
             modifier = Modifier
@@ -181,7 +137,7 @@ private fun DashboardContent(
                             modifier = Modifier.size(22.dp)
                         )
                         Text(
-                            text = "תובנת AI חכמה",
+                            text = stringResource(R.string.dashboard_ai_insight_title),
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold
                             ),
@@ -190,13 +146,13 @@ private fun DashboardContent(
                     }
                     if (state.isRefreshing) {
                         Text(
-                            text = "מחשב תובנות בריאות...",
+                            text = stringResource(R.string.dashboard_calculating_insights),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
                         )
                     } else {
                         Text(
-                            text = state.unifiedInsight,
+                            text = state.unifiedInsight.ifBlank { stringResource(R.string.dashboard_no_insights_yet) },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onPrimary,
                             lineHeight = 22.sp
@@ -222,12 +178,12 @@ private fun DashboardContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "פעילות יומית",
+                            text = stringResource(R.string.dashboard_daily_activity),
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "${state.todayHealth.steps} צעדים",
+                            text = "${state.todayHealth.steps} ${stringResource(R.string.dashboard_steps)}",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
@@ -252,13 +208,13 @@ private fun DashboardContent(
                         // Aerobic Goal Column
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "אירובי שבועי",
+                                text = stringResource(R.string.dashboard_aerobic_weekly),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "${state.weeklyAerobicMinutes} / 150 דק׳",
+                                text = "${state.weeklyAerobicMinutes} / 150 ${stringResource(R.string.dashboard_aerobic_minutes).replace("דק׳ ", "")}",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -273,13 +229,13 @@ private fun DashboardContent(
                         // Strength Goal Column
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "אימוני כוח שבועיים",
+                                text = stringResource(R.string.dashboard_strength_weekly),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "${state.weeklyStrengthWorkouts} / 2 אימונים",
+                                text = "${state.weeklyStrengthWorkouts} / 2 ${stringResource(R.string.dashboard_strength_workouts)}",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -314,9 +270,9 @@ private fun DashboardContent(
                             )
                             Text(
                                 text = if (missingSteps > 0) {
-                                    "חסרים לך רק $missingSteps צעדים ליעד היומי. הליכה קצרה עכשיו תשפר את עיכול ארוחת הצהריים."
+                                    stringResource(R.string.dashboard_steps_missing, missingSteps)
                                 } else {
-                                    "כל הכבוד! עברת את יעד הצעדים היומי שלך היום."
+                                    stringResource(R.string.dashboard_steps_goal_reached)
                                 },
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -345,20 +301,20 @@ private fun DashboardContent(
                         verticalAlignment = Alignment.Top
                     ) {
                         Text(
-                            text = "שינה",
+                            text = stringResource(R.string.dashboard_sleep),
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Column(horizontalAlignment = Alignment.End) {
                             Text(
-                                text = "${sleepHours}ש׳ ${sleepMins}ד׳",
+                                text = stringResource(R.string.dashboard_sleep_hours_mins, sleepHours, sleepMins),
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                             )
                             Text(
-                                text = "ממוצע שבועי",
+                                text = stringResource(R.string.dashboard_weekly_sleep_avg),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -369,19 +325,19 @@ private fun DashboardContent(
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         // Deep Sleep
                         SleepProgressRow(
-                            label = "שינה עמוקה",
+                            label = stringResource(R.string.dashboard_sleep_deep),
                             percentage = 22,
                             color = MaterialTheme.colorScheme.primary
                         )
                         // Light Sleep
                         SleepProgressRow(
-                            label = "שינה קלה",
+                            label = stringResource(R.string.dashboard_sleep_light),
                             percentage = 54,
                             color = ProteinColor
                         )
                         // REM Sleep
                         SleepProgressRow(
-                            label = "REM",
+                            label = stringResource(R.string.dashboard_sleep_rem),
                             percentage = 24,
                             color = CarbsColor
                         )
@@ -395,7 +351,7 @@ private fun DashboardContent(
                     ) {
                         Text("🌙", fontSize = 16.sp)
                         Text(
-                            text = "המלצת AI: כדאי להימנע ממסכים 30 דקות לפני השינה לשיפור ה-REM.",
+                            text = stringResource(R.string.dashboard_ai_sleep_recommendation),
                             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Normal),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -419,7 +375,7 @@ private fun DashboardContent(
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Text(
-                        text = "סיכום תזונה שבועי",
+                        text = stringResource(R.string.dashboard_nutrition_weekly_summary),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -436,7 +392,7 @@ private fun DashboardContent(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "קלוריות (ממוצע)",
+                                text = stringResource(R.string.dashboard_avg_calories),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -449,7 +405,7 @@ private fun DashboardContent(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "פחמימות",
+                                text = stringResource(R.string.dashboard_carbs),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -462,7 +418,7 @@ private fun DashboardContent(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "חלבון",
+                                text = stringResource(R.string.dashboard_protein),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -479,7 +435,7 @@ private fun DashboardContent(
                             .padding(12.dp)
                     ) {
                         Text(
-                            text = "השבוע צרכת 15% יותר חלבון מהממוצע שלך, מה שתומך בהתאוששות השרירים שזוהתה.",
+                            text = stringResource(R.string.dashboard_ai_protein_recommendation),
                             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -504,7 +460,7 @@ private fun DashboardContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "מדדי גוף",
+                            text = stringResource(R.string.dashboard_body_metrics),
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -519,7 +475,7 @@ private fun DashboardContent(
                                 modifier = Modifier.size(16.dp)
                             )
                             Text(
-                                text = "הוספת מדידה",
+                                text = stringResource(R.string.dashboard_add_measurement),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
@@ -564,7 +520,7 @@ private fun DashboardContent(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Text(
-                                    text = if (lastWeight != null) "${formatMeasurement(lastWeight)} ק״ג" else "— ק״ג",
+                                    text = if (lastWeight != null) stringResource(R.string.dashboard_weight_history_badge, formatMeasurement(lastWeight), stringResource(R.string.unit_kg)) else "— ${stringResource(R.string.unit_kg)}",
                                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -574,9 +530,10 @@ private fun DashboardContent(
                                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
                                         fontSize = 12.sp
                                     )
-                                    val direction = if (weightDelta < 0) "ירידה" else "עלייה"
+                                    val direction = if (weightDelta < 0) stringResource(R.string.dashboard_weight_change_down, formatMeasurement(kotlin.math.abs(weightDelta))) 
+                                                   else stringResource(R.string.dashboard_weight_change_up, formatMeasurement(kotlin.math.abs(weightDelta)))
                                     Text(
-                                        text = "$direction של ${formatMeasurement(kotlin.math.abs(weightDelta))} ק״ג",
+                                        text = direction,
                                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
                                         color = MaterialTheme.colorScheme.primary
                                     )
@@ -591,12 +548,12 @@ private fun DashboardContent(
                     ) {
                         Column {
                             Text(
-                                text = "היקף מותניים",
+                                text = stringResource(R.string.dashboard_waist),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = if (lastWaist != null) "${formatMeasurement(lastWaist)} ס״מ" else "—",
+                                text = if (lastWaist != null) "${formatMeasurement(lastWaist)} ${stringResource(R.string.unit_cm)}" else "—",
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -604,12 +561,12 @@ private fun DashboardContent(
 
                         Column {
                             Text(
-                                text = "היקף ירכיים",
+                                text = stringResource(R.string.dashboard_hips),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = if (lastHips != null) "${formatMeasurement(lastHips)} ס״מ" else "—",
+                                text = if (lastHips != null) "${formatMeasurement(lastHips)} ${stringResource(R.string.unit_cm)}" else "—",
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -805,7 +762,7 @@ fun DashboardScreenPreviewLight() {
     MyHealthTrackerTheme(darkTheme = false) {
         DashboardContent(
             state = DashboardState(
-                profile = UserProfile(firstName = "ישראל", birthYear = 1990, weightKg = 75.0, heightCm = 178.0, gender = "זכר"),
+                profile = UserProfile(firstName = "ישראל", birthYear = 1990, weightKg = 75.0, heightCm = 178.0, gender = "male"),
                 todayHealth = DailyHealthData(steps = 8432, sleepMinutes = 435),
                 weeklySleepAvgMinutes = 450,
                 weeklyStepsList = listOf(7000L, 8000L, 8432L, 6500L, 9000L, 11000L, 8432L),
@@ -818,7 +775,7 @@ fun DashboardScreenPreviewLight() {
                     BodyMeasurement("2026-06-11", 75.2, 88.0, 102.0),
                     BodyMeasurement("2026-06-12", 74.2, 88.0, 102.0)
                 ),
-                unifiedInsight = "נראה שהשינה העמוקה שלך השתפרה ב-15% מאז שהתחלת להפחית פחמימות בארוחות הערב. השילוב עם פעילות גופנית מתונה בבוקר יוצר אפקט חיובי על קצב חילוף החומרים שלך."
+                unifiedInsight = "It looks like your deep sleep has improved by 15% since you started reducing carbs in your dinner meals."
             ),
             onRefreshClick = {},
             onProfileClick = {},

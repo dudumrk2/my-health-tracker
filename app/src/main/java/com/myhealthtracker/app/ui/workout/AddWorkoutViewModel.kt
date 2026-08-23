@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 class AddWorkoutViewModel(
@@ -24,8 +26,14 @@ class AddWorkoutViewModel(
     private val _durationStr = MutableStateFlow("")
     val durationStr: StateFlow<String> = _durationStr.asStateFlow()
 
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+    private val _selectedDate = MutableStateFlow(LocalDate.now())
+    val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
+
+    private val _selectedTime = MutableStateFlow(LocalTime.now())
+    val selectedTime: StateFlow<LocalTime> = _selectedTime.asStateFlow()
+
+    private val _errorMessage = MutableStateFlow<Int?>(null)
+    val errorMessage: StateFlow<Int?> = _errorMessage.asStateFlow()
 
     private val _isSaved = MutableStateFlow(false)
     val isSaved: StateFlow<Boolean> = _isSaved.asStateFlow()
@@ -39,6 +47,8 @@ class AddWorkoutViewModel(
     fun reset() {
         _selectedType.value = null
         _durationStr.value = ""
+        _selectedDate.value = LocalDate.now()
+        _selectedTime.value = LocalTime.now()
         _errorMessage.value = null
         _isSaved.value = false
     }
@@ -53,38 +63,55 @@ class AddWorkoutViewModel(
         _errorMessage.value = null
     }
 
+    fun onDateChange(date: LocalDate) {
+        _selectedDate.value = date
+    }
+
+    fun onTimeChange(time: LocalTime) {
+        _selectedTime.value = time
+    }
+
     fun saveWorkout() {
         val type = _selectedType.value
         if (type == null) {
-            _errorMessage.value = "אנא בחר סוג אימון"
+            _errorMessage.value = com.myhealthtracker.app.R.string.error_select_workout_type
             return
         }
 
         val duration = _durationStr.value.toIntOrNull() ?: 0
         if (duration <= 0) {
-            _errorMessage.value = "משך האימון חייב להיות גדול מ-0 דקות"
+            _errorMessage.value = com.myhealthtracker.app.R.string.error_invalid_workout_duration
             return
         }
 
         val uid = uidProvider()
         if (uid == null) {
-            _errorMessage.value = "נדרשת התחברות מחדש."
+            _errorMessage.value = com.myhealthtracker.app.R.string.error_relogin_required
             return
         }
 
         viewModelScope.launch {
             try {
-                val todayStr = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+                val date = _selectedDate.value
+                val time = _selectedTime.value
+                val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                
+                // Combine date and time into an Instant
+                val startInstant = date.atTime(time)
+                    .atZone(ZoneId.systemDefault())
+                    .toInstant()
+
                 healthRepository.saveManualWorkout(
                     uid = uid,
-                    date = todayStr,
+                    date = dateStr,
                     type = type,
                     durationMin = duration,
-                    startTime = Instant.now()
+                    startTime = startInstant
                 ).collect()
                 _isSaved.value = true
             } catch (e: Exception) {
-                _errorMessage.value = "שגיאה בשמירת האימון: ${e.message}"
+                android.util.Log.e("AddWorkoutVM", "Failed to save workout", e)
+                _errorMessage.value = com.myhealthtracker.app.R.string.error_save_failed
             }
         }
     }

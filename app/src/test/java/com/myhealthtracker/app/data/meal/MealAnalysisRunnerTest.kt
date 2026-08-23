@@ -4,6 +4,7 @@ import com.myhealthtracker.app.data.model.MealEntry
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealQuality
 import com.myhealthtracker.app.data.model.MealTotals
+import com.myhealthtracker.app.data.model.MealType
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,13 +31,13 @@ class MealAnalysisRunnerTest {
         var failedId: String? = null
         var failReason: String? = null
         override fun newMealId() = "x"
-        override fun createPendingMeal(mealId: String, date: String, inputType: String, description: String, note: String?, localImagePath: String?) {}
+        override fun createPendingMeal(mealId: String, date: String, inputType: String, description: String, note: String?, localImagePath: String?, mealType: MealType?) {}
         override fun completeMeal(mealId: String, items: List<MealItem>, totals: MealTotals, recommendation: String?, quality: MealQuality?) { completedId = mealId }
         override fun failMeal(mealId: String, reason: String) { failedId = mealId; failReason = reason }
         override fun retryMeal(mealId: String) {}
         override fun markMealSeen(mealId: String) {}
         override fun updateMeal(mealId: String, description: String, items: List<MealItem>, totals: MealTotals) {}
-        override fun addMeal(date: String, inputType: String, description: String, items: List<MealItem>, totals: MealTotals, recommendation: String?, quality: MealQuality?) {}
+        override fun addMeal(date: String, inputType: String, description: String, items: List<MealItem>, totals: MealTotals, recommendation: String?, quality: MealQuality?, mealType: MealType?) {}
         override fun deleteMeal(mealId: String) {}
     }
 

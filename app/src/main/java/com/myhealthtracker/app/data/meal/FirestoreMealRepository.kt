@@ -8,6 +8,7 @@ import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
 import com.myhealthtracker.app.data.model.MealQuality
 import com.myhealthtracker.app.data.model.MealStatus
+import com.myhealthtracker.app.data.model.MealType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -57,7 +58,8 @@ class FirestoreMealRepository(
 
     override fun createPendingMeal(
         mealId: String, date: String, inputType: String,
-        description: String, note: String?, localImagePath: String?
+        description: String, note: String?, localImagePath: String?,
+        mealType: MealType?
     ) {
         val uid = auth.currentUser?.uid ?: return
         val data = mutableMapOf<String, Any>(
@@ -68,6 +70,7 @@ class FirestoreMealRepository(
         )
         if (note != null) data["note"] = note
         if (localImagePath != null) data["localImagePath"] = localImagePath
+        if (mealType != null) data["mealType"] = mealType.key
         mealsCollection(uid).document(mealId).set(data)
     }
 
@@ -115,7 +118,8 @@ class FirestoreMealRepository(
 
     override fun addMeal(
         date: String, inputType: String, description: String,
-        items: List<MealItem>, totals: MealTotals, recommendation: String?, quality: MealQuality?
+        items: List<MealItem>, totals: MealTotals, recommendation: String?, quality: MealQuality?,
+        mealType: MealType?
     ) {
         val uid = auth.currentUser?.uid ?: return
         val data = mutableMapOf<String, Any>(
@@ -126,6 +130,7 @@ class FirestoreMealRepository(
         )
         if (recommendation != null) data["recommendation"] = recommendation
         if (quality != null) data["quality"] = quality.toMap()
+        if (mealType != null) data["mealType"] = mealType.key
         mealsCollection(uid).add(data)
     }
 
@@ -195,6 +200,7 @@ fun mealEntryFromMap(id: String, data: Map<String, Any?>): MealEntry? {
         localImagePath = data["localImagePath"] as? String,
         note = data["note"] as? String,
         failureReason = data["failureReason"] as? String,
-        seen = data["seen"] as? Boolean ?: true
+        seen = data["seen"] as? Boolean ?: true,
+        mealType = MealType.fromKey(data["mealType"] as? String)
     )
 }

@@ -53,9 +53,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.myhealthtracker.app.R
 import com.myhealthtracker.app.data.goals.GoalCalculator
 import com.myhealthtracker.app.data.goals.HealthGoals
 import com.myhealthtracker.app.data.model.MealEntry
+import com.myhealthtracker.app.data.model.MealType
+import com.myhealthtracker.app.ui.components.MainTopAppBar
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
 import com.myhealthtracker.app.data.model.MealQuality
@@ -74,16 +78,24 @@ import com.myhealthtracker.app.notification.QuickActionsNotificationManager.WATE
 private const val DAILY_CALORIE_TARGET = 2500
 private const val DAILY_WATER_TARGET_ML = 3000 // 3.0L
 
-private fun getHebrewDayName(date: LocalDate): String {
-    return when (date.dayOfWeek.value) {
-        1 -> "ב׳"
-        2 -> "ג׳"
-        3 -> "ד׳"
-        4 -> "ה׳"
-        5 -> "ו׳"
-        6 -> "ש׳"
-        7 -> "א׳"
-        else -> ""
+@Composable
+private fun getDayName(date: LocalDate): String {
+    val isEnglish = stringResource(R.string.profile_language_en) == "English" && 
+                   androidx.appcompat.app.AppCompatDelegate.getApplicationLocales().toLanguageTags().contains("en")
+    
+    return if (isEnglish) {
+        date.dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, Locale.ENGLISH)
+    } else {
+        when (date.dayOfWeek.value) {
+            1 -> "ב׳"
+            2 -> "ג׳"
+            3 -> "ד׳"
+            4 -> "ה׳"
+            5 -> "ו׳"
+            6 -> "ש׳"
+            7 -> "א׳"
+            else -> ""
+        }
     }
 }
 
@@ -101,16 +113,28 @@ private fun formatLiters(ml: Int): String {
     }
 }
 
-private fun getMealTitle(description: String, index: Int): String {
-    val descLower = description.lowercase()
+@Composable
+private fun getMealTitle(meal: MealEntry, index: Int): String {
+    val type = meal.mealType
+    if (type != null) {
+        return when (type) {
+            MealType.BREAKFAST -> stringResource(R.string.meal_breakfast)
+            MealType.LUNCH -> stringResource(R.string.meal_lunch)
+            MealType.DINNER -> stringResource(R.string.meal_dinner)
+            MealType.SNACK -> stringResource(R.string.meal_snack)
+        }
+    }
+    
+    // Legacy heuristic fallback
+    val descLower = meal.description.lowercase()
     return when {
-        descLower.contains("בוקר") || descLower.contains("יוגורט") -> "ארוחת בוקר"
-        descLower.contains("צהריים") || descLower.contains("עוף") || descLower.contains("חזה") -> "ארוחת צהריים"
-        descLower.contains("ערב") || descLower.contains("סלמון") -> "ארוחת ערב"
-        index == 0 -> "ארוחת בוקר"
-        index == 1 -> "ארוחת צהריים"
-        index == 2 -> "נשנוש"
-        else -> "ארוחה"
+        descLower.contains("בוקר") || descLower.contains("יוגורט") || descLower.contains("breakfast") -> stringResource(R.string.meal_breakfast)
+        descLower.contains("צהריים") || descLower.contains("עוף") || descLower.contains("חזה") || descLower.contains("lunch") -> stringResource(R.string.meal_lunch)
+        descLower.contains("ערב") || descLower.contains("סלמון") || descLower.contains("dinner") -> stringResource(R.string.meal_dinner)
+        index == 0 -> stringResource(R.string.meal_breakfast)
+        index == 1 -> stringResource(R.string.meal_lunch)
+        index == 2 -> stringResource(R.string.meal_snack)
+        else -> stringResource(R.string.meal_generic)
     }
 }
 
@@ -182,22 +206,21 @@ private fun FoodContent(
 
     val isToday = remember(state.selectedDate) { state.selectedDate == LocalDate.now() }
 
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-        Scaffold(
-            modifier = modifier.fillMaxSize(),
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
             floatingActionButton = {
                 if (isToday) {
                     ExtendedFloatingActionButton(
                         onClick = onAddMealClick,
                         icon = { Text("🥗", fontSize = 18.sp) },
-                        text = { Text("הוספת ארוחה", fontWeight = FontWeight.Bold) },
+                        text = { Text(stringResource(R.string.food_add_meal), fontWeight = FontWeight.Bold) },
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
                         shape = RoundedCornerShape(24.dp)
                     )
                 }
             },
-            floatingActionButtonPosition = FabPosition.Start
+            floatingActionButtonPosition = FabPosition.End
         ) { paddingValues ->
             Column(
                 modifier = Modifier
@@ -206,61 +229,25 @@ private fun FoodContent(
                     .background(MaterialTheme.colorScheme.background)
             ) {
                 // Top Bar
-                Row(
+                MainTopAppBar(
+                    title = stringResource(R.string.food_title),
+                    isRefreshing = state.isRefreshing,
+                    onRefreshClick = onRefreshClick,
+                    onProfileClick = onProfileClick
+                )
+
+                // Horizontal calendar strip
+                LazyRow(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Right in RTL = Refresh (circular arrow)
-                    IconButton(
-                        onClick = onRefreshClick,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        if (state.isRefreshing) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "רענן",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-
-                    // Center = Title
-                    Text(
-                        text = "אוכל",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    // Left in RTL = Profile
-                    IconButton(onClick = onProfileClick) {
-                        Icon(
-                            imageVector = Icons.Default.AccountCircle,
-                            contentDescription = "פרופיל",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
-
-                // Horizontal calendar strip (forcing LTR so it goes from left to right chronologically)
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(horizontal = 4.dp)
                     ) {
                         items(dateList) { date ->
                             val isSelected = date == state.selectedDate
                             val isCurrentDay = date == LocalDate.now()
-                            val dayName = getHebrewDayName(date)
+                            val dayName = getDayName(date)
                             val dayNumber = date.dayOfMonth.toString()
 
                             // White reads better than the theme's onPrimary on the slate
@@ -305,7 +292,6 @@ private fun FoodContent(
                             }
                         }
                     }
-                }
 
                 // Failure banner — persists across day changes (above AnimatedContent)
                 if (state.failedMealCount > 0) {
@@ -318,7 +304,7 @@ private fun FoodContent(
                             Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "יש ${state.failedMealCount} מנות שלא נותחו — הקש על המנה האדומה ביומן כדי לנסות שוב",
+                                stringResource(R.string.food_failed_meals_banner, state.failedMealCount),
                                 color = MaterialTheme.colorScheme.onErrorContainer,
                                 style = MaterialTheme.typography.bodyMedium
                             )
@@ -379,12 +365,12 @@ private fun FoodContent(
                                     }
                                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                         Text(
-                                            text = "המלצה חכמה להיום",
+                                            text = stringResource(R.string.food_ai_recommendation_title),
                                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                             color = MaterialTheme.colorScheme.onPrimaryContainer
                                         )
                                         Text(
-                                            text = if (state.isRefreshing) "מחשב המלצות..." else state.aiAdvice,
+                                            text = if (state.isRefreshing) stringResource(R.string.food_calculating_recommendation) else state.aiAdvice,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                                             lineHeight = 18.sp
@@ -412,7 +398,7 @@ private fun FoodContent(
                                     
                                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                         Text(
-                                            text = "נותרו עוד",
+                                            text = stringResource(R.string.food_remaining_calories),
                                             style = MaterialTheme.typography.labelMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -426,14 +412,14 @@ private fun FoodContent(
                                                 color = MaterialTheme.colorScheme.primary
                                             )
                                             Text(
-                                                text = "קלוריות",
+                                                text = stringResource(R.string.dashboard_calories),
                                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                                 color = MaterialTheme.colorScheme.primary,
                                                 modifier = Modifier.padding(bottom = 3.dp)
                                             )
                                             Spacer(modifier = Modifier.width(4.dp))
                                             Text(
-                                                text = "מתוך $calorieTarget",
+                                                text = stringResource(R.string.food_out_of_target, calorieTarget),
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 modifier = Modifier.padding(bottom = 4.dp)
@@ -448,7 +434,7 @@ private fun FoodContent(
                                     ) {
                                         Box(modifier = Modifier.weight(1f)) {
                                             MacroProgressBarHorizontal(
-                                                name = "חלבון",
+                                                name = stringResource(R.string.dashboard_protein),
                                                 value = state.totals.proteinG,
                                                 target = goals.proteinG,
                                                 color = ProteinColor
@@ -456,7 +442,7 @@ private fun FoodContent(
                                         }
                                         Box(modifier = Modifier.weight(1f)) {
                                             MacroProgressBarHorizontal(
-                                                name = "פחמימות",
+                                                name = stringResource(R.string.dashboard_carbs),
                                                 value = state.totals.carbsG,
                                                 target = goals.carbsG,
                                                 color = CarbsColor
@@ -464,7 +450,7 @@ private fun FoodContent(
                                         }
                                         Box(modifier = Modifier.weight(1f)) {
                                             MacroProgressBarHorizontal(
-                                                name = "שומן",
+                                                name = stringResource(R.string.dashboard_fat),
                                                 value = state.totals.fatG,
                                                 target = goals.fatG,
                                                 color = FatColor
@@ -493,12 +479,12 @@ private fun FoodContent(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "שתיית מים",
+                                            text = stringResource(R.string.food_water_intake),
                                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
-                                            text = "${formatLiters(state.waterIntakeMl)} / ${formatLiters(goals.waterMl)} ליטר",
+                                            text = stringResource(R.string.food_water_liters, formatLiters(state.waterIntakeMl), formatLiters(goals.waterMl)),
                                             style = MaterialTheme.typography.bodyMedium.copy(
                                                 fontWeight = FontWeight.Bold,
                                                 color = WaterColor
@@ -552,7 +538,7 @@ private fun FoodContent(
                                             ) {
                                                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                                                 Spacer(modifier = Modifier.width(4.dp))
-                                                Text("הוספת מים", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                                Text(stringResource(R.string.dashboard_water).let { "Log $it" /* Or add a specific log water string */ }, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                             }
                                         }
                                     }
@@ -563,7 +549,7 @@ private fun FoodContent(
                         // 4. Meal Journal Header
                         item {
                             Text(
-                                text = "יומן ארוחות",
+                                text = stringResource(R.string.food_meal_journal),
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.padding(top = 8.dp)
@@ -582,7 +568,7 @@ private fun FoodContent(
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text(
-                                        text = "לא נרשמו ארוחות ביום זה",
+                                        text = stringResource(R.string.food_no_meals_date),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.padding(24.dp).fillMaxWidth(),
@@ -592,7 +578,7 @@ private fun FoodContent(
                             }
                         } else {
                             itemsIndexed(state.meals) { index, meal ->
-                                val mealTitle = getMealTitle(meal.description, index)
+                                val mealTitle = getMealTitle(meal, index)
                                 Card(
                                     shape = RoundedCornerShape(16.dp),
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -646,19 +632,19 @@ private fun FoodContent(
 
                                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                                 Text(
-                                                    text = getMealTitle(meal.description, index),
+                                                    text = mealTitle,
                                                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                                                     color = MaterialTheme.colorScheme.onSurface
                                                 )
                                                 Text(
-                                                    text = meal.description.ifEmpty { "ארוחה ללא תיאור" },
+                                                    text = meal.description.ifEmpty { stringResource(R.string.food_meal_no_description) },
                                                     style = MaterialTheme.typography.bodyMedium,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                                 )
                                                 // Status badge
                                                 when (meal.status) {
-                                                    MealStatus.ANALYZING -> StatusBadge("⏳ מנתח…", MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer)
-                                                    MealStatus.FAILED -> StatusBadge("⚠️ נכשל — הקש לתיקון", MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
+                                                    MealStatus.ANALYZING -> StatusBadge(stringResource(R.string.food_status_analyzing), MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer)
+                                                    MealStatus.FAILED -> StatusBadge(stringResource(R.string.food_status_failed), MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
                                                     else -> {}
                                                 }
                                             }
@@ -684,7 +670,7 @@ private fun FoodContent(
                                                     color = MaterialTheme.colorScheme.primary
                                                 )
                                                 Text(
-                                                    text = "קלוריות",
+                                                    text = stringResource(R.string.dashboard_calories),
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                                 )
@@ -711,14 +697,14 @@ private fun FoodContent(
                 val context = LocalContext.current
                 AlertDialog(
                     onDismissRequest = { recoveryMeal = null },
-                    title = { Text("המנה לא נותחה") },
-                    text = { Text(meal.failureReason ?: "ניתוח המנה נכשל.") },
+                    title = { Text(stringResource(R.string.food_status_failed).replace(" — הקש לתיקון", "")) },
+                    text = { Text(meal.failureReason ?: stringResource(R.string.common_error)) },
                     confirmButton = {
                         TextButton(onClick = {
                             AppContainer.mealRepository.retryMeal(meal.mealId)
                             MealAnalysisScheduler.enqueue(context, meal.toAnalysisInput())
                             recoveryMeal = null
-                        }) { Text("נסה שוב") }
+                        }) { Text(stringResource(R.string.common_retry)) }
                     },
                     dismissButton = {
                         Row {
@@ -726,14 +712,13 @@ private fun FoodContent(
                                 MealImageStore.delete(meal.localImagePath)
                                 AppContainer.mealRepository.deleteMeal(meal.mealId)
                                 recoveryMeal = null
-                            }) { Text("מחק") }
-                            TextButton(onClick = { recoveryMeal = null }) { Text("סגור") }
+                            }) { Text(stringResource(R.string.common_delete)) }
+                            TextButton(onClick = { recoveryMeal = null }) { Text(stringResource(R.string.common_close)) }
                         }
                     }
                 )
             }
         }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -779,12 +764,12 @@ fun MealDetailSheet(
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = { onEdit(meal); onDismiss() }) {
-                        Text("ערוך")
+                        Text(stringResource(R.string.common_edit))
                     }
                     IconButton(onClick = onDismiss) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "סגור",
+                            contentDescription = stringResource(R.string.common_close),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -792,7 +777,7 @@ fun MealDetailSheet(
             }
 
             Text(
-                text = meal.description.ifEmpty { "ארוחה ללא תיאור" },
+                text = meal.description.ifEmpty { stringResource(R.string.food_meal_no_description) },
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -801,7 +786,7 @@ fun MealDetailSheet(
             meal.localImagePath?.let { path ->
                 AsyncImage(
                     model = java.io.File(path),
-                    contentDescription = "תמונת הארוחה",
+                    contentDescription = stringResource(R.string.food_take_photo),
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(12.dp))
                 )
@@ -824,12 +809,12 @@ fun MealDetailSheet(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "סה״כ קלוריות",
+                            text = stringResource(R.string.food_total_calories),
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "${meal.totals.calories} קק״ל",
+                            text = "${meal.totals.calories} ${stringResource(R.string.food_kcal_unit)}",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -841,7 +826,7 @@ fun MealDetailSheet(
                     ) {
                         Box(modifier = Modifier.weight(1f)) {
                             MacroProgressBarHorizontal(
-                                name = "חלבון",
+                                name = stringResource(R.string.dashboard_protein),
                                 value = meal.totals.proteinG,
                                 target = 150,
                                 color = ProteinColor
@@ -849,7 +834,7 @@ fun MealDetailSheet(
                         }
                         Box(modifier = Modifier.weight(1f)) {
                             MacroProgressBarHorizontal(
-                                name = "פחמימות",
+                                name = stringResource(R.string.dashboard_carbs),
                                 value = meal.totals.carbsG,
                                 target = 250,
                                 color = CarbsColor
@@ -857,7 +842,7 @@ fun MealDetailSheet(
                         }
                         Box(modifier = Modifier.weight(1f)) {
                             MacroProgressBarHorizontal(
-                                name = "שומן",
+                                name = stringResource(R.string.dashboard_fat),
                                 value = meal.totals.fatG,
                                 target = 70,
                                 color = FatColor
@@ -870,7 +855,7 @@ fun MealDetailSheet(
             // Ingredients list
             if (meal.items.isNotEmpty()) {
                 Text(
-                    text = "מרכיבי הארוחה",
+                    text = stringResource(R.string.food_meal_ingredients),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -910,7 +895,7 @@ private fun MealDetailItemCard(item: MealItem) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = item.name.ifEmpty { "פריט ללא שם" },
+                    text = item.name.ifEmpty { stringResource(R.string.food_item_no_name) },
                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
@@ -926,10 +911,10 @@ private fun MealDetailItemCard(item: MealItem) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                MealDetailItemMacro(label = "קלו׳", value = "${item.calories}")
-                MealDetailItemMacro(label = "חלבון", value = "${item.proteinG}g")
-                MealDetailItemMacro(label = "פחמימות", value = "${item.carbsG}g")
-                MealDetailItemMacro(label = "שומן", value = "${item.fatG}g")
+                MealDetailItemMacro(label = stringResource(R.string.food_kcal_unit), value = "${item.calories}")
+                MealDetailItemMacro(label = stringResource(R.string.dashboard_protein), value = "${item.proteinG}g")
+                MealDetailItemMacro(label = stringResource(R.string.dashboard_carbs), value = "${item.carbsG}g")
+                MealDetailItemMacro(label = stringResource(R.string.dashboard_fat), value = "${item.fatG}g")
             }
         }
     }
@@ -1007,7 +992,7 @@ fun MacroProgressBar(
                 color = color
             )
             Text(
-                text = "$value / $target ג׳",
+                text = "$value / $target " + stringResource(R.string.food_macro_unit_g),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

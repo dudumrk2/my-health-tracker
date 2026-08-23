@@ -28,8 +28,8 @@ class AddBodyMeasurementViewModel(
     private val _note = MutableStateFlow("")
     val note: StateFlow<String> = _note.asStateFlow()
 
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+    private val _errorMessage = MutableStateFlow<Int?>(null)
+    val errorMessage: StateFlow<Int?> = _errorMessage.asStateFlow()
 
     private val _isSaved = MutableStateFlow(false)
     val isSaved: StateFlow<Boolean> = _isSaved.asStateFlow()
@@ -74,15 +74,15 @@ class AddBodyMeasurementViewModel(
         val hips = _hipsStr.value.toDoubleOrNull()
 
         if (weight != null && (weight <= 0.0 || weight > 500.0)) {
-            _errorMessage.value = "המשקל חייב להיות בין 0 ל-500 ק״ג"
+            _errorMessage.value = com.myhealthtracker.app.R.string.error_weight_range
             return
         }
         if (waist != null && (waist <= 0.0 || waist > 300.0)) {
-            _errorMessage.value = "היקף המותן חייב להיות בין 0 ל-300 ס״מ"
+            _errorMessage.value = com.myhealthtracker.app.R.string.error_waist_range
             return
         }
         if (hips != null && (hips <= 0.0 || hips > 300.0)) {
-            _errorMessage.value = "היקף הירכיים חייב להיות בין 0 ל-300 ס״מ"
+            _errorMessage.value = com.myhealthtracker.app.R.string.error_hips_range
             return
         }
 
@@ -98,7 +98,7 @@ class AddBodyMeasurementViewModel(
                 )
                 _isSaved.value = true
             } catch (e: Exception) {
-                _errorMessage.value = "שגיאה בשמירת המדדים: ${e.message}"
+                _errorMessage.value = com.myhealthtracker.app.R.string.error_save_failed
             }
         }
     }
