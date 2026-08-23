@@ -7,6 +7,7 @@ import com.myhealthtracker.app.data.meal.MealAnalysisLauncher
 import com.myhealthtracker.app.data.meal.MealRepository
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
+import com.myhealthtracker.app.data.model.MealType
 import com.myhealthtracker.app.di.AppContainer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,8 +41,8 @@ class AddMealViewModel(
     private val _manualProtein = MutableStateFlow(""); val manualProtein: StateFlow<String> = _manualProtein.asStateFlow()
     private val _manualCarbs = MutableStateFlow(""); val manualCarbs: StateFlow<String> = _manualCarbs.asStateFlow()
     private val _manualFat = MutableStateFlow(""); val manualFat: StateFlow<String> = _manualFat.asStateFlow()
-    private val _selectedMealType = MutableStateFlow<String?>(null)
-    val selectedMealType: StateFlow<String?> = _selectedMealType.asStateFlow()
+    private val _selectedMealType = MutableStateFlow<MealType?>(null)
+    val selectedMealType: StateFlow<MealType?> = _selectedMealType.asStateFlow()
     private val _closeScreen = MutableStateFlow(false)
     val closeScreen: StateFlow<Boolean> = _closeScreen.asStateFlow()
 
@@ -51,7 +52,7 @@ class AddMealViewModel(
     fun onManualProteinChange(v: String) { _manualProtein.value = v }
     fun onManualCarbsChange(v: String) { _manualCarbs.value = v }
     fun onManualFatChange(v: String) { _manualFat.value = v }
-    fun onMealTypeSelect(type: String) { _selectedMealType.value = type }
+    fun onMealTypeSelect(type: MealType) { _selectedMealType.value = type }
 
     private fun today(): String = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
 

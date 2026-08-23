@@ -4,6 +4,7 @@ import com.myhealthtracker.app.data.model.MealEntry
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
 import com.myhealthtracker.app.data.model.MealQuality
+import com.myhealthtracker.app.data.model.MealType
 import kotlinx.coroutines.flow.StateFlow
 
 interface MealRepository {
@@ -16,7 +17,7 @@ interface MealRepository {
     fun createPendingMeal(
         mealId: String, date: String, inputType: String,
         description: String, note: String?, localImagePath: String?,
-        mealType: String? = null
+        mealType: MealType? = null
     )
 
     fun completeMeal(
@@ -38,7 +39,7 @@ interface MealRepository {
         date: String, inputType: String, description: String,
         items: List<MealItem>, totals: MealTotals,
         recommendation: String? = null, quality: MealQuality? = null,
-        mealType: String? = null
+        mealType: MealType? = null
     )
 
     fun deleteMeal(mealId: String)

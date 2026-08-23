@@ -58,6 +58,7 @@ import com.myhealthtracker.app.R
 import com.myhealthtracker.app.data.goals.GoalCalculator
 import com.myhealthtracker.app.data.goals.HealthGoals
 import com.myhealthtracker.app.data.model.MealEntry
+import com.myhealthtracker.app.data.model.MealType
 import com.myhealthtracker.app.ui.components.MainTopAppBar
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealTotals
@@ -117,11 +118,10 @@ private fun getMealTitle(meal: MealEntry, index: Int): String {
     val type = meal.mealType
     if (type != null) {
         return when (type) {
-            "breakfast" -> stringResource(R.string.meal_breakfast)
-            "lunch" -> stringResource(R.string.meal_lunch)
-            "dinner" -> stringResource(R.string.meal_dinner)
-            "snack" -> stringResource(R.string.meal_snack)
-            else -> stringResource(R.string.meal_generic)
+            MealType.BREAKFAST -> stringResource(R.string.meal_breakfast)
+            MealType.LUNCH -> stringResource(R.string.meal_lunch)
+            MealType.DINNER -> stringResource(R.string.meal_dinner)
+            MealType.SNACK -> stringResource(R.string.meal_snack)
         }
     }
     
@@ -206,9 +206,8 @@ private fun FoodContent(
 
     val isToday = remember(state.selectedDate) { state.selectedDate == LocalDate.now() }
 
-    Box {
-        Scaffold(
-            modifier = modifier.fillMaxSize(),
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
             floatingActionButton = {
                 if (isToday) {
                     ExtendedFloatingActionButton(
@@ -238,11 +237,10 @@ private fun FoodContent(
                 )
 
                 // Horizontal calendar strip
-                Box {
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(horizontal = 4.dp)
                     ) {
@@ -294,7 +292,6 @@ private fun FoodContent(
                             }
                         }
                     }
-                }
 
                 // Failure banner — persists across day changes (above AnimatedContent)
                 if (state.failedMealCount > 0) {
@@ -722,7 +719,6 @@ private fun FoodContent(
                 )
             }
         }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

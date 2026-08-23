@@ -1,5 +1,6 @@
 package com.myhealthtracker.app.ui.meal
 
+import com.myhealthtracker.app.R
 import com.myhealthtracker.app.data.meal.MealAnalysisInput
 import com.myhealthtracker.app.data.meal.MealAnalysisLauncher
 import com.myhealthtracker.app.data.meal.MealRepository
@@ -7,6 +8,7 @@ import com.myhealthtracker.app.data.model.MealEntry
 import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealQuality
 import com.myhealthtracker.app.data.model.MealTotals
+import com.myhealthtracker.app.data.model.MealType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,7 +36,7 @@ class AddMealViewModelTest {
         val pending = mutableListOf<Triple<String, String, String?>>() // id, inputType, localImagePath
         val added = mutableListOf<MealEntry>()
         override fun newMealId() = nextId
-        override fun createPendingMeal(mealId: String, date: String, inputType: String, description: String, note: String?, localImagePath: String?) {
+        override fun createPendingMeal(mealId: String, date: String, inputType: String, description: String, note: String?, localImagePath: String?, mealType: MealType?) {
             pending.add(Triple(mealId, inputType, localImagePath))
         }
         override fun completeMeal(mealId: String, items: List<MealItem>, totals: MealTotals, recommendation: String?, quality: MealQuality?) {}
@@ -42,8 +44,8 @@ class AddMealViewModelTest {
         override fun retryMeal(mealId: String) {}
         override fun markMealSeen(mealId: String) {}
         override fun updateMeal(mealId: String, description: String, items: List<MealItem>, totals: MealTotals) {}
-        override fun addMeal(date: String, inputType: String, description: String, items: List<MealItem>, totals: MealTotals, recommendation: String?, quality: MealQuality?) {
-            added.add(MealEntry("aid", date, java.time.Instant.now(), inputType, description, items, totals))
+        override fun addMeal(date: String, inputType: String, description: String, items: List<MealItem>, totals: MealTotals, recommendation: String?, quality: MealQuality?, mealType: MealType?) {
+            added.add(MealEntry("aid", date, java.time.Instant.now(), inputType, description, items, totals, mealType = mealType))
         }
         override fun deleteMeal(mealId: String) {}
     }
@@ -107,7 +109,7 @@ class AddMealViewModelTest {
     fun `manual save rejects non-positive calories`() = runTest(dispatcher) {
         val repo = FakeRepo(); val vm = vm(repo, FakeLauncher())
         vm.switchToManualFallback(); vm.onManualCalChange("0"); vm.saveManualMeal(); advanceUntilIdle()
-        assertEquals(0, repo.added.size); assertEquals("הקלוריות חייבות להיות גדולות מ-0", vm.errorMessage.value)
+        assertEquals(0, repo.added.size); assertEquals(R.string.error_invalid_calories, vm.errorMessage.value)
     }
 
     @Test

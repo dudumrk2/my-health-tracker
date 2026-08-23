@@ -110,6 +110,7 @@ class AddWorkoutViewModel(
                 ).collect()
                 _isSaved.value = true
             } catch (e: Exception) {
+                android.util.Log.e("AddWorkoutVM", "Failed to save workout", e)
                 _errorMessage.value = com.myhealthtracker.app.R.string.error_save_failed
             }
         }

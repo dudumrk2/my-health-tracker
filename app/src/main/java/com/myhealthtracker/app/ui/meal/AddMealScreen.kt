@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.myhealthtracker.app.data.model.MealType
 import com.myhealthtracker.app.theme.MyHealthTrackerTheme
 import com.myhealthtracker.app.R
 
@@ -207,10 +208,10 @@ fun AddMealScreen(
 @Composable
 private fun InputSelectionContent(
     mealDescription: String,
-    selectedMealType: String?,
+    selectedMealType: MealType?,
     errorResId: Int?,
     onDescriptionChange: (String) -> Unit,
-    onMealTypeSelect: (String) -> Unit,
+    onMealTypeSelect: (MealType) -> Unit,
     onAnalyzeTextClick: () -> Unit,
     onPickImageClick: () -> Unit,
     onCameraClick: () -> Unit,
@@ -348,10 +349,10 @@ private fun InputSelectionContent(
 private fun ImagePreviewContent(
     imagePath: String?,
     note: String,
-    selectedMealType: String?,
+    selectedMealType: MealType?,
     errorResId: Int?,
     onNoteChange: (String) -> Unit,
-    onMealTypeSelect: (String) -> Unit,
+    onMealTypeSelect: (MealType) -> Unit,
     onSendClick: () -> Unit,
     onCancelClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -442,10 +443,10 @@ private fun ManualFallbackContent(
     protein: String,
     carbs: String,
     fat: String,
-    selectedMealType: String?,
+    selectedMealType: MealType?,
     errorResId: Int?,
     onDescriptionChange: (String) -> Unit,
-    onMealTypeSelect: (String) -> Unit,
+    onMealTypeSelect: (MealType) -> Unit,
     onCalChange: (String) -> Unit,
     onProteinChange: (String) -> Unit,
     onCarbsChange: (String) -> Unit,
@@ -577,26 +578,26 @@ private fun ManualFallbackContent(
 
 @Composable
 private fun MealTypeSelector(
-    selectedType: String?,
-    onTypeSelect: (String) -> Unit
+    selectedType: MealType?,
+    onTypeSelect: (MealType) -> Unit
 ) {
     val types = listOf(
-        "breakfast" to stringResource(R.string.meal_breakfast),
-        "lunch" to stringResource(R.string.meal_lunch),
-        "dinner" to stringResource(R.string.meal_dinner),
-        "snack" to stringResource(R.string.meal_snack)
+        MealType.BREAKFAST to stringResource(R.string.meal_breakfast),
+        MealType.LUNCH to stringResource(R.string.meal_lunch),
+        MealType.DINNER to stringResource(R.string.meal_dinner),
+        MealType.SNACK to stringResource(R.string.meal_snack)
     )
 
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        types.forEach { (id, label) ->
-            val isSelected = selectedType == id
+        types.forEach { (type, label) ->
+            val isSelected = selectedType == type
             Surface(
                 modifier = Modifier
                     .weight(1f)
-                    .clickable { onTypeSelect(id) },
+                    .clickable { onTypeSelect(type) },
                 shape = RoundedCornerShape(20.dp),
                 color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                 border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
@@ -622,7 +623,7 @@ fun AddMealScreenPreviewInput() {
     MyHealthTrackerTheme {
         InputSelectionContent(
             mealDescription = "Grilled chicken salad",
-            selectedMealType = "lunch",
+            selectedMealType = MealType.LUNCH,
             errorResId = null,
             onDescriptionChange = {},
             onMealTypeSelect = {},
@@ -641,7 +642,7 @@ fun AddMealScreenPreviewImagePreview() {
         ImagePreviewContent(
             imagePath = null,
             note = "With tahini sauce",
-            selectedMealType = "lunch",
+            selectedMealType = MealType.LUNCH,
             errorResId = null,
             onNoteChange = {},
             onMealTypeSelect = {},

@@ -8,6 +8,7 @@ import com.myhealthtracker.app.data.model.MealItem
 import com.myhealthtracker.app.data.model.MealQuality
 import com.myhealthtracker.app.data.model.MealStatus
 import com.myhealthtracker.app.data.model.MealTotals
+import com.myhealthtracker.app.data.model.MealType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,13 +33,13 @@ class MealEditViewModelTest {
         val updated = mutableListOf<Triple<String, List<MealItem>, MealTotals>>()
         val seen = mutableListOf<String>()
         override fun newMealId() = "x"
-        override fun createPendingMeal(mealId: String, date: String, inputType: String, description: String, note: String?, localImagePath: String?) {}
+        override fun createPendingMeal(mealId: String, date: String, inputType: String, description: String, note: String?, localImagePath: String?, mealType: MealType?) {}
         override fun completeMeal(mealId: String, items: List<MealItem>, totals: MealTotals, recommendation: String?, quality: MealQuality?) {}
         override fun failMeal(mealId: String, reason: String) {}
         override fun retryMeal(mealId: String) {}
         override fun markMealSeen(mealId: String) { seen.add(mealId) }
         override fun updateMeal(mealId: String, description: String, items: List<MealItem>, totals: MealTotals) { updated.add(Triple(mealId, items, totals)) }
-        override fun addMeal(date: String, inputType: String, description: String, items: List<MealItem>, totals: MealTotals, recommendation: String?, quality: MealQuality?) {}
+        override fun addMeal(date: String, inputType: String, description: String, items: List<MealItem>, totals: MealTotals, recommendation: String?, quality: MealQuality?, mealType: MealType?) {}
         override fun deleteMeal(mealId: String) {}
     }
 

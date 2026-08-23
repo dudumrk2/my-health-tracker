@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -121,10 +122,10 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+            val dispatcherOwner = context as? NavigationEventDispatcherOwner
+
             MyHealthTrackerTheme(darkTheme = darkTheme) {
-                CompositionLocalProvider(
-                    LocalNavigationEventDispatcherOwner provides (context as NavigationEventDispatcherOwner)
-                ) {
+                val scaffoldContent: @Composable () -> Unit = {
                     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                         Box(modifier = Modifier.fillMaxSize()) {
                             val currentIntent by intentState
@@ -139,6 +140,16 @@ class MainActivity : AppCompatActivity() {
                             CelebrationOverlay(soundEnabled = celebrationSoundEnabled)
                         }
                     }
+                }
+
+                if (dispatcherOwner != null) {
+                    CompositionLocalProvider(
+                        LocalNavigationEventDispatcherOwner provides dispatcherOwner
+                    ) {
+                        scaffoldContent()
+                    }
+                } else {
+                    scaffoldContent()
                 }
             }
         }
