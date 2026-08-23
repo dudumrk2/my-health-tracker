@@ -1,59 +1,70 @@
-<div dir="rtl">
+# MyHealthTracker
 
-# MyHealthTracker — מסמכי תכנון ופרומפטים
+**AI-Powered Health & Nutrition Tracker — Native Android App**
 
-ערכת המסמכים לפיתוח אפליקציית MyHealthTracker. כל המסמכים מעודכנים ועקביים נכון לגרסה זו.
+A modern Android health & wellness app that combines automated fitness tracking with multimodal AI nutrition analysis, built end-to-end with Kotlin, Jetpack Compose, and Google Gemini AI.
 
-## איך לשים בגיט
+![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=flat&logo=kotlin&logoColor=white)
+![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-4285F4?style=flat&logo=jetpackcompose&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=flat&logo=firebase&logoColor=black)
+![Gemini](https://img.shields.io/badge/Gemini%20AI-8E75B2?style=flat&logo=googlegemini&logoColor=white)
 
-הנח את התוכן בשורש ה-clone `D:\AICode\my-health-tracker`:
-- `CLAUDE.md` → **בשורש הפרויקט** (Claude Code קורא אותו אוטומטית בכל session).
-- `docs/` → תיקיית מסמכי הייחוס.
-- `prompts/` → הפרומפטים להרצה (לא חובה בגיט, אבל נוח שיהיו שם).
+---
 
-## מבנה
+## The Problem
+
+Manual food-diary logging is tedious and has high drop-off rates. Most nutrition apps require typing every ingredient and looking up macros by hand. MyHealthTracker removes that friction by letting users log a meal with a single photo, using multimodal AI to do the nutritional analysis automatically.
+
+## Key Features
+
+- **📸 AI Meal Logging** — Snap a photo (or type a description) of a meal; Google Gemini AI analyzes it via a secure Cloud Functions backend and returns estimated macros (calories, protein, carbs, fat).
+- **💤 Automated Health Sync** — Sleep and activity data sync seamlessly through Google Health Connect — no manual entry.
+- **🧠 Personalized AI Insights** — Daily, personalized recommendations generated from the user's logged data, with a clear "general guidance, not medical advice" framing.
+- **📶 Offline-First** — Full functionality without connectivity via Firestore's offline persistence, syncing automatically when back online.
+- **🎨 Modern UI** — Built entirely in Jetpack Compose (Material 3), with full Dark/Light mode and RTL layout support.
+
+## Architecture
 
 ```
-CLAUDE.md                      ← זיכרון הפרויקט (סטאק, מודל נתונים, כללי ברזל). בשורש.
-docs/
-├── HLD-health-tracker.md      ← מסמך התכנון המלא (מקור האמת)
-├── screens-spec.md            ← מפרט המסכים (RTL, light/dark, mobile)
-└── blueprint-phase-1.md       ← מפרט מימוש מפורט לפייז 1
-prompts/
-├── prompt-phase-1.5.md        ← patch: gender + אימון ידני (על קוד פייז 1 הקיים)
-├── prompt-phase-ui.md         ← שכבת ה-UI המלאה (Compose + mock data)
-├── prompt-phase-2.md          ← יומן אכילה + מים + analyzeMeal (Gemini)
-└── prompt-phase-3.md          ← תובנות AI מאוחדות (generateInsights)
+┌─────────────────────┐         ┌──────────────────────┐
+│   Android Client     │         │   Firebase Backend    │
+│  (Kotlin + Compose)  │◄───────►│                        │
+│                      │         │  • Cloud Functions    │
+│  • Health Connect    │  HTTPS  │    (Gemini AI calls)  │
+│  • Firestore (local) │◄───────►│  • Firestore          │
+│  • Offline cache     │         │  • Auth                │
+└─────────────────────┘         └──────────────────────┘
 ```
 
-## מצב נוכחי
+**Key design decisions:**
+- All AI API calls run server-side (Cloud Functions) — API keys never touch the client.
+- Meal photos are analyzed but not stored — only the extracted nutritional data is persisted, minimizing data sensitivity.
+- Body metrics are for self-tracking only and are never sent to the AI model.
 
-- **פייז 1 (תשתית + בריאות)** — ✅ כבר מומש (לפני התוספות gender / אימון ידני).
+## Tech Stack
 
-## סדר הרצה מומלץ
+| Layer | Technology |
+|---|---|
+| Language | Kotlin |
+| UI | Jetpack Compose, Material 3 |
+| Backend | Firebase Cloud Functions |
+| Database | Cloud Firestore (offline-first sync) |
+| AI | Google Gemini API (multimodal — image + text) |
+| Health Data | Android Health Connect API |
+| Auth | Firebase Authentication |
 
-לכל פרומפט: פתח **session נקי** ב-Claude Code, מתוך תיקיית הפרויקט, והדבק את תוכן הקובץ. ודא ש-`CLAUDE.md` ומסמכי `docs/` בתיקייה. בסוף כל שלב — ודא שה-build והטסטים עוברים לפני המעבר הבא.
+## Screenshots
 
-1. **prompt-phase-1.5** — משלים את פייז 1 הקיים: מוסיף gender לפרופיל ואימון ידני.
-2. **prompt-phase-ui** — בונה את כל מסכי ה-UI עם mock data (UI-first).
-3. **prompt-phase-2** — מחבר את יומן האכילה ל-analyzeMeal האמיתי (Gemini), ומוסיף יומן מים.
-4. **prompt-phase-3** — מוסיף את תובנות ה-AI המאוחדות (generateInsights) ומחבר אותן למסכים.
+![MyHealthTracker Demo](./docs/screenshots/upwork_portfolio.gif)
 
-> הערה: ה-UI ב-phase-ui משתמש ב-mock; פייזים 2-3 מחליפים בהדרגה את ה-mock בלוגיקה אמיתית. אם תעדיף גרסה היברידית של phase-ui (שמשתמשת ב-Auth/Health Connect האמיתיים מפייז 1 ו-mock רק לשאר) — בקש לעדכן את הפרומפט.
+## Development Process
 
-## פעולות ידניות שלך (לא הסוכן)
+This project was built using an AI-assisted, spec-driven development workflow — detailed planning documents and phased implementation prompts are available in [`docs/`](./docs) and [`prompts/`](./prompts) for anyone curious about the process.
 
-- יצירת/חיבור פרויקט Firebase, `google-services.json`, הפעלת Auth/Firestore/Functions
-- פריסת Cloud Functions, הפעלת Vertex AI API, App Check
-- הגדרת Cloud Scheduler jobs (ערב + 15:00) ל-generateInsights
-- כל `git push` — הסוכן יבקש אישור לפני
+## Status
 
-## עקרונות ליבה (מתוך CLAUDE.md)
+Actively in development. Core tracking, AI meal logging, and insights generation are implemented; UI polish and additional features are ongoing.
 
-- מפתחות AI רק בצד השרת (Cloud Functions), לעולם לא בלקוח.
-- תמונות אוכל לא נשמרות — רק התוצאה המנותחת.
-- אין ייעוץ רפואי — תובנות כלליות עם דיסקליימר, טון מציע ולא קובע.
-- מדדי גוף = מעקב עצמי בלבד, לא מוזנים ל-AI.
-- RTL מלא + light/dark בכל המסכים.
+---
 
-</div>
+*Built by [Your Name] — [portfolio/contact link]*
